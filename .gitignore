@@ -1,0 +1,19 @@
+# Build artifacts
+build/
+*.o
+*.a
+
+# Runtime state (brain checkpoints + vocab + logs)
+data/*.brain
+data/*.vocab
+data/*.log
+
+# Editor/OS
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Claude
+.claude/
