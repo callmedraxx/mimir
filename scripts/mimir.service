@@ -1,0 +1,15 @@
+[Unit]
+Description=MIMIR brain (tmux-managed REPL)
+After=network.target
+
+[Service]
+Type=forking
+WorkingDirectory=/root/mimir
+ExecStart=/root/mimir/scripts/mimir-daemon start
+ExecStop=/root/mimir/scripts/mimir-daemon stop
+ExecReload=/root/mimir/scripts/mimir-daemon restart
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

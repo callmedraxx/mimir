@@ -7,7 +7,7 @@
  * binary pick up where it left off instead of starting cold every run.
  *
  * FORMAT (binary, little-endian on the host platform):
- *   [8 bytes]  magic "MIMIR002"
+ *   [8 bytes]  magic "MIMIR003"
  *   [4 bytes]  n_layers
  *   [4 bytes]  n_inputs
  *   [4 bytes]  n_outputs
@@ -35,6 +35,7 @@
  *       [4 bytes] theta
  *       [4 bytes] mean_out
  *       [1 byte]  is_visual   (visual-modality neuron flag)
+ *       [4 bytes] visual_bias (v003+; on-load from v002 copies bias here)
  *       [n_weights × 4 bytes] weights
  */
 
@@ -43,8 +44,20 @@
 #include <sys/types.h>
 #include <errno.h>
 
-#define MAGIC     "MIMIR002"
-#define MAGIC_LEN 8
+#define MAGIC      "MIMIR004"
+#define MAGIC_V003 "MIMIR003"
+#define MAGIC_V002 "MIMIR002"
+#define MAGIC_LEN  8
+
+/* For ACT_HDC_BIT neurons, weights live as packed ±1 bits: one bit per
+ * weight, ceil(n_weights/32) uint32_t words. Helper keeps save/load in sync. */
+static size_t neuron_weight_bytes(const Neuron *n) {
+    if (n->act == ACT_HDC_BIT) {
+        size_t words = ((size_t)n->n_weights + 31u) / 32u;
+        return words * sizeof(uint32_t);
+    }
+    return (size_t)n->n_weights * sizeof(float);
+}
 
 static int write_bytes(FILE *f, const void *buf, size_t n) {
     return fwrite(buf, 1, n, f) == n ? 0 : -1;
@@ -96,7 +109,8 @@ int network_save(const Network *net, const char *path) {
             W(&n->theta,       sizeof(float));
             W(&n->mean_out,    sizeof(float));
             W(&n->is_visual,   sizeof(uint8_t));
-            W(n->weights,      sizeof(float) * (size_t)n->n_weights);
+            W(&n->visual_bias, sizeof(float));
+            W(n->weights,      neuron_weight_bytes(n));
         }
     }
 
@@ -124,11 +138,15 @@ Network *network_load(const char *path) {
     if (!f) return NULL;
 
     char magic[MAGIC_LEN];
-    if (read_bytes(f, magic, MAGIC_LEN) < 0 ||
-        memcmp(magic, MAGIC, MAGIC_LEN) != 0) {
+    if (read_bytes(f, magic, MAGIC_LEN) < 0) {
         fclose(f);
         return NULL;
     }
+    int file_version;
+    if      (memcmp(magic, MAGIC,      MAGIC_LEN) == 0) file_version = 4;
+    else if (memcmp(magic, MAGIC_V003, MAGIC_LEN) == 0) file_version = 3;
+    else if (memcmp(magic, MAGIC_V002, MAGIC_LEN) == 0) file_version = 2;
+    else { fclose(f); return NULL; }
 
     Network *net = calloc(1, sizeof(Network));
     if (!net) { fclose(f); return NULL; }
@@ -175,9 +193,23 @@ Network *network_load(const char *path) {
             R(&n->theta,       sizeof(float));
             R(&n->mean_out,    sizeof(float));
             R(&n->is_visual,   sizeof(uint8_t));
-            n->weights = malloc(sizeof(float) * (size_t)n->n_weights);
+            if (file_version >= 3) {
+                R(&n->visual_bias, sizeof(float));
+            } else {
+                /* v002 migration: seed visual_bias from bias so existing
+                 * trained brains keep their vision predictions at the
+                 * same operating point they had before the dual-bias
+                 * split.  Subsequent vision rescues will then move
+                 * visual_bias independently of text bias. */
+                n->visual_bias = n->bias;
+            }
+            /* v004+ stores bit-packed ±1 weights for ACT_HDC_BIT neurons.
+             * Pre-v004 files never used ACT_HDC_BIT, so the branch below
+             * cleanly reads float weights for them. */
+            size_t wb = neuron_weight_bytes(n);
+            n->weights = malloc(wb);
             if (!n->weights) goto fail;
-            R(n->weights, sizeof(float) * (size_t)n->n_weights);
+            R(n->weights, wb);
             layer->outputs[j] = n->last_output;
         }
     }

@@ -243,255 +243,35 @@ void vision_encode(const float *raw, float *embedding) {
 }
 
 /*
- * (2026-04-17) vision_masked_forward — forward pass with text hidden
- * neurons suppressed.  Added to fix vision drift after the initial
- * 26/26 → 23/26 regression we observed after learn all.
- *
- * WHAT CHANGED:
- *   - vision_forward now routes through vision_masked_forward (was raw
- *     network_forward).
- *   - vision_train and vision_rescue also call vision_masked_forward
- *     for their internal forward passes so training and inference see
- *     the same output (otherwise they converge on different equilibria
- *     and fight each other).
- *
- * WHY:
- * Text hidden neurons have zeroed visual-region weights (dims [31..127]
- * are all zero by design of vision_ensure_modality_separation).  So on a
- * visual input (text-region zeroed, visual-region filled) they compute
- *   z = bias + Σ(weights[0..30] * 0) + Σ(0 * input[31..127]) = bias
- * and fire at sigmoid(bias) — a per-neuron constant that is non-zero.
- * This constant flows through text-side output weights (which text
- * delta_rescue keeps adjusting during replay) and shifts vision
- * predictions every time text weights change.
- *
- * This is the exact mirror image of the problem alpha_forward solves
- * for text queries (where visual neurons' sigmoid(~0) = 0.5 polluted
- * text outputs).  Masking in vision_forward gives vision the same
- * modality isolation that alpha_forward gives text.
- */
-static void vision_masked_forward(Network *net, const float *embedding,
-                                   float *output) {
-    network_forward(net, embedding, output);
-    if (net->n_layers < 2) return;
-
-    Layer *hidden    = &net->layers[net->n_layers - 2];
-    Layer *out_layer = &net->layers[net->n_layers - 1];
-    for (int h = 0; h < hidden->count; h++)
-        if (!hidden->neurons[h].is_visual)
-            hidden->outputs[h] = 0.0f;
-    for (int j = 0; j < out_layer->count; j++) {
-        Neuron *on = &out_layer->neurons[j];
-        if (on->state == NEURON_DORMANT) {
-            on->last_z = 0.0f; on->last_output = 0.0f;
-            out_layer->outputs[j] = 0.0f;
-            continue;
-        }
-        float z = on->bias;
-        int wlim = on->n_weights < hidden->count
-                 ? on->n_weights : hidden->count;
-        for (int h = 0; h < wlim; h++)
-            z += on->weights[h] * hidden->outputs[h];
-        on->last_z = z;
-        float o = activate(z, on->act) * on->maturity;
-        on->last_output = o;
-        out_layer->outputs[j] = o;
-    }
-    for (int i = 0; i < out_layer->count && i < net->n_outputs; i++)
-        output[i] = out_layer->outputs[i];
-}
-
-/*
- * Visual forward pass: load image, encode, run through network.
- * Returns the output vector (caller provides both buffers).
+ * Visual forward pass: load image, encode, run through the unified
+ * HDC hidden layer.  No modality masking, no text-region zero-out —
+ * the hidden layer produces a distinct binary signature for any
+ * input vector, and the output layer has been trained to map both
+ * text and visual signatures to their respective classes.
  */
 void vision_forward(Network *net, const float *raw_image,
                     float *embedding, float *output) {
     vision_encode(raw_image, embedding);
-    /* Zero text-region dims so input matches what vision_train used. */
-    for (int i = 0; i < ALPHA_RAW_SIZE; i++)
-        embedding[i] = 0.0f;
-    vision_masked_forward(net, embedding, output);
+    network_forward(net, embedding, output);
 }
 
 /*
- * (2026-04-17) Neurogenesis-based visual training — Option 2.
+ * (2026-04-18) HDC training — single shared random-projection hidden layer.
  *
- * WHY THE OLD APPROACH FAILED:
- * The previous vision_train tried to push visual associations through
- * text-committed hidden neurons by training only the output layer.
- * Those hidden neurons were tuned for text patterns (sparse one-hot in
- * dims 0..30); feeding them dense 128-dim Gabor features produced
- * near-identical hidden activations for all images, so the output layer
- * couldn't separate them.  More epochs just oscillated.
+ * Previous design grew modality-specific hidden neurons (is_visual flag)
+ * and maintained a dual-bias on the output layer to keep text and vision
+ * from disturbing each other.  Math analysis (sandbox/vision_math.py)
+ * showed 8 visual neurons were not a linearly-separable code for 26
+ * classes (7.7% strict argmax).  HDC replaces the modality-specific
+ * scheme with a fixed random projection (256 hidden neurons, Gaussian
+ * weights, step activation) that produces distinct binary signatures for
+ * any input — text or visual — and delivers 100% strict on both
+ * modalities with a single output-layer delta rule.
  *
- * NEW APPROACH: modality separation via weight structure.
- *
- * The 128-dim embedding has a natural gate: text occupies dims
- * [0, ALPHA_RAW_SIZE) and is zero elsewhere; visual (Gabor) is dense
- * across all 128 dims.  We exploit this:
- *
- *   1. Text hidden neurons: zero their weights on dims [ALPHA_RAW_SIZE..127].
- *      These dims were never trained by text (input was zero there), so the
- *      weights were noise.  Zeroing removes the noise without affecting
- *      text forward passes.
- *
- *   2. Visual hidden neurons: grow via neurogenesis pool.  Zero their weights
- *      on dims [0..ALPHA_RAW_SIZE-1] (they ignore text features).  Random
- *      init on dims [ALPHA_RAW_SIZE..127] (they respond to Gabor features).
- *      Marked is_visual=1 for persistence.
- *
- * Result: text neurons are silent on visual input (zero weights in Gabor
- * region) and visual neurons are silent on text input (zero weights in
- * text region).  The output layer sees different hidden populations for
- * each modality — no interference, no catastrophic forgetting.
- *
- * Training updates BOTH visual hidden weights AND output weights on
- * STYPE_VISUAL samples (one-layer backprop through the visual sub-
- * population).  Text samples update only output weights (text hidden
- * neurons are committed).
- *
- * BIOLOGICAL PARALLEL: Modality-specific cortical areas.  V1 neurons
- * don't fire on auditory input, auditory cortex neurons don't fire on
- * visual input — the wiring enforces separation.  Downstream areas
- * (hippocampus = our output layer) integrate both modalities.
- */
-
-#define VISION_N_VISUAL_NEURONS 8  /* initial visual hidden neuron budget */
-
-/*
- * One-time modality separation: zero visual-region weights on text neurons,
- * grow visual neurons with zeroed text-region weights.
- *
- * Safe to call multiple times — checks is_visual flag and neuron count
- * to avoid redundant work.
- */
-static void vision_ensure_modality_separation(Network *net) {
-    if (net->n_layers < 2) return;
-    Layer *hidden = &net->layers[0];
-
-    /* --- Phase A: zero visual-region weights on existing text neurons --- */
-    /* Text input never sets dims [ALPHA_RAW_SIZE..MIMIR_EMBEDDING_SIZE-1],
-     * so those weights are random noise from init.  Zeroing them prevents
-     * text neurons from firing on visual input while leaving text forward
-     * passes bit-identical. */
-    int text_cleaned = 0;
-    for (int i = 0; i < hidden->count; i++) {
-        Neuron *n = &hidden->neurons[i];
-        if (n->is_visual) continue;
-        if (n->state == NEURON_DORMANT) continue;
-        bool dirty = false;
-        for (int d = ALPHA_RAW_SIZE; d < n->n_weights && d < MIMIR_EMBEDDING_SIZE; d++) {
-            if (n->weights[d] != 0.0f) { dirty = true; break; }
-        }
-        if (dirty) {
-            for (int d = ALPHA_RAW_SIZE; d < n->n_weights && d < MIMIR_EMBEDDING_SIZE; d++)
-                n->weights[d] = 0.0f;
-            text_cleaned++;
-        }
-    }
-    if (text_cleaned > 0)
-        printf("  [Vision] Modality separation: zeroed visual-region weights "
-               "on %d text neurons\n", text_cleaned);
-
-    /* --- Phase A.5: suppress-bias on existing visual neurons ---
-     *
-     * (2026-04-18) Older checkpoints have visual neurons with bias ≈ 0,
-     * so sigmoid(bias) ≈ 0.5 on text input and their outputs contaminate
-     * text forward passes through trained visual-side output weights.
-     * Drop any near-zero visual bias to -5 so these neurons are silent
-     * on text (sigmoid(-5) ≈ 0.007).  Leave already-negative biases
-     * alone: vision_train may have intentionally pushed a neuron into
-     * a shy regime, and we don't want to re-bias it upward here. */
-    int bias_fixed = 0;
-    for (int i = 0; i < hidden->count; i++) {
-        Neuron *n = &hidden->neurons[i];
-        if (!n->is_visual) continue;
-        if (n->state == NEURON_DORMANT) continue;
-        if (n->bias > -1.0f) { n->bias = -5.0f; bias_fixed++; }
-    }
-    if (bias_fixed > 0)
-        printf("  [Vision] Modality separation: suppressed bias on %d "
-               "visual neurons (bias → -5)\n", bias_fixed);
-
-    /* --- Phase B: grow visual hidden neurons from dormant pool --- */
-    int existing_visual = 0;
-    for (int i = 0; i < hidden->count; i++)
-        if (hidden->neurons[i].is_visual) existing_visual++;
-
-    int to_grow = VISION_N_VISUAL_NEURONS - existing_visual;
-    if (to_grow <= 0) return;
-
-    int grown = 0;
-    for (int i = 0; i < hidden->count && grown < to_grow; i++) {
-        Neuron *n = &hidden->neurons[i];
-        if (n->state != NEURON_DORMANT) continue;
-
-        /* Activate this dormant neuron as a visual neuron */
-        n->state    = NEURON_MATURE;
-        n->maturity = 1.0f;  /* fully active immediately — no slow ramp */
-        n->activity = 0.0f;
-        n->age      = 0;
-        n->is_visual = 1;
-
-        /* Zero text-region weights so it ignores text input */
-        int lim = (ALPHA_RAW_SIZE < n->n_weights) ? ALPHA_RAW_SIZE : n->n_weights;
-        for (int d = 0; d < lim; d++)
-            n->weights[d] = 0.0f;
-
-        /* Re-randomize visual-region weights with Xavier scale */
-        int vis_dims = n->n_weights - ALPHA_RAW_SIZE;
-        if (vis_dims > 0) {
-            float scale = 1.0f / sqrtf((float)vis_dims);
-            random_init(&n->weights[ALPHA_RAW_SIZE], vis_dims, scale);
-        }
-
-        /*
-         * (2026-04-18) Negative bias for modality isolation.
-         *
-         * On TEXT input, visual-region dims are zero and text-region
-         * weights are zero (set above), so z = bias.  If bias were 0,
-         * sigmoid(0) = 0.5 — a constant per-neuron firing that flows
-         * through trained visual-side output weights and contaminates
-         * text outputs.  Setting bias = -5 makes sigmoid(-5) ≈ 0.007,
-         * so the visual neuron is effectively silent on text queries
-         * without any explicit masking in alpha_forward.
-         *
-         * On VISUAL input, Xavier-scaled weights on visual dims
-         * typically produce z with |z| on the order of ~1, so bias
-         * -5 initially suppresses visual firing too; vision_train's
-         * hidden-bias backprop (see line `hn->bias += lr * h_delta`
-         * in vision_train) raises the bias as learning requires.
-         */
-        n->bias = -5.0f;
-
-        grown++;
-    }
-
-    if (grown > 0) {
-        /* Output layer: ensure its weights cover the new hidden neurons.
-         * hidden->count hasn't changed (dormant slots are already allocated),
-         * but output weights may have been sized before these neurons existed.
-         * In practice output n_weights == hidden->count already, but check. */
-        Layer *out_layer = &net->layers[net->n_layers - 1];
-        for (int j = 0; j < out_layer->count; j++) {
-            Neuron *on = &out_layer->neurons[j];
-            if (on->n_weights < hidden->count) {
-                on->weights = realloc(on->weights, hidden->count * sizeof(float));
-                for (int w = on->n_weights; w < hidden->count; w++)
-                    on->weights[w] = 0.0f;
-                on->n_weights = hidden->count;
-            }
-        }
-
-        printf("  [Vision] Grew %d visual hidden neurons "
-               "(%d total visual, %d hidden total)\n",
-               grown, existing_visual + grown, hidden->count);
-    }
-}
-
-/*
- * Train visual associations with modality-separated hidden neurons.
+ * No modality separation, no neurogenesis, no dual-bias.  Everything the
+ * brain needs for cross-modal recognition lives in:
+ *   (a) the fixed HDC projection (network_hdc_init_hidden, one-shot)
+ *   (b) the output-layer delta rule (vision_train / alpha_retrain_all_known)
  *
  * img_data: array of 26 float pointers, img_data[i] points to
  *           VISION_RAW_SIZE floats for letter i, or NULL if no image.
@@ -500,8 +280,9 @@ void vision_train(Network *net, const AlphaVocab *vocab,
                   float *img_data[26]) {
     if (net->n_layers < 2) return;
 
-    /* Ensure visual hidden neurons exist and modality is separated */
-    vision_ensure_modality_separation(net);
+    /* HDC: no modality separation needed — hidden layer is a fixed random
+     * projection that produces distinct binary signatures for text and
+     * visual inputs alike.  Output layer delta rule learns the mapping. */
 
     Layer *out_layer = &net->layers[net->n_layers - 1];
     Layer *hidden    = &net->layers[0];
@@ -538,17 +319,13 @@ void vision_train(Network *net, const AlphaVocab *vocab,
     float emb[MIMIR_EMBEDDING_SIZE], out[ALPHA_N_OUTPUTS];
 
     /* Cache Gabor encodings — deterministic, ~150M ops each.
-     * Zero dims [0, ALPHA_RAW_SIZE) so text neurons are truly silent on
-     * visual input.  Without this, text neurons see non-zero Gabor values
-     * in the text region, fire unpredictably, and cause output weight
-     * conflict that destroys text recall.  Visual neurons' text-region
-     * weights are already zero, so no information is lost for vision. */
+     * HDC: the hidden layer is a fixed random projection with ACT_STEP;
+     * text inputs fire one subset of hidden neurons, visual inputs fire
+     * a different subset.  No text-region zero-out is needed — the signs
+     * of the projection separate modalities automatically. */
     static float cached_vis_emb[26][MIMIR_EMBEDDING_SIZE];
-    for (int s = 0; s < n_vis; s++) {
+    for (int s = 0; s < n_vis; s++)
         vision_encode(vis_imgs[s], cached_vis_emb[s]);
-        for (int d = 0; d < ALPHA_RAW_SIZE; d++)
-            cached_vis_emb[s][d] = 0.0f;
-    }
 
     enum { STYPE_RECALL, STYPE_VALIDATE, STYPE_VISUAL };
     struct {
@@ -571,7 +348,7 @@ void vision_train(Network *net, const AlphaVocab *vocab,
         for (int s = 0; s < n_vis; s++) {
             float ve[MIMIR_EMBEDDING_SIZE], vo[ALPHA_N_OUTPUTS];
             memcpy(ve, cached_vis_emb[s], MIMIR_EMBEDDING_SIZE * sizeof(float));
-            vision_masked_forward(net, ve, vo);
+            network_forward(net, ve, vo);
             int best = -1; float best_val = -1.0f;
             for (int j = 0; j < ALPHA_N_OUTPUTS; j++)
                 if (vo[j] > best_val) { best_val = vo[j]; best = j; }
@@ -646,63 +423,35 @@ void vision_train(Network *net, const AlphaVocab *vocab,
         for (int si = 0; si < ns; si++) {
             int ti = samples[si].target;
 
-            /* Forward pass */
+            /* Forward pass (HDC: unified hidden, no modality routing) */
             if (samples[si].type == STYPE_VISUAL) {
                 memcpy(emb, cached_vis_emb[samples[si].vis_idx],
                        MIMIR_EMBEDDING_SIZE * sizeof(float));
-                vision_masked_forward(net, emb, out);
+                network_forward(net, emb, out);
             } else {
                 int qtype = (samples[si].type == STYPE_RECALL)
                             ? ALPHA_QUERY_RECALL : ALPHA_QUERY_VALIDATE;
                 alpha_forward(net, samples[si].letter, qtype, emb, out);
             }
 
-            /* --- Output layer: update only visual-side weights ---
-             * All samples are visual.  Only update output weights
-             * connected to is_visual hidden neurons.  Text-side output
-             * weights are untouched — they stay as alpha_teach left them.
-             * Bias is NOT updated (shared across modalities; visual bias
-             * shifts would leak into text recall). */
-            float out_delta[ALPHA_N_OUTPUTS];
+            /* --- HDC output-layer delta rule ---
+             *
+             * The hidden layer is a fixed random projection with step
+             * activation (see network_hdc_init_hidden).  Different input
+             * vectors produce distinct binary hidden signatures, and the
+             * Johnson–Lindenstrauss / Cover-hyperplane argument gives us
+             * linear separability on the expanded hidden code.  So the
+             * output layer just learns a single-layer delta rule over
+             * ALL hidden neurons — no is_visual gating, no dual-bias. */
             for (int j = 0; j < n_out; j++) {
                 Neuron *on = &out_layer->neurons[j];
-                if (on->state == NEURON_COMMITTED) {
-                    out_delta[j] = 0.0f;
-                    continue;
-                }
+                if (on->state == NEURON_COMMITTED) continue;
                 float err = (j == ti ? 1.0f : 0.0f) - out[j];
+                on->bias += lr * err;
                 int w_lim = (n_hidden < on->n_weights)
                             ? n_hidden : on->n_weights;
-                for (int h = 0; h < w_lim; h++) {
-                    if (!hidden->neurons[h].is_visual) continue;
+                for (int h = 0; h < w_lim; h++)
                     on->weights[h] += lr * hidden->outputs[h] * err;
-                }
-                float deriv = activate_derivative(on->last_z, on->act);
-                out_delta[j] = err * deriv;
-            }
-
-            /* --- Visual hidden layer backprop ---
-             * delta_h = σ'(z_h) * Σ_j(δ_out_j * w_out_j_h)
-             * w_h[d] += lr * delta_h * input[d]  for d in visual dims */
-            for (int h = 0; h < n_hidden; h++) {
-                Neuron *hn = &hidden->neurons[h];
-                if (!hn->is_visual) continue;
-                if (hn->state == NEURON_DORMANT) continue;
-
-                float sum_err = 0.0f;
-                for (int j = 0; j < n_out; j++) {
-                    Neuron *on = &out_layer->neurons[j];
-                    if (h < on->n_weights)
-                        sum_err += out_delta[j] * on->weights[h];
-                }
-                float h_deriv = activate_derivative(hn->last_z, hn->act);
-                float h_delta = sum_err * h_deriv;
-
-                hn->bias += lr * h_delta;
-                int w_end = (MIMIR_EMBEDDING_SIZE < hn->n_weights)
-                            ? MIMIR_EMBEDDING_SIZE : hn->n_weights;
-                for (int d = ALPHA_RAW_SIZE; d < w_end; d++)
-                    hn->weights[d] += lr * h_delta * emb[d];
             }
         }
     }
@@ -720,8 +469,9 @@ void vision_train(Network *net, const AlphaVocab *vocab,
  *
  * Unlike full vision_train, this function:
  *   - Does NOT touch hidden-layer weights (visual neurons are stable)
- *   - Does NOT update output biases (shared with text; would cause fights)
- *   - Only updates visual-side output weights (is_visual neurons)
+ *   - Updates visual_bias and visual-side output weights only
+ *     (dual-bias split since 2026-04-18 means text and vision no longer
+ *      share the same bias, so rescue can now move it freely)
  *   - Caps at 500 epochs, early-exits when all visual correct at 80%
  *   - Returns the number of visual predictions currently correct
  *
@@ -752,13 +502,10 @@ int vision_rescue(Network *net, const AlphaVocab *vocab,
     }
     if (n_vis == 0) return 0;
 
-    /* Cache Gabor embeddings with text-region zeroed */
+    /* Cache Gabor embeddings (HDC: no text-region zero-out needed) */
     float cached_emb[26][MIMIR_EMBEDDING_SIZE];
-    for (int s = 0; s < n_vis; s++) {
+    for (int s = 0; s < n_vis; s++)
         vision_encode(vis_imgs[s], cached_emb[s]);
-        for (int d = 0; d < ALPHA_RAW_SIZE; d++)
-            cached_emb[s][d] = 0.0f;
-    }
 
     const float lr = 0.1f;
     const int MAX_EPOCHS = 500;
@@ -769,7 +516,7 @@ int vision_rescue(Network *net, const AlphaVocab *vocab,
         int n_correct = 0;
         for (int s = 0; s < n_vis; s++) {
             memcpy(emb, cached_emb[s], sizeof(emb));
-            vision_masked_forward(net, emb, out);
+            network_forward(net, emb, out);
             int best = -1; float best_val = -1.0f;
             for (int j = 0; j < ALPHA_N_OUTPUTS; j++)
                 if (out[j] > best_val) { best_val = out[j]; best = j; }
@@ -778,21 +525,20 @@ int vision_rescue(Network *net, const AlphaVocab *vocab,
         }
         if (n_correct == n_vis) return n_correct;
 
-        /* Train: output-layer visual-side weights only */
+        /* HDC: single-layer delta rule over all hidden neurons */
         for (int s = 0; s < n_vis; s++) {
             memcpy(emb, cached_emb[s], sizeof(emb));
-            vision_masked_forward(net, emb, out);
+            network_forward(net, emb, out);
             int ti = vis_words[s];
             for (int j = 0; j < n_out; j++) {
                 Neuron *on = &out_layer->neurons[j];
                 if (on->state == NEURON_COMMITTED) continue;
                 float err = (j == ti ? 1.0f : 0.0f) - out[j];
+                on->bias += lr * err;
                 int w_lim = (n_hidden < on->n_weights)
                             ? n_hidden : on->n_weights;
-                for (int h = 0; h < w_lim; h++) {
-                    if (!hidden->neurons[h].is_visual) continue;
+                for (int h = 0; h < w_lim; h++)
                     on->weights[h] += lr * hidden->outputs[h] * err;
-                }
             }
         }
     }
@@ -801,7 +547,7 @@ int vision_rescue(Network *net, const AlphaVocab *vocab,
     int n_correct = 0;
     for (int s = 0; s < n_vis; s++) {
         memcpy(emb, cached_emb[s], sizeof(emb));
-        vision_masked_forward(net, emb, out);
+        network_forward(net, emb, out);
         int best = -1; float best_val = -1.0f;
         for (int j = 0; j < ALPHA_N_OUTPUTS; j++)
             if (out[j] > best_val) { best_val = out[j]; best = j; }

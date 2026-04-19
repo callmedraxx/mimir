@@ -1308,19 +1308,37 @@ int main(int argc, char *argv[]) {
         printf("  Creating new ABC brain (n_inputs=%d, n_outputs=%d)...\n",
                MIMIR_EMBEDDING_SIZE, ALPHA_N_OUTPUTS);
         random_seed(99);
+        /*
+         * HDC hidden: MIMIR_HDC_HIDDEN (=256) neurons with ACT_STEP and
+         * fixed random Gaussian weights across all 128 input dims.  Unified
+         * text+vision representation — each (letter, query) and each Gabor
+         * image produces a distinct binary signature; the output layer
+         * delta rule maps signatures → word class in a few hundred epochs.
+         * No modality separation, no dual bias, no neurogenesis needed.
+         * Math-verified in sandbox/vision_math_2.py (100% strict, conf 1.00
+         * on both text and vision with a single shared hidden layer).
+         */
         abc_brain = network_create_with_pool(
-            MIMIR_EMBEDDING_SIZE, 32, 32, ALPHA_N_OUTPUTS, ACT_SIGMOID);
+            MIMIR_EMBEDDING_SIZE, MIMIR_HDC_HIDDEN, 0, ALPHA_N_OUTPUTS, ACT_SIGMOID);
+        network_hdc_init_hidden(&abc_brain);
         alpha_vocab_init(&vocab);
 
         /*
-         * Pre-train sequence and position knowledge BEFORE the user teaches
-         * any words. These facts get committed first so they can never be
-         * overwritten by word associations later.
+         * HDC brain: no Hebbian pretraining.
          *
-         * This is the equivalent of teaching a child the alphabet song
-         * before introducing "A is for Apple".
+         * The hidden layer is a fixed random Gaussian projection with step
+         * activation — it is ALREADY a complete feature extractor.  Running
+         * alpha_pretrain_sequence (Hebbian + BCM + WTA through train_step_brain)
+         * would overwrite the projection and collapse the representation back
+         * to 8 usable dimensions, recreating the exact capacity bottleneck HDC
+         * was introduced to fix (see sandbox/vision_math_2.py).
+         *
+         * Sequence / position / recall / validate facts are learned instead
+         * by the output-layer delta rule inside alpha_retrain_all_known when
+         * the user teaches words (or by the replay thread's alpha_delta_rescue).
+         * The HDC projection supplies enough linear separability that a
+         * single-layer delta rule converges in a few hundred epochs.
          */
-        alpha_pretrain_sequence(&abc_brain);
 
         checkpoint_mkdir(ALPHA_BRAIN_PATH);
         network_save(&abc_brain, ALPHA_BRAIN_PATH);

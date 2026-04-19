@@ -97,6 +97,11 @@ typedef enum {
     ACT_STEP,      // Classic step function (Rosenblatt's original)
     ACT_SIGMOID,   // Smooth, differentiable
     ACT_RELU,      // Modern default
+    ACT_HDC_BIT,   /* Bit-packed HDC: weights are ±1 stored as 1 bit each.
+                    * z = sum_{d}(bit?+1:-1) * input[d];  output = z>0 ? 1 : 0.
+                    * 32× less memory than ACT_STEP with float weights.
+                    * When set, n->weights points to ((n_weights+31)/32) uint32_t
+                    * words, cast through float* for struct compatibility. */
 } Activation;
 
 typedef struct {
@@ -227,6 +232,16 @@ typedef struct {
                           /* visual-region weights. The weight structure       */
                           /* itself enforces modality gating — text neurons    */
                           /* are silent on visual input and vice versa.        */
+
+    /* --- Dual bias for modality-separated output heads (2026-04-18) ---
+     * `bias` is the text/default bias (used by alpha_forward and by any
+     * non-visual training path).  `visual_bias` is used by vision forward
+     * and vision training.  Previously both modalities shared `bias`, so
+     * every text rescue shifted the operating point for vision predictions
+     * (and vice versa).  Giving each modality its own output-layer bias
+     * is the minimal "separate heads" change that eliminates the cross-
+     * modal drift without duplicating the whole output layer.             */
+    float visual_bias;
 } Neuron;
 
 /*
@@ -486,6 +501,13 @@ Network network_create_with_hidden(int n_inputs, int n_hidden, int n_outputs, Ac
 // n_pool:   silent pre-allocated neurons recruited by neurogenesis
 Network network_create_with_pool(int n_inputs, int n_active, int n_pool,
                                   int n_outputs, Activation act);
+
+// --- HDC (hyperdimensional) hidden init ---
+// Freeze hidden layer as a random binary projection: h_i = step(w · x),
+// w ~ N(0,1), bias=0, MATURE.  Output layer unchanged, learned via delta
+// rule on top of the {0,1} signatures.  Unified across text and vision.
+#define MIMIR_HDC_HIDDEN 256
+void network_hdc_init_hidden(Network *net);
 
 // ============================================================
 // TRAINING METHODS — Five ways to train a neural network

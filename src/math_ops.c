@@ -280,6 +280,12 @@ float activate(float x, Activation act) {
              */
             return 1.0f / (1.0f + expf(-x));
 
+        case ACT_HDC_BIT:
+            /* Same step shape as ACT_STEP, but used to mark bit-packed ±1
+             * HDC neurons. The forward path in network.c computes z via
+             * popcount-style ±1 weights, then falls through here. */
+            return x > 0.0f ? 1.0f : 0.0f;
+
         case ACT_RELU:
             /*
              * ReLU: max(0, x)

@@ -64,10 +64,12 @@
 extern int usleep(unsigned int usec);
 
 /* How long to sleep between each letter-test (microseconds).
- * 50 000 µs = 50 ms = ~20 tests per second.
- * Raise to slow the brain down; lower to speed it up.
+ * 10 000 µs = 10 ms = ~100 tests per second when the brain is healthy.
+ * Rescue calls dominate wall time when the brain is learning, so the
+ * sleep is effectively invisible then — it only matters once everything
+ * is converged and the loop is pure forward-passes.
  * Below ~5 ms you will start saturating the mutex with lock contention. */
-#define REPLAY_SLEEP_US       50000
+#define REPLAY_SLEEP_US       10000
 
 /*
  * (Removed 2026-04-11) REPLAY_RETRAIN_STEPS used to gate a Hebbian retrain

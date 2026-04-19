@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+#
+# mimir-daemon — keep the mimir REPL alive in a tmux session so it
+# survives terminal close and can be updated with: make && restart.
+#
+# Usage:
+#   mimir-daemon start         # launch if not already running
+#   mimir-daemon stop          # send 'save' + 'exit', then kill session
+#   mimir-daemon restart       # stop + rebuild + start (loads saved brain)
+#   mimir-daemon attach        # interactive attach (Ctrl-b d to detach)
+#   mimir-daemon send "<cmd>"  # one-shot command (e.g. 'recall d')
+#   mimir-daemon status        # show session state
+#   mimir-daemon logs          # tail the training log
+
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+SESSION="mimir"
+BIN="$ROOT/build/mimir"
+LOG="$ROOT/data/mimir_training.log"
+
+require_binary() {
+    [[ -x "$BIN" ]] || { echo "  [daemon] $BIN missing — run: make"; exit 1; }
+}
+
+is_running() { tmux has-session -t "$SESSION" 2>/dev/null; }
+
+cmd_start() {
+    require_binary
+    if is_running; then echo "  [daemon] already running (session: $SESSION)"; exit 0; fi
+    cd "$ROOT"
+    tmux new-session -d -s "$SESSION" "$BIN"
+    sleep 0.2
+    echo "  [daemon] started — attach with: $0 attach"
+}
+
+cmd_stop() {
+    if ! is_running; then echo "  [daemon] not running"; exit 0; fi
+    tmux send-keys -t "$SESSION" "save" Enter
+    sleep 0.5
+    tmux send-keys -t "$SESSION" "exit" Enter
+    sleep 0.3
+    tmux kill-session -t "$SESSION" 2>/dev/null || true
+    echo "  [daemon] stopped (brain saved)"
+}
+
+cmd_restart() {
+    cmd_stop || true
+    cd "$ROOT"
+    make -s
+    cmd_start
+}
+
+cmd_attach() {
+    is_running || { echo "  [daemon] not running — start first"; exit 1; }
+    tmux attach -t "$SESSION"
+}
+
+cmd_send() {
+    is_running || { echo "  [daemon] not running — start first"; exit 1; }
+    [[ $# -ge 1 ]] || { echo "  [daemon] usage: $0 send \"<command>\""; exit 2; }
+    tmux send-keys -t "$SESSION" "$*" Enter
+}
+
+cmd_status() {
+    if is_running; then
+        tmux list-sessions | grep -F "$SESSION" || true
+        echo "  [daemon] running"
+    else
+        echo "  [daemon] stopped"
+    fi
+}
+
+cmd_logs() {
+    [[ -f "$LOG" ]] || { echo "  [daemon] no log at $LOG"; exit 1; }
+    tail -n 40 -f "$LOG"
+}
+
+case "${1:-}" in
+    start)   cmd_start ;;
+    stop)    cmd_stop ;;
+    restart) cmd_restart ;;
+    attach)  cmd_attach ;;
+    send)    shift; cmd_send "$@" ;;
+    status)  cmd_status ;;
+    logs)    cmd_logs ;;
+    *) echo "usage: $0 {start|stop|restart|attach|send \"<cmd>\"|status|logs}"; exit 2 ;;
+esac

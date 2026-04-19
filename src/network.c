@@ -140,6 +140,7 @@ static void neuron_init(Neuron *n, int n_weights, Activation act, int id) {
     }
     n->n_weights = n_weights;
     n->bias = 0.0f;
+    n->visual_bias = 0.0f;
 
     /* Neurogenesis state: born immature */
     n->maturity = 0.0f;
@@ -292,8 +293,18 @@ static float neuron_forward(Neuron *n, const float *inputs) {
 
     /* Weighted sum: z = bias + sum(w_i * x_i) */
     float z = n->bias;
-    for (int i = 0; i < n->n_weights; i++) {
-        z += n->weights[i] * inputs[i];
+    if (n->act == ACT_HDC_BIT) {
+        /* Bit-packed ±1 weights: bit=1 means +1, bit=0 means -1.
+         * 32 weights per uint32_t word — 32× less memory than float. */
+        const uint32_t *packed = (const uint32_t *)n->weights;
+        for (int i = 0; i < n->n_weights; i++) {
+            int bit = (int)((packed[i >> 5] >> (i & 31)) & 1u);
+            z += bit ? inputs[i] : -inputs[i];
+        }
+    } else {
+        for (int i = 0; i < n->n_weights; i++) {
+            z += n->weights[i] * inputs[i];
+        }
     }
 
     /* Cache pre-activation value for training */
@@ -685,6 +696,67 @@ Network network_create_with_pool(int n_inputs, int n_active, int n_pool,
     net.layers[1] = layer_create(n_outputs, total_hidden, act, &net.pool, true);
 
     return net;
+}
+
+/*
+ * network_hdc_init_hidden — convert the hidden layer to a fixed random
+ * hyperdimensional-computing (HDC) projection.
+ *
+ * Each hidden neuron becomes h_i(x) = step(w_i · x), with w_i drawn from
+ * N(0, 1) across ALL input dims (no Xavier scaling, no modality masking).
+ * Activations are in {0, 1}, biases are zero, neurons are MATURE and
+ * is_visual=0 (unified — text and vision share this layer).
+ *
+ * Math: with K hidden features and random Gaussian projections, distinct
+ * input vectors produce distinct binary signatures (Johnson-Lindenstrauss).
+ * Output layer delta rule then maps signatures → classes in O(K) epochs.
+ * Verified end-to-end in sandbox/vision_math_2.py: 100% on both text
+ * (one-hot) and vision (Gabor) inputs, conf 1.00 at K=256.
+ *
+ * Call right after network_create_with_pool() and BEFORE any training.
+ * Output layer is left untouched (still ACT_SIGMOID, still plastic).
+ */
+void network_hdc_init_hidden(Network *net) {
+    if (net->n_layers < 2) return;
+    Layer *hidden = &net->layers[0];
+    for (int i = 0; i < hidden->count; i++) {
+        Neuron *n = &hidden->neurons[i];
+        n->bias        = 0.0f;
+        n->visual_bias = 0.0f;
+        n->maturity    = 1.0f;
+        n->activity    = 0.0f;
+        n->age         = 0;
+        n->state       = NEURON_MATURE;
+        n->act         = ACT_HDC_BIT;
+        n->is_visual   = 0;
+        n->theta       = 0.5f;
+        n->mean_out    = 0.0f;
+
+        /* Swap float-weight storage for bit-packed ±1. Each weight takes
+         * 1 bit instead of 32 → 32× memory reduction for the hidden layer.
+         * For D=128, H=256: 128KB → 4KB. Math verified in
+         * sandbox/hdc_binary.py: variant B, H=256, text+vision 100%. */
+        int D = n->n_weights;
+        int words = (D + 31) / 32;
+        free(n->weights);
+        uint32_t *packed = (uint32_t *)calloc((size_t)words, sizeof(uint32_t));
+        if (!packed) {
+            fprintf(stderr, "FATAL: HDC packed alloc\n");
+            exit(1);
+        }
+        /* Random ±1 = sign of unit-variance Gaussian. Reuse random_init
+         * into a scratch buffer so we get the same RNG stream the old
+         * float path used. */
+        float *scratch = (float *)malloc((size_t)D * sizeof(float));
+        if (!scratch) { fprintf(stderr, "FATAL: HDC scratch alloc\n"); exit(1); }
+        random_init(scratch, D, 1.0f);
+        for (int d = 0; d < D; d++) {
+            if (scratch[d] > 0.0f) packed[d >> 5] |= (1u << (d & 31));
+        }
+        free(scratch);
+        n->weights = (float *)packed;
+        hidden->outputs[i] = 0.0f;
+    }
 }
 
 /*
