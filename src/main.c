@@ -431,6 +431,11 @@ static void run_cli(Network *gate_net, Network *abc_net,
     char line[256];
 
     while (1) {
+#ifdef MIMIR_WASM
+        /* No background thread in the browser: practise one sweep of the
+         * alphabet between commands, as the thread would while you type. */
+        replay_pump(replay, 26);
+#endif
         printf("mimir> ");
         fflush(stdout);
 

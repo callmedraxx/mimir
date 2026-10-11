@@ -31,6 +31,19 @@ debug: clean $(BUILD_DIR)/mimir
 test: $(BUILD_DIR)/mimir
 	./$(BUILD_DIR)/mimir --test
 
+# Browser build for Workbench Lab's Mimir bench: the same C, compiled to
+# WebAssembly, with every function traced on entry and exit.
+WASI_SDK ?= /opt/wasi-sdk-25.0-x86_64-linux
+WASM_FLAGS = --target=wasm32-wasip1 --sysroot=$(WASI_SDK)/share/wasi-sysroot \
+             -O2 -std=c11 -D_POSIX_C_SOURCE=200809L -DMIMIR_WASM \
+             -Wno-declaration-after-statement
+wasm: $(BUILD_DIR)/mimir.wasm
+$(BUILD_DIR)/mimir.wasm: $(SRCS) src/mimir.h tools/wasm_instrument.py
+	@mkdir -p $(BUILD_DIR)
+	python3 tools/wasm_instrument.py src $(BUILD_DIR)/wasm-src
+	$(WASI_SDK)/bin/clang $(WASM_FLAGS) $(BUILD_DIR)/wasm-src/*.c -o $@ -lm \
+		-Wl,--export-table -Wl,-z,stack-size=1048576
+
 # Remove compiled artifacts only — trained knowledge in data/ is preserved.
 clean:
 	rm -rf $(BUILD_DIR)

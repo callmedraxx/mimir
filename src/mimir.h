@@ -1462,5 +1462,25 @@ void replay_stop(ReplayState *r);
  *   cycles, accuracy %, neurons committed, retrain count.
  */
 void replay_status(const ReplayState *r);
+#ifdef MIMIR_WASM
+/* Browser build only: run up to `steps` practice steps in place. */
+void replay_pump(ReplayState *r, int steps);
+#endif
+
+/* ── Bench probes (browser build) ─────────────────────────────────────
+ * MIMIR_PROBE("name", value) shows a live number on this function's chip in
+ * Workbench Lab's Mimir bench.  Compiles to nothing in the native build. */
+#ifdef MIMIR_WASM
+void mimir_probe(const char *name, float value);
+int  mimir_trace_enter(const char *name);
+void mimir_trace_leave(int *unused);
+#define MIMIR_PROBE(name, value) mimir_probe((name), (float)(value))
+#define MIMIR_TRACE(name) \
+    int mimir_trace_ __attribute__((cleanup(mimir_trace_leave), unused)) = \
+        mimir_trace_enter(name)
+#else
+#define MIMIR_PROBE(name, value) ((void)0)
+#define MIMIR_TRACE(name) ((void)0)
+#endif
 
 #endif // MIMIR_H

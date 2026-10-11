@@ -112,18 +112,29 @@ static int argmax_f(const float *output, int n, float *conf) {
 
 /* ── The background thread ─────────────────────────────────────────────── */
 
-static void *replay_thread_fn(void *arg) {
-    ReplayState *r = (ReplayState *)arg;
+/* Where the practice loop is between steps: which letter comes next and
+ * when to save / log.  Kept outside replay_step so the same step can run
+ * from the background thread (native) or in place (browser build). */
+typedef struct {
+    int           letter;               /* Next letter index to test (cycles 0–25) */
+    int           save_countdown;
+    unsigned long last_heartbeat_cycle;
+} ReplayCursor;
 
+/*
+ * One practice step: test the next taught letter, repair it if wrong, and
+ * every so often check vision and log.  Returns 0 when nothing has been
+ * taught yet (the caller then waits longer), 1 otherwise.
+ */
+static int replay_step(ReplayState *r, ReplayCursor *k) {
     float embedding[MIMIR_EMBEDDING_SIZE];
     float output[ALPHA_N_OUTPUTS];
 
-    int   letter     = 0;   /* Next letter index to test (cycles 0–25) */
-    int   save_countdown = REPLAY_SAVE_EVERY;
-    unsigned long last_heartbeat_cycle = 0;
+    int           letter               = k->letter;
+    int           save_countdown       = k->save_countdown;
+    unsigned long last_heartbeat_cycle = k->last_heartbeat_cycle;
 
-    while (r->running) {
-
+    {
         /* ── Lock: we own the network until unlock ── */
         pthread_mutex_lock(&r->lock);
 
@@ -146,8 +157,7 @@ static void *replay_thread_fn(void *arg) {
         if (found < 0) {
             /* Nothing taught yet — brain has nothing to practise. */
             pthread_mutex_unlock(&r->lock);
-            usleep(REPLAY_SLEEP_US * 10);   /* wait longer between checks */
-            continue;
+            return 0;
         }
 
         int li          = found;
@@ -463,14 +473,41 @@ static void *replay_thread_fn(void *arg) {
         }
 
         pthread_mutex_unlock(&r->lock);
+    }
 
+    k->letter               = letter;
+    k->save_countdown       = save_countdown;
+    k->last_heartbeat_cycle = last_heartbeat_cycle;
+    return 1;
+}
+
+#ifndef MIMIR_WASM
+static void *replay_thread_fn(void *arg) {
+    ReplayState *r = (ReplayState *)arg;
+    ReplayCursor k = { 0, REPLAY_SAVE_EVERY, 0 };
+
+    while (r->running) {
         /* Sleep OUTSIDE the lock so the CLI thread is not blocked
          * waiting for the replay thread to finish sleeping.            */
-        usleep(REPLAY_SLEEP_US);
+        if (replay_step(r, &k))
+            usleep(REPLAY_SLEEP_US);
+        else
+            usleep(REPLAY_SLEEP_US * 10);   /* nothing taught: wait longer */
     }
 
     return NULL;
 }
+#else
+/* Browser build: no threads.  The practice the thread would do while you
+ * type runs in place instead, a few steps after each command. */
+static ReplayCursor wasm_cursor = { 0, REPLAY_SAVE_EVERY, 0 };
+
+void replay_pump(ReplayState *r, int steps) {
+    if (!r->running) return;
+    for (int i = 0; i < steps; i++)
+        if (!replay_step(r, &wasm_cursor)) break;
+}
+#endif
 
 /* ── Public API ────────────────────────────────────────────────────────── */
 
@@ -493,12 +530,16 @@ int replay_start(ReplayState *r) {
         return 0;
     }
     r->running = 1;
+#ifndef MIMIR_WASM
     int rc = pthread_create(&r->thread, NULL, replay_thread_fn, r);
     if (rc != 0) {
         fprintf(stderr, "[Replay] Failed to create thread (errno %d)\n", rc);
         r->running = 0;
         return -1;
     }
+#else
+    printf("  [Replay] Browser build: practice runs in place after each command.\n");
+#endif
     printf("  [Replay] Background self-training started.\n");
     printf("  [Replay] The brain will keep practising even while you type.\n");
     printf("  [Replay] Type 'replay verbose' to watch it work.\n");
@@ -508,7 +549,9 @@ int replay_start(ReplayState *r) {
 void replay_stop(ReplayState *r) {
     if (!r->running) return;
     r->running = 0;
+#ifndef MIMIR_WASM
     pthread_join(r->thread, NULL);   /* wait for thread to finish its current step */
+#endif
     pthread_mutex_destroy(&r->lock);
     if (r->vis_loaded > 0) {
         vision_free_all(r->vis_images);

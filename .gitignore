@@ -17,3 +17,8 @@ data/*.log
 
 # Claude
 .claude/
+
+# Reader prototypes: large generated files
+data/reader/*.npy
+sandbox/__pycache__/
+tools/__pycache__/
