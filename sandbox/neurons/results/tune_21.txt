@@ -1,0 +1,1 @@
+design=v0.2 setting=1 budget=4MB events=7663 tokens=128565 T1=0.3602 T2=0.2371 T3=0.6646 T4=0.1586 store_tok_s=70030 recall_s=11882 bytes=3962160 stored=1213

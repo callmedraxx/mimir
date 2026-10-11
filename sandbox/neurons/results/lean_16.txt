@@ -1,0 +1,1 @@
+design=lean setting=0 budget=16MB events=36957 tokens=583368 T1=0.9672 T2=0.9543 T3=0.9998 T4=0.9935 store_tok_s=1199838 recall_s=42808 bytes=2025868 stored=36539

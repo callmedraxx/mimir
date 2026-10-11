@@ -1,0 +1,17 @@
+compare-android: 1 file pushed, 0 skipped. 95.4 MB/s (2254808 bytes in 0.023s)
+/tmp/claude-0/-root/f6fd236b-b84e-4610-8fc7-5c9ab28a5f31/scratchpad/phone_lean.sh: 1 file pushed, 0 skipped. 2.1 MB/s (320 bytes in 0.000s)
+core=prime run=1 design=lean setting=0 budget=1MB events=36957 tokens=583368 T1=0.4599 T2=0.3494 T3=0.6805 T4=0.2202 store_tok_s=8051267 recall_s=1248455 bytes=1006464 stored=8155
+core=prime run=1 design=lean setting=0 budget=4MB events=36957 tokens=583368 T1=0.9672 T2=0.9543 T3=0.9998 T4=0.9935 store_tok_s=7608145 recall_s=338174 bytes=2025868 stored=36539
+core=prime run=2 design=lean setting=0 budget=1MB events=36957 tokens=583368 T1=0.4599 T2=0.3494 T3=0.6805 T4=0.2202 store_tok_s=7826022 recall_s=1299712 bytes=1006464 stored=8155
+core=prime run=2 design=lean setting=0 budget=4MB events=36957 tokens=583368 T1=0.9672 T2=0.9543 T3=0.9998 T4=0.9935 store_tok_s=7464179 recall_s=314702 bytes=2025868 stored=36539
+core=prime run=3 design=lean setting=0 budget=1MB events=36957 tokens=583368 T1=0.4599 T2=0.3494 T3=0.6805 T4=0.2202 store_tok_s=7587530 recall_s=1217116 bytes=1006464 stored=8155
+core=prime run=3 design=lean setting=0 budget=4MB events=36957 tokens=583368 T1=0.9672 T2=0.9543 T3=0.9998 T4=0.9935 store_tok_s=7844307 recall_s=337612 bytes=2025868 stored=36539
+core=little run=1 design=lean setting=0 budget=1MB events=36957 tokens=583368 T1=0.4599 T2=0.3494 T3=0.6805 T4=0.2202 store_tok_s=1112408 recall_s=200504 bytes=1006464 stored=8155
+core=little run=1 design=lean setting=0 budget=4MB events=36957 tokens=583368 T1=0.9672 T2=0.9543 T3=0.9998 T4=0.9935 store_tok_s=863417 recall_s=37944 bytes=2025868 stored=36539
+core=little run=2 design=lean setting=0 budget=1MB events=36957 tokens=583368 T1=0.4599 T2=0.3494 T3=0.6805 T4=0.2202 store_tok_s=1193383 recall_s=170917 bytes=1006464 stored=8155
+core=little run=2 design=lean setting=0 budget=4MB events=36957 tokens=583368 T1=0.9672 T2=0.9543 T3=0.9998 T4=0.9935 store_tok_s=892488 recall_s=41932 bytes=2025868 stored=36539
+core=little run=3 design=lean setting=0 budget=1MB events=36957 tokens=583368 T1=0.4599 T2=0.3494 T3=0.6805 T4=0.2202 store_tok_s=1164978 recall_s=195316 bytes=1006464 stored=8155
+core=little run=3 design=lean setting=0 budget=4MB events=36957 tokens=583368 T1=0.9672 T2=0.9543 T3=0.9998 T4=0.9935 store_tok_s=872136 recall_s=35313 bytes=2025868 stored=36539
+done
+
+[exited with code 0]

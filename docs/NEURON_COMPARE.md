@@ -80,3 +80,94 @@ War and Peace numbers before the settings are frozen.
 The winner is cut down (smaller records, fewer bits, fewer synapses) and
 re-run on the same tests, to find the smallest version that keeps its
 scores.
+
+---
+
+# Results (2026-10-11)
+
+Code: `sandbox/neurons/compare.c` (both brains and the tests in one file),
+scored by `sandbox/neurons/score.py`. Raw lines in `sandbox/neurons/results/`.
+
+## Mechanics check (not a scored test)
+
+With unlimited memory both work: on Pride and Prejudice v0.2 recalls 96.7%
+(v0.1 97.8%) and recognises 99.99% (v0.1 99.6%). So v0.2 does not lose
+because it is broken. It loses on **cost**: it needed 20.5 MB for what v0.1
+held in 1.7 MB.
+
+## Tuning (Pride and Prejudice, 4 MB; sum of T1–T4)
+
+| v0.1 setting | sum | v0.2 setting | sum |
+|---|---|---|---|
+| D 256, cap 64 | 3.939 | k_w 16, k_e 8 | **1.425** |
+| D 1024, cap 64 | 3.953 | k_w 32, k_e 8 | 1.421 |
+| D 256, cap 512 | 3.953 | k_w 16, k_e 16 | 1.166 |
+| D 1024, cap 512 | **3.960** | k_w 32, k_e 16 | 1.189 |
+
+Frozen: v0.1 D 1024 cap 512; v0.2 k_w 16, k_e 8.
+
+## War and Peace, S22 Ultra (speeds = worst of 3, little core)
+
+| budget | test | v0.1 | v0.2 | winner |
+|---|---|---|---|---|
+| 4 MB | T1 recall | 38.1 | 18.7 | v0.1 |
+| 4 MB | T2 old | 32.9 | 20.1 | v0.1 |
+| 4 MB | T3 recognise | 56.9 | 55.5 | v0.1 |
+| 4 MB | T4 next | 13.0 | 2.7 | v0.1 |
+| 4 MB | store tok/s | 207,151 | 48,800 | v0.1 |
+| 4 MB | recall/s | 16,240 | 5,753 | v0.1 |
+| 16 MB | T1 / T2 / T3 / T4 | 96.4 / 95.7 / 99.9 / 99.3 | 32.9 / 25.1 / 64.1 / 14.4 | v0.1 ×4 |
+| 16 MB | store tok/s / recall/s | 198,542 / 6,161 | 31,251 / 1,719 | v0.1 ×2 |
+| 64 MB | T1 / T2 / T3 / T4 | 96.4 / 95.7 / 99.9 / 99.3 | 63.8 / 28.2 / 82.0 / 55.4 | v0.1 ×4 |
+| 64 MB | store tok/s / recall/s | 193,291 / 6,051 | 11,533 / 418 | v0.1 ×2 |
+
+Gate: both pass (v0.1 193 k, v0.2 11.5 k tokens/s on the little core).
+**Wins: v0.1 18, v0.2 0, ties 0. Winner: v0.1.**
+
+Events kept: v0.1 holds all of War and Peace (36,613 events) in 13.3 MB;
+v0.2 holds 1,040 at 4 MB, 5,339 at 16 MB, 20,823 at 64 MB.
+
+## Why, as far as the numbers show
+
+* **Bytes per memory.** v0.1 ≈ 360 B per event (including its 17 k word
+  neurons). v0.2 ≈ 3 KB: every event is 8 neurons, and each one repeats the
+  binding to every word (2 in, 2 back per word) plus 7 links inside the
+  assembly. Redundancy is what lets an assembly survive losing a neuron; it
+  is paid for in bytes. At equal memory v0.2 simply keeps fewer memories.
+* **Recognition by firing** walks every synapse of every active word neuron;
+  frequent words have long axons. v0.1 walks one capped list per word.
+* **What this test does not measure.** Both store exact episodes. v0.2's
+  claimed strengths (graceful damage, similarity between memories, learning
+  without labels) are not scored here. With memory to spare it recognised
+  slightly better (99.99 vs 99.6).
+* **One advantage given to v0.2.** Its word identities came free from fixed
+  hashed wiring, and its words were read out by the test, not by stored
+  synapses.
+
+## The winner cut down (v0.1-lean)
+
+Same behaviour, fewer bytes:
+* no content bits (recognise by synapse overlap, Jaccard ≥ 0.85, instead of
+  Hamming on 1,024 bits);
+* word neuron = its vocabulary number (no meta, no label table);
+* event record 8 B (start, count, uses, next as a step);
+* part-of synapse 3 B, cue synapse 4 B (24-bit event + 8-bit strength);
+* pruning compacts at night.
+
+| War and Peace | v0.1 as specified | v0.1-lean |
+|---|---|---|
+| memory for the whole book | 13.3 MB | **2.0 MB** (6.6× smaller) |
+| bytes per event | ≈ 360 | **≈ 55** |
+| T1 / T2 / T3 / T4 | 96.4 / 95.7 / 99.9 / 99.3 | 96.7 / 95.4 / 99.98 / 99.4 |
+| at 4 MB T1 | 38.1 | 96.7 |
+| at 1 MB T1 / T2 | — | 46.0 / 34.9 (8,155 events kept) |
+| store, little core worst | 193 k tok/s | **863 k tok/s** |
+| store, prime core worst | 1.05 M tok/s | **7.46 M tok/s** |
+| recall/s, little core worst | 6,051 | **35,313** |
+
+Everything moved by at most 0.3 points; T2 is 0.3 lower (95.7 → 95.4), the
+rest equal or higher.
+
+Still possible, not done: delta-coded cue lists (~2 B a synapse), 2-byte
+word numbers for frequent words, dropping `uses` to 4 bits. An estimated
+further ~40%.

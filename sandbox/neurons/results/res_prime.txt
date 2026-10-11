@@ -1,0 +1,19 @@
+core=prime run=1 design=v0.1 setting=3 budget=4MB events=36957 tokens=583368 T1=0.3807 T2=0.3293 T3=0.5685 T4=0.1301 store_tok_s=1291025 recall_s=84133 bytes=4189856 stored=4843
+core=prime run=1 design=v0.2 setting=0 budget=4MB events=36957 tokens=583368 T1=0.1869 T2=0.2009 T3=0.5548 T4=0.0269 store_tok_s=382800 recall_s=44063 bytes=4090208 stored=1040
+core=prime run=1 design=v0.1 setting=3 budget=16MB events=36957 tokens=583368 T1=0.9635 T2=0.9571 T3=0.9992 T4=0.9933 store_tok_s=1628630 recall_s=46139 bytes=13321796 stored=36613
+core=prime run=1 design=v0.2 setting=0 budget=16MB events=36957 tokens=583368 T1=0.3293 T2=0.2508 T3=0.6409 T4=0.1437 store_tok_s=240510 recall_s=21155 bytes=16738128 stored=5339
+core=prime run=1 design=v0.1 setting=3 budget=64MB events=36957 tokens=583368 T1=0.9635 T2=0.9571 T3=0.9992 T4=0.9933 store_tok_s=1650944 recall_s=49159 bytes=13321796 stored=36613
+core=prime run=1 design=v0.2 setting=0 budget=64MB events=36957 tokens=583368 T1=0.6385 T2=0.2817 T3=0.8203 T4=0.5535 store_tok_s=114165 recall_s=4955 bytes=63104000 stored=20823
+core=prime run=2 design=v0.1 setting=3 budget=4MB events=36957 tokens=583368 T1=0.3807 T2=0.3293 T3=0.5685 T4=0.1301 store_tok_s=1083309 recall_s=71696 bytes=4189856 stored=4843
+core=prime run=2 design=v0.2 setting=0 budget=4MB events=36957 tokens=583368 T1=0.1869 T2=0.2009 T3=0.5548 T4=0.0269 store_tok_s=341847 recall_s=39294 bytes=4090208 stored=1040
+core=prime run=2 design=v0.1 setting=3 budget=16MB events=36957 tokens=583368 T1=0.9635 T2=0.9571 T3=0.9992 T4=0.9933 store_tok_s=1047852 recall_s=34908 bytes=13321796 stored=36613
+core=prime run=2 design=v0.2 setting=0 budget=16MB events=36957 tokens=583368 T1=0.3293 T2=0.2508 T3=0.6409 T4=0.1437 store_tok_s=199284 recall_s=15164 bytes=16738128 stored=5339
+core=prime run=2 design=v0.1 setting=3 budget=64MB events=36957 tokens=583368 T1=0.9635 T2=0.9571 T3=0.9992 T4=0.9933 store_tok_s=1059441 recall_s=33291 bytes=13321796 stored=36613
+core=prime run=2 design=v0.2 setting=0 budget=64MB events=36957 tokens=583368 T1=0.6385 T2=0.2817 T3=0.8203 T4=0.5535 store_tok_s=108631 recall_s=4673 bytes=63104000 stored=20823
+core=prime run=3 design=v0.1 setting=3 budget=4MB events=36957 tokens=583368 T1=0.3807 T2=0.3293 T3=0.5685 T4=0.1301 store_tok_s=1063796 recall_s=70461 bytes=4189856 stored=4843
+core=prime run=3 design=v0.2 setting=0 budget=4MB events=36957 tokens=583368 T1=0.1869 T2=0.2009 T3=0.5548 T4=0.0269 store_tok_s=318009 recall_s=39551 bytes=4090208 stored=1040
+core=prime run=3 design=v0.1 setting=3 budget=16MB events=36957 tokens=583368 T1=0.9635 T2=0.9571 T3=0.9992 T4=0.9933 store_tok_s=1049394 recall_s=32648 bytes=13321796 stored=36613
+core=prime run=3 design=v0.2 setting=0 budget=16MB events=36957 tokens=583368 T1=0.3293 T2=0.2508 T3=0.6409 T4=0.1437 store_tok_s=209632 recall_s=17093 bytes=16738128 stored=5339
+core=prime run=3 design=v0.1 setting=3 budget=64MB events=36957 tokens=583368 T1=0.9635 T2=0.9571 T3=0.9992 T4=0.9933 store_tok_s=1186643 recall_s=33505 bytes=13321796 stored=36613
+core=prime run=3 design=v0.2 setting=0 budget=64MB events=36957 tokens=583368 T1=0.6385 T2=0.2817 T3=0.8203 T4=0.5535 store_tok_s=109692 recall_s=4902 bytes=63104000 stored=20823
+done
