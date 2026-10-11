@@ -1,0 +1,10 @@
+still stored when told to keep them: 200 of 200
+in mind after the last page (4 events firing):
+   [16383] while admitting dependence external world
+   [16383] case necessary renounce consciousness unreal immobility space recognize motion feel
+   [32767] present case similarly necessary renounce freedom does exist
+   [32767] recognize dependence conscious
+parts: peak 1360 B (event firing peak 4, word firing peak 72); at the last page 1360 B (31 words firing); after resting 0 B; committed 0 events = 0 B
+commitments dropped: cap at pin 0, cap at auto-commit 0, memory full 0
+of 200: stored 200, reachable 200
+design=lean4+parts budget=0.5MB T1=0.7969 T2=0.4436 T3=0.8910 T4=0.6528 T5_rehearsed=0.9556 store_tok_s=505489 bytes=518826 core=518826 parts=0 stored=24182 rehearsed_committed=0

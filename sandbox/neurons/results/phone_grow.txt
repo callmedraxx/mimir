@@ -1,0 +1,13 @@
+core=prime run=1 design=lean4 budget=4.0MB T1=0.9672 T2=0.9543 T3=0.9998 T4=0.9935 T5_rehearsed=0.9377 store_tok_s=3035101 bytes=757558 core=757558 parts=0 stored=36539 rehearsed_committed=0
+core=prime run=1 design=lean4+parts budget=4.0MB T1=0.9672 T2=0.9543 T3=0.9998 T4=0.9935 T5_rehearsed=0.9377 store_tok_s=2328778 bytes=757558 core=757558 parts=0 stored=36539 rehearsed_committed=0
+core=prime run=2 design=lean4 budget=4.0MB T1=0.9672 T2=0.9543 T3=0.9998 T4=0.9935 T5_rehearsed=0.9377 store_tok_s=3021975 bytes=757558 core=757558 parts=0 stored=36539 rehearsed_committed=0
+core=prime run=2 design=lean4+parts budget=4.0MB T1=0.9672 T2=0.9543 T3=0.9998 T4=0.9935 T5_rehearsed=0.9377 store_tok_s=2320207 bytes=757558 core=757558 parts=0 stored=36539 rehearsed_committed=0
+core=prime run=3 design=lean4 budget=4.0MB T1=0.9672 T2=0.9543 T3=0.9998 T4=0.9935 T5_rehearsed=0.9377 store_tok_s=3042155 bytes=757558 core=757558 parts=0 stored=36539 rehearsed_committed=0
+core=prime run=3 design=lean4+parts budget=4.0MB T1=0.9672 T2=0.9543 T3=0.9998 T4=0.9935 T5_rehearsed=0.9377 store_tok_s=2322959 bytes=757558 core=757558 parts=0 stored=36539 rehearsed_committed=0
+core=little run=1 design=lean4 budget=4.0MB T1=0.9672 T2=0.9543 T3=0.9998 T4=0.9935 T5_rehearsed=0.9377 store_tok_s=666405 bytes=757558 core=757558 parts=0 stored=36539 rehearsed_committed=0
+core=little run=1 design=lean4+parts budget=4.0MB T1=0.9672 T2=0.9543 T3=0.9998 T4=0.9935 T5_rehearsed=0.9377 store_tok_s=535687 bytes=757558 core=757558 parts=0 stored=36539 rehearsed_committed=0
+core=little run=2 design=lean4 budget=4.0MB T1=0.9672 T2=0.9543 T3=0.9998 T4=0.9935 T5_rehearsed=0.9377 store_tok_s=645332 bytes=757558 core=757558 parts=0 stored=36539 rehearsed_committed=0
+core=little run=2 design=lean4+parts budget=4.0MB T1=0.9672 T2=0.9543 T3=0.9998 T4=0.9935 T5_rehearsed=0.9377 store_tok_s=527359 bytes=757558 core=757558 parts=0 stored=36539 rehearsed_committed=0
+core=little run=3 design=lean4 budget=4.0MB T1=0.9672 T2=0.9543 T3=0.9998 T4=0.9935 T5_rehearsed=0.9377 store_tok_s=685074 bytes=757558 core=757558 parts=0 stored=36539 rehearsed_committed=0
+core=little run=3 design=lean4+parts budget=4.0MB T1=0.9672 T2=0.9543 T3=0.9998 T4=0.9935 T5_rehearsed=0.9377 store_tok_s=494482 bytes=757558 core=757558 parts=0 stored=36539 rehearsed_committed=0
+done

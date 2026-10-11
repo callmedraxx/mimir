@@ -1,0 +1,6 @@
+still stored when told to keep them: 200 of 200
+in mind after the last page (0 events firing):
+parts: peak 0 B (event firing peak 0, word firing peak 0); at the last page 0 B (0 words firing); after resting 0 B; committed 0 events = 0 B
+commitments dropped: cap at pin 0, cap at auto-commit 0, memory full 0
+of 200: stored 200, reachable 200
+design=lean4 budget=0.5MB T1=0.7962 T2=0.4436 T3=0.8904 T4=0.6519 T5_rehearsed=0.9556 store_tok_s=604302 bytes=518363 core=518363 parts=0 stored=24134 rehearsed_committed=0

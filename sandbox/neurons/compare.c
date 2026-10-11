@@ -531,6 +531,8 @@ typedef struct {
     uint32_t *xk, *xv; int xn, xcap;                      /* next exceptions */
     int prev; uint32_t tick; Acc acc;
     int bitpool;                                          /* lean4: pool as exp-Golomb (k 11) bits; npool counts bits */
+    int (*keep)(void *, int); void *ctx;                  /* grown parts: never prune this event */
+    void (*remap)(void *, const int *map, int old);      /* grown parts: events were renumbered at night */
 } B4;
 
 static uint32_t qcap(uint32_t n) { if (n <= 4) return 4; uint32_t p = 4; while (p * 2 <= n) p *= 2; uint32_t q = p / 4; return (n + q - 1) / q * q; }
@@ -604,9 +606,10 @@ static int b4_nextof(B4 *b, int e) { int x = EVX(b->ev[e]); return x == 0 ? -1 :
 
 static void b4_prune(B4 *b) {
     PruneKey *p = malloc(b->nev * sizeof(PruneKey));
-    for (int i = 0; i < b->nev; i++) { p[i].k = ((uint64_t)EVU(b->ev[i]) << 32) | (uint32_t)i; p[i].id = i; }
+    int nfree = 0;
+    for (int i = 0; i < b->nev; i++) { int kp = b->keep && b->keep(b->ctx, i); nfree += !kp; p[i].k = (uint64_t)kp << 40 | ((uint64_t)EVU(b->ev[i]) << 32) | (uint32_t)i; p[i].id = i; }
     qsort(p, b->nev, sizeof(PruneKey), prune_cmp);
-    int nk = b->nev / 10 + 1; if (nk > b->nev) nk = b->nev;
+    int nk = b->nev / 10 + 1; if (nk > nfree) nk = nfree;
     int *map = calloc(b->nev, sizeof(int)); for (int j = 0; j < nk; j++) map[p[j].id] = -1;
     int m = 0; for (int i = 0; i < b->nev; i++) map[i] = map[i] ? -1 : m++;
     int *nxt = malloc(b->nev * sizeof(int)); for (int i = 0; i < b->nev; i++) nxt[i] = b4_nextof(b, i);
@@ -720,7 +723,7 @@ static int b5_best(B5 *b, const int *w, int n, int minhits, int *hits, int *cnt,
 }
 static void c5_trim(B5 *b, Cue5 *c) {
     B4 *a = &b->base; c5_room(a->C + 64); int n = c5_decode(c, c5_ids, 0), drop = n - a->C;
-    for (int u = 0; u < 4 && drop > 0; u++) for (int j = 0; j < n && drop > 0; j++) if (c5_ids[j] != 0xffffffffu && EVU(a->ev[c5_ids[j]]) == u) { c5_ids[j] = 0xffffffffu; drop--; }
+    for (int u = 0; u < 4 && drop > 0; u++) for (int j = 0; j < n && drop > 0; j++) if (c5_ids[j] != 0xffffffffu && EVU(a->ev[c5_ids[j]]) == u && !(a->keep && a->keep(a->ctx, c5_ids[j]))) { c5_ids[j] = 0xffffffffu; drop--; }
     int m = 0; for (int j = 0; j < n; j++) if (c5_ids[j] != 0xffffffffu) c5_ids[m++] = c5_ids[j];
     c5_encode(b, c, c5_ids, m);
 }
@@ -729,15 +732,17 @@ static void b5_prune(B5 *b) {
     /* events, pool and next exactly as lean2 (its cue lists are empty), then renumber our cues */
     B4 *a = &b->base; int old = a->nev;
     PruneKey *p = malloc(old * sizeof(PruneKey));
-    for (int i = 0; i < old; i++) { p[i].k = ((uint64_t)EVU(a->ev[i]) << 32) | (uint32_t)i; p[i].id = i; }
+    int nfree = 0;
+    for (int i = 0; i < old; i++) { int kp = a->keep && a->keep(a->ctx, i); nfree += !kp; p[i].k = (uint64_t)kp << 40 | ((uint64_t)EVU(a->ev[i]) << 32) | (uint32_t)i; p[i].id = i; }
     qsort(p, old, sizeof(PruneKey), prune_cmp);
-    int nk = old / 10 + 1; if (nk > old) nk = old;
+    int nk = old / 10 + 1; if (nk > nfree) nk = nfree;
     int *map = calloc(old, sizeof(int)); for (int j = 0; j < nk; j++) map[p[j].id] = -1;
     int m = 0; for (int i = 0; i < old; i++) map[i] = map[i] ? -1 : m++;
     b4_prune(a);   /* same choice: (uses, id) order, same 10% */
     c5_room(a->C + 64);
     for (int w = 0; w < a->nvocab; w++) { Cue5 *c = &b->cue[w]; if (!c->nbits) continue; int n = c5_decode(c, c5_ids, 0), k = 0;
         for (int j = 0; j < n; j++) if (map[c5_ids[j]] >= 0) c5_ids[k++] = map[c5_ids[j]]; c5_encode(b, c, c5_ids, k); }
+    if (a->remap) a->remap(a->ctx, map, old);
     free(map); free(p);
 }
 

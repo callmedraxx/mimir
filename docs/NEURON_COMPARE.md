@@ -222,3 +222,61 @@ cuts must remove information, not packing:
   still work without it).
 * Keep one direction only (cue lists): ~0.44 MB, but recall must search every
   list (estimated tens of times slower).
+
+---
+
+# Neurons that grow parts and shrink back (owner: "no more cutting")
+
+lean4 is the neuron's minimum. Abilities that were cut come back as **parts**
+a neuron grows only while it needs them (`sandbox/neurons/grow.c`). Each kind
+of part is its own small table keyed by neuron number: no part, no bytes;
+growing adds an entry, shrinking removes it, and the table itself gets
+smaller as it empties. When events are renumbered at night the tables follow.
+
+| part | on | grows when | shrinks when | bytes |
+|---|---|---|---|---|
+| firing | event | it is read or recalled | it fades (halves every 2 events, gone after ~8) or is pushed out of the workspace of 4 | 10 |
+| firing | word | it is read | it fades the same way | 10 |
+| committed | event | told "remember this" | commitments would pass ¼ of the stored events: the oldest goes first | 4 |
+
+## Measured (War and Peace)
+
+* **Whole book, after resting: 757,558 bytes, exactly lean4.** Same scores.
+* While reading: parts peak at **1,360 bytes** (4 events and up to 72 words
+  firing); at the last page 31 words and 4 events are firing; after 20
+  quiet ticks, 0 bytes.
+* In mind after the last page (the workspace): "recognize dependence
+  conscious", "present case similarly necessary renounce freedom does
+  exist", "while admitting dependence external world", "case necessary
+  renounce consciousness unreal immobility space recognize motion feel".
+* Speed, S22 Ultra, worst of 3: store 494 k tokens/s little core (lean4
+  645 k), 2.32 M prime (lean4 3.02 M). Firing costs ~23%.
+
+## Commitment, tested honestly
+
+Automatic commitment (after 8 uses) was tried first and **removed**: it never
+helped. The 2-bit use counter already protects anything used again.
+
+| 200 early events, recalled at the end (half the words as cue) | never mentioned | mentioned once (use counter) | "remember this" (committed part) |
+|---|---|---|---|
+| War and Peace, 0.1 MB | 31.4 | 98.7 | 98.7 |
+| War and Peace, 0.5 MB | 37.8 | 95.6 | 95.6 |
+| 22 books in a row, 0.2 MB: still stored | 3 / 200 | 106 / 200 | 106 / 200 |
+
+In the 22-book run only 106 of the 200 still existed when they were
+mentioned (the rest were already forgotten); both kept all 106. So in these
+tests the committed part adds a guarantee and nothing measurable. It stays
+as a 4-byte part for an explicit "remember this", and costs nothing otherwise.
+
+Found on the way: when a word's cue list is full (512 events), trimming now
+skips committed events, so a committed memory cannot become unreachable.
+Over 22 books with no memory limit, 200 of 200 early events were still
+stored, but only 64 could still be reached through all their words: common
+words keep only their 512 most-used events. That is the next real limit.
+
+## Parts still to come (same mechanism)
+
+Meaning on a word (int8 vector, 256 B, grown when a word's meaning is used),
+link strengths on a busy word's cue list (1 B per link), a label for a
+neuron the owner names, newborn maturity. Each will be added when something
+uses it and kept only if a test shows it pays.
