@@ -1623,6 +1623,61 @@ void text_summary(const TextContext *t);
 void text_show(const TextContext *t, uint32_t sentence);
 void text_find(const TextContext *t, const char *word);
 
+/* ════════════════════════════════════════════════════════════════════
+ * MEANING — semantic memory (src/meaning.c)
+ *
+ * Each word's meaning: a vector learned from the words around it (a day of
+ * counting, a night of PPMI), stored int8 with one scale per word, words
+ * most common first. Sizes are a device setting (capacity), not a law.
+ * ════════════════════════════════════════════════════════════════════ */
+
+#define MEANING_PATH            "data/meaning/meaning.mng"
+#define MEANING_MAX_DIMS        4096
+#define MEANING_FUNCTION_WORDS  150     /* the commonest words are glue (the, of, and) */
+#define MEANING_NAME_BITS       8       /* +1s (and -1s) in a word's random name */
+#ifndef MEANING_PAIR_BITS
+#define MEANING_PAIR_BITS       24      /* capacity: 2^24 word pairs counted per night pass */
+#endif
+
+typedef struct {
+    int       dims, n;                  /* numbers a word, words known */
+    char    (*word)[32];                /* most common first: id = frequency rank */
+    int8_t   *vec;                      /* n × dims */
+    float    *scale;                    /* per word */
+    uint32_t *slot, mask;               /* word → id */
+} Meaning;
+
+void  meaning_init(Meaning *m);
+void  meaning_free(Meaning *m);
+int   meaning_load(Meaning *m, const char *path);
+int   meaning_save(const Meaning *m, const char *path);
+int   meaning_id(const Meaning *m, const char *w);
+int   meaning_is_function(const Meaning *m, const char *w);
+int   meaning_add(const Meaning *m, const char *w, float *acc);
+float meaning_similarity(const Meaning *m, const char *a, const char *b);
+void  meaning_show(const Meaning *m, const char *w);
+void  meaning_test(const Meaning *m);
+int   meaning_learn(Meaning *m, int dims, int minc, char **files, int nfiles);
+
+/* ════════════════════════════════════════════════════════════════════
+ * GIST — understanding what was read (src/gist.c)
+ *
+ * Kintsch's construction-integration: events read in cycles through a
+ * workspace of GIST_WORKSPACE, with GIST_RECALL earlier events cued back
+ * through a word → recent-events index; what stays active is the gist.
+ * ════════════════════════════════════════════════════════════════════ */
+
+#define GIST_WORKSPACE    4       /* events kept in mind, like human working memory */
+#define GIST_RECALL       4       /* earlier events a new one can bring back */
+#define GIST_INDEX_DEPTH  8       /* events remembered per cue word */
+#define GIST_BUDGET       120     /* words in a retelling */
+#ifndef GIST_HORIZON
+#define GIST_HORIZON      400     /* fairness counts at most this many cycles back */
+#endif
+
+void gist_show(const TextContext *t, const Meaning *m, int budget);
+void gist_test(Reader *r, const Meaning *m);
+
 /* ── Bench probes (browser build) ─────────────────────────────────────
  * MIMIR_PROBE("name", value) shows a live number on this function's chip in
  * Workbench Lab's Mimir bench.  Compiles to nothing in the native build. */

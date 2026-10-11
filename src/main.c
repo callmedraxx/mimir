@@ -465,6 +465,36 @@ static void reader_command(Reader *reader, char *line) {
 }
 
 /*
+ * meaning_command — `meaning <word>`, `meaning test`, `meaning learn ...`,
+ * `gist`, `gist <words>`, `gist test`.  Called with the replay lock held.
+ */
+static void meaning_command(Meaning *meaning, TextContext *ctx, Reader *reader, char *line) {
+    printf("\n");
+    if (strncmp(line, "gist", 4) == 0) {
+        const char *arg = line[4] == ' ' ? line + 5 : "";
+        if (!meaning->n) printf("  I have no word meanings loaded (%s).\n", MEANING_PATH);
+        else if (strcmp(arg, "test") == 0) gist_test(reader, meaning);
+        else gist_show(ctx, meaning, *arg ? atoi(arg) : GIST_BUDGET);
+    } else if (strcmp(line, "meaning test") == 0) {
+        meaning_test(meaning);
+    } else if (strncmp(line, "meaning learn ", 14) == 0) {
+        /* meaning learn <numbers a word> <min count> <file> [file...] */
+        char buf[1024], *argv_[64];
+        int argc_ = 0;
+        snprintf(buf, sizeof buf, "%s", line + 14);
+        for (char *a = strtok(buf, " "); a && argc_ < 64; a = strtok(NULL, " ")) argv_[argc_++] = a;
+        if (argc_ < 3) printf("  Try: meaning learn 256 40 data/reader/books/alice.txt\n");
+        else if (meaning_learn(meaning, atoi(argv_[0]), atoi(argv_[1]), argv_ + 2, argc_ - 2) == 0 &&
+                 meaning_save(meaning, MEANING_PATH) == 0)
+            printf("  Saved: %s\n", MEANING_PATH);
+    } else if (strncmp(line, "meaning ", 8) == 0) {
+        if (!meaning->n) printf("  I have no word meanings loaded (%s).\n", MEANING_PATH);
+        else meaning_show(meaning, line + 8);
+    }
+    printf("\n");
+}
+
+/*
  * text_command — `take`, `take <file>`, `context ...`: taking in text and
  * giving it back.  Called with the replay lock held (it uses the reader).
  */
@@ -474,7 +504,7 @@ static double now_seconds(void) {
     return ts.tv_sec + ts.tv_nsec * 1e-9;
 }
 
-static void text_command(TextContext *ctx, Reader *reader, char *line) {
+static void text_command(TextContext *ctx, Reader *reader, Meaning *meaning, char *line) {
     if (strcmp(line, "take") == 0 || strncmp(line, "take ", 5) == 0) {
         double t0 = now_seconds();
         uint32_t s0 = ctx->sentences;
@@ -516,7 +546,8 @@ static void text_command(TextContext *ctx, Reader *reader, char *line) {
     else if (strncmp(sub, "show ", 5) == 0) text_show(ctx, (uint32_t)strtoul(sub + 5, NULL, 10));
     else if (strncmp(sub, "find ", 5) == 0) text_find(ctx, sub + 5);
     else if (strcmp(sub, "clear") == 0) { text_free(ctx); text_init(ctx); printf("  Context cleared.\n"); }
-    else printf("  Try: context / context show <n> / context find <word> / context clear\n");
+    else if (strcmp(sub, "gist") == 0) gist_show(ctx, meaning, GIST_BUDGET);
+    else printf("  Try: context / context show <n> / context find <word> / context clear / gist\n");
     printf("\n");
 }
 
@@ -533,7 +564,8 @@ static void text_command(TextContext *ctx, Reader *reader, char *line) {
  */
 static void run_cli(Network *gate_net, Network *abc_net,
                     AlphaVocab *vocab, ReplayState *replay,
-                    Hippocampus *hippo, Reader *reader, TextContext *ctx) {
+                    Hippocampus *hippo, Reader *reader, TextContext *ctx,
+                    Meaning *meaning) {
     printf("\n");
     printf("  +--------------------------------------------------+\n");
     printf("  |         MIMIR  Interactive CLI  v0.2.0          |\n");
@@ -546,7 +578,7 @@ static void run_cli(Network *gate_net, Network *abc_net,
            abc_net->n_inputs, network_neuron_count(abc_net), abc_net->n_outputs);
     printf("  Replay: %s\n\n", replay->running ? "running" : "stopped");
     printf("  Reader: %s\n", reader->ready ? "ready" : "not learned yet (type 'reader learn')");
-    printf("  Try: learn a apple    recall a    quiz    read phone    take <file>    take\n\n");
+    printf("  Try: read phone    take <file>    gist    meaning dog    gist test\n\n");
 
     /* Gate training data used by 'reset' */
     static float reset_inputs[]  = {0,0, 0,1, 1,0, 1,1};
@@ -1284,7 +1316,15 @@ static void run_cli(Network *gate_net, Network *abc_net,
         if (strcmp(line, "take") == 0 || strncmp(line, "take ", 5) == 0 ||
             strcmp(line, "context") == 0 || strncmp(line, "context ", 8) == 0) {
             pthread_mutex_lock(&replay->lock);
-            text_command(ctx, reader, line);
+            text_command(ctx, reader, meaning, line);
+            pthread_mutex_unlock(&replay->lock);
+            continue;
+        }
+
+        /* ── meaning / gist: understanding, under the replay lock ── */
+        if (strncmp(line, "meaning ", 8) == 0 || strcmp(line, "gist") == 0 || strncmp(line, "gist ", 5) == 0) {
+            pthread_mutex_lock(&replay->lock);
+            meaning_command(meaning, ctx, reader, line);
             pthread_mutex_unlock(&replay->lock);
             continue;
         }
@@ -1335,6 +1375,11 @@ static void run_cli(Network *gate_net, Network *abc_net,
             printf("    context show <n>         Sentence n: as written, as I say it, tokens\n");
             printf("    context find <word>      Every place a word is in my context\n");
             printf("    context clear            Forget the text I took in\n");
+            printf("    gist                     Who it is about, and the gist in ~%d words\n", GIST_BUDGET);
+            printf("    gist test                Retell 32 fairy tales, scored against people's summaries\n");
+            printf("    meaning <word>           The words closest to it in meaning\n");
+            printf("    meaning test             My sense of meaning against people's ratings\n");
+            printf("    meaning learn <n> <min> <files>  Learn meanings by reading (day + night)\n");
             printf("\n");
             printf("  ── Replay commands ─────────────────────────────────\n");
             printf("    replay on/off            Start/stop background training\n");
@@ -1575,6 +1620,16 @@ int main(int argc, char *argv[]) {
     }
     printf("\n");
 
+    /* --- Step 3c: Meaning (semantic memory) --- */
+    printf("Step 3c: Meaning -- What Words Mean\n");
+    printf("------------------------------------\n\n");
+    Meaning meaning;
+    meaning_init(&meaning);
+    if (meaning_load(&meaning, MEANING_PATH) > 0)
+        printf("  Loaded %s: %d words, %d numbers each\n\n", MEANING_PATH, meaning.n, meaning.dims);
+    else
+        printf("  No word meanings yet. 'meaning learn' reads and learns them.\n\n");
+
     /* --- Step 4: Replay thread --- */
     printf("Step 4: Starting Replay (Background Self-Training)\n");
     printf("---------------------------------------------------\n\n");
@@ -1595,8 +1650,9 @@ int main(int argc, char *argv[]) {
 
     TextContext ctx;
     text_init(&ctx);
-    run_cli(&brain, &abc_brain, &vocab, &replay, &hippo, &reader, &ctx);
+    run_cli(&brain, &abc_brain, &vocab, &replay, &hippo, &reader, &ctx, &meaning);
     text_free(&ctx);
+    meaning_free(&meaning);
     if (reader.dirty && reader_sight_save(&reader, READER_SIGHT_PATH) == 0)
         printf("  Reader: %d sight words saved to %s\n", reader.nsight, READER_SIGHT_PATH);
     if (reader.dreams_kept && reader_save(&reader, READER_MODEL_PATH) == 0)
