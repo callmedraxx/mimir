@@ -408,7 +408,7 @@ static const char *gate_name(int idx) {
  */
 static void run_cli(Network *gate_net, Network *abc_net,
                     AlphaVocab *vocab, ReplayState *replay,
-                    Hippocampus *hippo) {
+                    Hippocampus *hippo, Reader *reader) {
     printf("\n");
     printf("  +--------------------------------------------------+\n");
     printf("  |         MIMIR  Interactive CLI  v0.2.0          |\n");
@@ -420,7 +420,8 @@ static void run_cli(Network *gate_net, Network *abc_net,
     printf("  ABC  brain: %d inputs -> %d neurons -> %d outputs (A-Z)\n",
            abc_net->n_inputs, network_neuron_count(abc_net), abc_net->n_outputs);
     printf("  Replay: %s\n\n", replay->running ? "running" : "stopped");
-    printf("  Try: learn a apple    recall a    recite    quiz\n\n");
+    printf("  Reader: %s\n", reader->ready ? "ready" : "not learned yet (type 'reader learn')");
+    printf("  Try: learn a apple    recall a    recite    quiz    read phone\n\n");
 
     /* Gate training data used by 'reset' */
     static float reset_inputs[]  = {0,0, 0,1, 1,0, 1,1};
@@ -1154,6 +1155,46 @@ static void run_cli(Network *gate_net, Network *abc_net,
             continue;
         }
 
+        /* ── read <words...> — sound out each word ── */
+        if (strncmp(line, "read ", 5) == 0) {
+            if (!reader->ready) {
+                printf("  The reader has not learned yet. Type 'reader learn'.\n\n");
+                continue;
+            }
+            char buf[256];
+            snprintf(buf, sizeof buf, "%s", line + 5);
+            printf("\n");
+            for (char *w = strtok(buf, " "); w; w = strtok(NULL, " "))
+                reader_say(reader, w);
+            printf("\n");
+            continue;
+        }
+
+        /* ── reader learn / test / speed / save ── */
+        if (strncmp(line, "reader ", 7) == 0) {
+            const char *sub = line + 7;
+            if (strcmp(sub, "learn") == 0) {
+                printf("\n  Learning to read from %s (%d passes)...\n", READER_DATA_PATH, READER_EPOCHS);
+                if (reader_learn(reader, READER_DATA_PATH, READER_EPOCHS) == 0 &&
+                    reader_save(reader, READER_MODEL_PATH) == 0)
+                    printf("  Saved: %s\n", READER_MODEL_PATH);
+                printf("\n");
+            } else if (!reader->ready) {
+                printf("  The reader has not learned yet. Type 'reader learn'.\n\n");
+            } else if (strcmp(sub, "test") == 0) {
+                printf("\n");
+                reader_test(reader, READER_DATA_PATH);
+                printf("\n");
+            } else if (strcmp(sub, "speed") == 0) {
+                printf("\n");
+                reader_speed(reader);
+                printf("\n");
+            } else {
+                printf("  Try: reader learn / reader test / reader speed\n\n");
+            }
+            continue;
+        }
+
         /* ── help ── */
         if (strcmp(line, "help") == 0) {
             printf("\n");
@@ -1173,6 +1214,12 @@ static void run_cli(Network *gate_net, Network *abc_net,
             printf("    vision train              Train visual associations from images\n");
             printf("    vision test               Test visual recall (image → word)\n");
             printf("    abc save                 Save ABC brain now\n");
+            printf("\n");
+            printf("  ── Reader commands ─────────────────────────────────\n");
+            printf("    read <word> [word...]    Sound out words: 'read phone'\n");
+            printf("    reader learn             Learn to read from data/reader/aligned.tsv\n");
+            printf("    reader test              Score on words it never learned from\n");
+            printf("    reader speed             Letters and words read per second\n");
             printf("\n");
             printf("  ── Replay commands ─────────────────────────────────\n");
             printf("    replay on/off            Start/stop background training\n");
@@ -1388,6 +1435,16 @@ int main(int argc, char *argv[]) {
         printf("     If this is a loaded checkpoint, run `abc reset` to rebuild.\n\n");
     }
 
+    /* --- Step 3b: Reader --- */
+    printf("Step 3b: Reader -- Sounding Out Words\n");
+    printf("--------------------------------------\n\n");
+    Reader reader;
+    reader_init(&reader);
+    if (reader_load(&reader, READER_MODEL_PATH) == 0)
+        printf("  Loaded %s: %d sounds, %d rows\n\n", READER_MODEL_PATH, reader.classes, READER_BUCKETS);
+    else
+        printf("  No reader yet. Type 'reader learn' to teach it.\n\n");
+
     /* --- Step 4: Replay thread --- */
     printf("Step 4: Starting Replay (Background Self-Training)\n");
     printf("---------------------------------------------------\n\n");
@@ -1405,7 +1462,8 @@ int main(int argc, char *argv[]) {
     printf("\nStep 5: Interactive CLI -- Talk to the Brain\n");
     printf("----------------------------------------------\n");
 
-    run_cli(&brain, &abc_brain, &vocab, &replay, &hippo);
+    run_cli(&brain, &abc_brain, &vocab, &replay, &hippo, &reader);
+    reader_free(&reader);
 
     /* Clean shutdown: stop replay thread before freeing memory */
     replay_stop(&replay);

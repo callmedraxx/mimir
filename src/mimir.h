@@ -1467,6 +1467,52 @@ void replay_status(const ReplayState *r);
 void replay_pump(ReplayState *r, int steps);
 #endif
 
+/* ════════════════════════════════════════════════════════════════════
+ * READER — sounds out words, one letter at a time (src/reader.c)
+ *
+ * Each letter, with READER_WINDOW letters either side, lights
+ * READER_FEATS rows of a hashed table (letter groups bound to their
+ * offset). The sound it makes is the column with the biggest sum.
+ * Learned with the delta rule on the lit rows; read in int8.
+ * ════════════════════════════════════════════════════════════════════ */
+
+#ifndef READER_BUCKETS
+#define READER_BUCKETS      (1 << 15)   /* rows in the table: 5.3 MB in int8 */
+#endif
+#define READER_WINDOW       4           /* letters looked at each side */
+#define READER_FEATS        32          /* rows lit per letter (28 used) */
+#define READER_MAX_CLASSES  256
+#define READER_LABEL_LEN    16
+#define READER_MAX_WORD     32
+#define READER_VERSION      1
+#ifndef READER_LR
+#define READER_LR           0.3f
+#endif
+#define READER_LR_DECAY     0.7f
+#define READER_EPOCHS       8
+#define READER_MODEL_PATH   "data/reader/reader.model"
+#define READER_DATA_PATH    "data/reader/aligned.tsv"
+
+typedef struct {
+    int     classes;                                    /* sounds known */
+    char    label[READER_MAX_CLASSES][READER_LABEL_LEN];/* "AH0", "K_S", "-" */
+    float   scale;                                      /* int8 → weight */
+    int8_t *q;                                          /* buckets × classes */
+    float  *w;                                          /* float, while learning */
+    int     ready;
+} Reader;
+
+void reader_init(Reader *r);
+void reader_free(Reader *r);
+int  reader_features(const char *w, int len, int i, uint32_t *feats);
+int  reader_read_word(const Reader *r, const char *word, int *out);
+void reader_say(const Reader *r, const char *word);
+int  reader_learn(Reader *r, const char *tsv, int epochs);
+int  reader_test(const Reader *r, const char *tsv);
+void reader_speed(const Reader *r);
+int  reader_save(const Reader *r, const char *path);
+int  reader_load(Reader *r, const char *path);
+
 /* ── Bench probes (browser build) ─────────────────────────────────────
  * MIMIR_PROBE("name", value) shows a live number on this function's chip in
  * Workbench Lab's Mimir bench.  Compiles to nothing in the native build. */
