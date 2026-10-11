@@ -230,7 +230,7 @@ static void b1_store(B1 *b, const Event *e) {
         if (!found) ax_push(a, (Syn){ (uint32_t)ev, 1, T_NEXT, 0 });
     }
     b->prev = ev;
-    while (b1_bytes(b) > b->budget) b1_prune(b);
+    while (b1_bytes(b) > b->budget) { size_t was = b1_bytes(b); b1_prune(b); if (b1_bytes(b) >= was) break; }
 }
 
 static int b1_out(B1 *b, int ev, int *out) { int n = 0; Axon *a = &b->ax[ev]; for (uint32_t s = 0; s < a->n; s++) if (a->s[s].type == T_PART) out[n++] = b->meta[a->s[s].to].value; return n; }
@@ -384,7 +384,7 @@ static void b2_store(B2 *b, const Event *e) {
     }
     memcpy(b->prev, cur, k * sizeof(int)); b->nprev = k;
     acc_clear(&b->acc);
-    while (b2_bytes(b) > b->budget) b2_prune(b);
+    while (b2_bytes(b) > b->budget) { size_t was = b2_bytes(b); b2_prune(b); if (b2_bytes(b) >= was) break; }
 }
 
 /* read-out: winners → back-projections → word area; words whose assemblies are ≥ half as covered as a full event covers them */
@@ -483,7 +483,9 @@ static void b3_prune(B3 *b) {
     free(b->ev); free(b->pool); b->ev = ne; b->evcap = m + 1; b->nev = m; b->pool = np; b->poolcap = b->npool + 1; b->npool = q;
     for (int w = 0; w < b->nvocab; w++) { Cue3 *c = &b->cue[w]; uint32_t k = 0;
         for (uint32_t s = 0; s < c->n; s++) { int t = map[c->v[s] >> 8]; if (t >= 0) c->v[k++] = (uint32_t)t << 8 | (c->v[s] & 255); }
-        c->n = k; }
+        c->n = k;
+        uint32_t nc = k ? (k + 3) & ~3u : 0;   /* night: give back unused room */
+        if (nc < c->cap) { b->cuebytes -= (size_t)(c->cap - nc) * 4; if (!nc) { free(c->v); c->v = 0; b->nlists--; } else c->v = realloc(c->v, nc * 4); c->cap = nc; } }
     if (b->prev >= 0) b->prev = map[b->prev];
     free(map); free(p);
 }
@@ -502,7 +504,7 @@ static void b3_store(B3 *b, const Event *e) {
     }
     if (b->prev >= 0 && b->prev != ev && !b->ev[b->prev].next) { int d = ev - b->prev; if (d >= -32768 && d <= 32767) b->ev[b->prev].next = d; }
     b->prev = ev;
-    while (b3_bytes(b) > b->budget) b3_prune(b);
+    while (b3_bytes(b) > b->budget && b->nev) { size_t was = b3_bytes(b); b3_prune(b); if (b3_bytes(b) >= was) break; }
 }
 static int b3_out(B3 *b, int ev, int *out) { for (int i = 0; i < b->ev[ev].n; i++) out[i] = pw(b, b->ev[ev].start + i); return b->ev[ev].n; }
 static int b3_recall(B3 *b, const int *c, int n, int *out) { int h, ev = b3_best(b, c, n, 1, &h); return ev < 0 ? 0 : b3_out(b, ev, out); }
@@ -510,16 +512,271 @@ static double b3_familiar(B3 *b, const int *w, int n) { int h, ev = b3_best(b, w
 static int b3_next(B3 *b, const int *w, int n, int *out) { int h, ev = b3_best(b, w, n, 1, &h); if (ev < 0 || !b->ev[ev].next) return 0; return b3_out(b, ev + b->ev[ev].next, out); }
 
 /* ------------------------------------------------------------------ */
+/* v0.1-lean2: lean, cut again.                                         */
+/*  - event = 1 byte: words (4 bits), uses as a log counter (2 bits),   */
+/*    next (2 bits: none / the event after / in the exception table)    */
+/*  - where an event's words start: one u32 per 64 events               */
+/*  - word numbers in the pool as varints (1–3 B)                       */
+/*  - cue synapses: gaps between event numbers as varints, no strength  */
+/*    (when a list is over its cap, the least used, oldest events go)   */
+/*  - lists grow in quarter steps (4,5,6,7,8,10,12,14,16,20…)           */
+/* ------------------------------------------------------------------ */
+
+typedef struct { uint8_t *b; uint32_t off, last; uint16_t nb, cnt; } Cue4;   /* counted 12 B: offset, last, bytes, count */
+typedef struct {
+    int C; size_t budget;
+    uint8_t *ev; int nev, evcap; uint32_t *chk;           /* chk[i] = pool offset of event 64·i */
+    uint8_t *pool; size_t npool, poolcap;
+    Cue4 *cue; int nvocab, nlists; size_t cuebytes;
+    uint32_t *xk, *xv; int xn, xcap;                      /* next exceptions */
+    int prev; uint32_t tick; Acc acc;
+    int bitpool;                                          /* lean4: pool as exp-Golomb (k 11) bits; npool counts bits */
+} B4;
+
+static uint32_t qcap(uint32_t n) { if (n <= 4) return 4; uint32_t p = 4; while (p * 2 <= n) p *= 2; uint32_t q = p / 4; return (n + q - 1) / q * q; }
+static inline int vput(uint8_t *p, uint32_t v) { int n = 0; while (v >= 128) { p[n++] = (v & 127) | 128; v >>= 7; } p[n++] = v; return n; }
+static inline uint32_t vget(const uint8_t *p, size_t *i) { uint32_t v = 0; int sh = 0; for (;;) { uint8_t c = p[(*i)++]; v |= (uint32_t)(c & 127) << sh; if (c < 128) return v; sh += 7; } }
+static inline uint32_t eg_get(const uint8_t *buf, uint32_t *pos, int k, uint32_t nbytes);
+static inline void eg_put(uint8_t *buf, uint32_t *pos, uint32_t x, int k);
+#define POOLK 11
+static inline size_t pool_bytes(B4 *b) { return b->bitpool ? (b->npool + 7) / 8 : b->npool; }
+static inline uint32_t pool_get(B4 *b, size_t *i) { if (!b->bitpool) return vget(b->pool, i); uint32_t p = *i, v = eg_get(b->pool, &p, POOLK, (uint32_t)pool_bytes(b)); *i = p; return v; }
+static inline void pool_put(B4 *b, uint32_t w) { if (!b->bitpool) { b->npool += vput(b->pool + b->npool, w); return; } uint32_t p = b->npool; eg_put(b->pool, &p, w, POOLK); b->npool = p; }
+static size_t b4_bytes(B4 *b) { return up(b->nev) + up((b->nev / 64 + 1) * 4) + up(pool_bytes(b)) + (size_t)b->nlists * 12 + b->cuebytes + (size_t)b->xcap * 8; }
+#define EVN(x) ((x) & 15)
+#define EVU(x) (((x) >> 4) & 3)
+#define EVX(x) ((x) >> 6)
+
+
+static void x_put(B4 *b, uint32_t k, uint32_t v);
+static int x_get(B4 *b, uint32_t k) { if (!b->xcap) return -1; for (uint32_t i = mix(k) & (b->xcap - 1);; i = (i + 1) & (b->xcap - 1)) { if (b->xk[i] == 0xffffffffu) return -1; if (b->xk[i] == k) return b->xv[i]; } }
+static void x_put(B4 *b, uint32_t k, uint32_t v) {
+    if ((b->xn + 1) * 4 > b->xcap * 3) { int oc = b->xcap; uint32_t *ok = b->xk, *ov = b->xv; b->xcap = oc ? oc * 2 : 64;
+        b->xk = malloc(b->xcap * 4); b->xv = malloc(b->xcap * 4); memset(b->xk, 255, b->xcap * 4); b->xn = 0;
+        for (int i = 0; i < oc; i++) if (ok[i] != 0xffffffffu) x_put(b, ok[i], ov[i]); free(ok); free(ov); }
+    for (uint32_t i = mix(k) & (b->xcap - 1);; i = (i + 1) & (b->xcap - 1)) { if (b->xk[i] == 0xffffffffu) { b->xk[i] = k; b->xv[i] = v; b->xn++; return; } if (b->xk[i] == k) { b->xv[i] = v; return; } }
+}
+
+static B4 *b4_make(size_t budget, int nvocab) {
+    B4 *b = calloc(1, sizeof *b); b->C = 512; b->budget = budget; b->nvocab = nvocab;
+    b->evcap = 1024; b->ev = malloc(b->evcap); b->chk = malloc((b->evcap / 64 + 1) * 4); b->poolcap = 1 << 16; b->pool = calloc(b->poolcap, 1);
+    b->cue = calloc(nvocab, sizeof(Cue4)); b->prev = -1; acc_grow(&b->acc, b->evcap); return b;
+}
+
+static void cue4_set(B4 *b, Cue4 *c, const uint8_t *src, uint32_t nb) {
+    uint32_t oc = c->nb ? qcap(c->nb) : 0, nc = nb ? qcap(nb) : 0;
+    if (nc != oc) { b->cuebytes += nc; b->cuebytes -= oc; c->b = realloc(c->b, nc ? nc : 1); if (!oc && nc) b->nlists++; if (oc && !nc) b->nlists--; }
+    if (src != c->b) memcpy(c->b, src, nb); c->nb = nb;
+}
+static void cue4_append(B4 *b, Cue4 *c, uint32_t e) {
+    uint8_t tmp[8]; int k = vput(tmp, c->cnt ? e - c->last : e);
+    uint32_t oc = c->nb ? qcap(c->nb) : 0, nc = qcap(c->nb + k);
+    if (nc != oc) { b->cuebytes += nc - oc; c->b = realloc(c->b, nc); if (!oc) b->nlists++; }
+    memcpy(c->b + c->nb, tmp, k); c->nb += k; c->last = e; c->cnt++;
+}
+static int b4_decode(Cue4 *c, uint32_t *out) { size_t i = 0; uint32_t e = 0; for (int j = 0; j < c->cnt; j++) { uint32_t d = vget(c->b, &i); e = j ? e + d : d; out[j] = e; } return c->cnt; }
+static void cue4_encode(B4 *b, Cue4 *c, const uint32_t *ids, int n) {
+    uint8_t *tmp = malloc(n * 5 + 1); uint32_t nb = 0;
+    for (int j = 0; j < n; j++) nb += vput(tmp + nb, j ? ids[j] - ids[j - 1] : ids[j]);
+    cue4_set(b, c, tmp, nb); c->cnt = n; c->last = n ? ids[n - 1] : 0; free(tmp);
+}
+/* over the cap by 32: drop the least used, oldest down to the cap */
+static void cue4_trim(B4 *b, Cue4 *c) {
+    uint32_t *ids = malloc(c->cnt * 4); int n = b4_decode(c, ids), drop = n - b->C;
+    for (int u = 0; u < 4 && drop > 0; u++) for (int j = 0; j < n && drop > 0; j++) if (ids[j] != 0xffffffffu && EVU(b->ev[ids[j]]) == u) { ids[j] = 0xffffffffu; drop--; }
+    int m = 0; for (int j = 0; j < n; j++) if (ids[j] != 0xffffffffu) ids[m++] = ids[j];
+    cue4_encode(b, c, ids, m); free(ids);
+}
+
+static size_t b4_start(B4 *b, int e) { size_t i = b->chk[e / 64]; for (int k = e & ~63; k < e; k++) for (int j = 0; j < EVN(b->ev[k]); j++) pool_get(b, &i); return i; }
+
+static int b4_best(B4 *b, const int *w, int n, int minhits, int *hits) {
+    static uint32_t *ids; static int idcap; 
+    for (int i = 0; i < n; i++) { Cue4 *c = &b->cue[w[i]]; if (c->cnt > idcap) { idcap = c->cnt * 2; ids = realloc(ids, idcap * 4); }
+        int m = b4_decode(c, ids); for (int s = 0; s < m; s++) acc_add(&b->acc, ids[s], 1); }
+    int best = -1, bh = 0;
+    for (int t = 0; t < b->acc.n; t++) { int e = b->acc.list[t], h = b->acc.v[e]; if (h < minhits) continue;
+        if (best < 0 || h > bh || (h == bh && (EVN(b->ev[e]) < EVN(b->ev[best]) || (EVN(b->ev[e]) == EVN(b->ev[best]) && e > best)))) { best = e; bh = h; } }
+    acc_clear(&b->acc); *hits = bh; return best;
+}
+
+static int b4_nextof(B4 *b, int e) { int x = EVX(b->ev[e]); return x == 0 ? -1 : x == 1 ? e + 1 : x_get(b, e); }
+
+static void b4_prune(B4 *b) {
+    PruneKey *p = malloc(b->nev * sizeof(PruneKey));
+    for (int i = 0; i < b->nev; i++) { p[i].k = ((uint64_t)EVU(b->ev[i]) << 32) | (uint32_t)i; p[i].id = i; }
+    qsort(p, b->nev, sizeof(PruneKey), prune_cmp);
+    int nk = b->nev / 10 + 1; if (nk > b->nev) nk = b->nev;
+    int *map = calloc(b->nev, sizeof(int)); for (int j = 0; j < nk; j++) map[p[j].id] = -1;
+    int m = 0; for (int i = 0; i < b->nev; i++) map[i] = map[i] ? -1 : m++;
+    int *nxt = malloc(b->nev * sizeof(int)); for (int i = 0; i < b->nev; i++) nxt[i] = b4_nextof(b, i);
+    /* night: rewrite events, pool, next, cues in the new numbering */
+    uint8_t *ne = malloc(b->evcap), *np = calloc(b->poolcap, 1), *op = b->pool; uint32_t *nc = malloc((b->evcap / 64 + 1) * 4); size_t r = 0, oldn = b->npool; b->npool = 0;
+    uint32_t *ok = b->xk, *ov = b->xv; int oc = b->xcap; b->xk = b->xv = 0; b->xcap = b->xn = 0; free(ok); free(ov); (void)oc;
+    for (int i = 0; i < b->nev; i++) {
+        int wd[MAXW], nw = EVN(b->ev[i]); b->pool = op; size_t cur = b->npool; b->npool = oldn;
+        for (int j = 0; j < nw; j++) wd[j] = pool_get(b, &r);
+        b->pool = np; b->npool = cur;
+        if (map[i] < 0) continue; int me = map[i];
+        if (!(me & 63)) nc[me / 64] = b->npool;
+        for (int j = 0; j < nw; j++) pool_put(b, wd[j]);
+        int t = nxt[i] >= 0 ? map[nxt[i]] : -1, x = t < 0 ? 0 : t == me + 1 ? 1 : 2;
+        ne[me] = (b->ev[i] & 63) | x << 6; if (x == 2) x_put(b, me, t);
+    }
+    free(b->ev); free(op); free(b->chk); b->ev = ne; b->pool = np; b->chk = nc; b->nev = m;
+    uint32_t *ids = malloc((b->C + 64) * 4);
+    for (int w = 0; w < b->nvocab; w++) { Cue4 *c = &b->cue[w]; if (!c->cnt) continue; int n = b4_decode(c, ids), k = 0;
+        for (int j = 0; j < n; j++) if (map[ids[j]] >= 0) ids[k++] = map[ids[j]]; cue4_encode(b, c, ids, k); }
+    if (b->prev >= 0) b->prev = map[b->prev];
+    free(ids); free(map); free(nxt); free(p);
+}
+
+static void b4_store(B4 *b, const Event *e) {
+    b->tick++;
+    int h, best = b4_best(b, e->w, e->n, (e->n + 1) / 2, &h), ev;
+    if (best >= 0 && h * 100 >= 85 * (e->n + EVN(b->ev[best]) - h)) {   /* recognised: Jaccard ≥ 0.85 */
+        ev = best; int u = EVU(b->ev[ev]);
+        if (u < 3 && !(mix(((uint64_t)b->tick << 24) ^ ev) & ((1u << u) - 1))) b->ev[ev] += 16;   /* log counter: 1, 2, 4, 8+ */
+    } else {
+        if (b->nev == b->evcap) { b->evcap *= 2; b->ev = realloc(b->ev, b->evcap); b->chk = realloc(b->chk, (b->evcap / 64 + 1) * 4); acc_grow(&b->acc, b->evcap); }
+        if (pool_bytes(b) + MAXW * 8 > b->poolcap) { b->pool = realloc(b->pool, b->poolcap * 2); memset(b->pool + b->poolcap, 0, b->poolcap); b->poolcap *= 2; }
+        ev = b->nev++; if (!(ev & 63)) b->chk[ev / 64] = b->npool;
+        b->ev[ev] = e->n;
+        for (int i = 0; i < e->n; i++) { pool_put(b, e->w[i]);
+            Cue4 *c = &b->cue[e->w[i]]; cue4_append(b, c, ev); if (c->cnt > b->C + 32) cue4_trim(b, c); }
+    }
+    if (b->prev >= 0 && b->prev != ev && !EVX(b->ev[b->prev])) { if (ev == b->prev + 1) b->ev[b->prev] |= 1 << 6; else { b->ev[b->prev] |= 2 << 6; x_put(b, b->prev, ev); } }
+    b->prev = ev;
+    while (b4_bytes(b) > b->budget && b->nev) { size_t was = b4_bytes(b); b4_prune(b); if (b4_bytes(b) >= was) break; }
+}
+static int b4_out(B4 *b, int ev, int *out) { size_t i = b4_start(b, ev); int n = EVN(b->ev[ev]); for (int j = 0; j < n; j++) out[j] = pool_get(b, &i); return n; }
+static int b4_recall(B4 *b, const int *c, int n, int *out) { int h, ev = b4_best(b, c, n, 1, &h); return ev < 0 ? 0 : b4_out(b, ev, out); }
+static double b4_familiar(B4 *b, const int *w, int n) { int h, ev = b4_best(b, w, n, 1, &h); return ev < 0 ? 0 : (double)h / (n + EVN(b->ev[ev]) - h); }
+static int b4_next(B4 *b, const int *w, int n, int *out) { int h, ev = b4_best(b, w, n, 1, &h); if (ev < 0) return 0; int t = b4_nextof(b, ev); return t < 0 || t >= b->nev ? 0 : b4_out(b, t, out); }
+
+/* ------------------------------------------------------------------ */
+/* v0.1-lean3: lean2 with smaller cue lists.                            */
+/*  - header 7 B: arena offset, bits used, code parameter k             */
+/*  - a list of ≤ 32 bits lives inside the header (words seen once)     */
+/*  - gaps as exp-Golomb codes of order k, bit-packed; k re-chosen per  */
+/*    word whenever its list is rewritten (cap trims, nights)           */
+/* ------------------------------------------------------------------ */
+
+typedef struct { union { uint8_t *p; uint8_t in[8]; } u; uint16_t nbits; uint8_t k; } Cue5;
+typedef struct { B4 base; Cue5 *cue; int nlists; size_t cuebytes; } B5;   /* events, pool, next as lean2 */
+
+static inline uint8_t *c5_buf(Cue5 *c) { return c->nbits <= 32 ? c->u.in : c->u.p; }
+static size_t b5_bytes(B5 *b) { B4 *a = &b->base; return up(a->nev) + up((a->nev / 64 + 1) * 4) + up(pool_bytes(a)) + (size_t)b->nlists * 7 + b->cuebytes + (size_t)a->xcap * 8; }
+static inline void bput(uint8_t *buf, uint32_t *pos, uint32_t v, int n) { for (int i = n - 1; i >= 0; i--, (*pos)++) { if ((v >> i) & 1) buf[*pos >> 3] |= 1 << (*pos & 7); else buf[*pos >> 3] &= ~(1 << (*pos & 7)); } }
+static inline uint32_t bget(const uint8_t *buf, uint32_t *pos, int n) { uint32_t v = 0; for (int i = 0; i < n; i++, (*pos)++) v = v << 1 | ((buf[*pos >> 3] >> (*pos & 7)) & 1); return v; }
+static inline int eg_len(uint32_t x, int k) { uint64_t v = (uint64_t)x + (1u << k); int nb = 63 - __builtin_clzll(v); return 2 * nb - k + 1; }
+/* code: (nb − k) zeros, a one, then the low nb bits of v least significant first (v = x + 2^k, nb = its top bit) */
+static inline void eg_put(uint8_t *buf, uint32_t *pos, uint32_t x, int k) { uint64_t v = (uint64_t)x + (1u << k); int nb = 63 - __builtin_clzll(v);
+    for (int i = 0; i < nb - k; i++, (*pos)++) buf[*pos >> 3] &= ~(1 << (*pos & 7));
+    buf[*pos >> 3] |= 1 << (*pos & 7); (*pos)++;
+    for (int i = 0; i < nb; i++, (*pos)++) { if ((v >> i) & 1) buf[*pos >> 3] |= 1 << (*pos & 7); else buf[*pos >> 3] &= ~(1 << (*pos & 7)); } }
+static inline uint32_t eg_get(const uint8_t *buf, uint32_t *pos, int k, uint32_t nbytes) {
+    uint64_t w = 0; uint32_t b0 = *pos >> 3, avail = nbytes - b0; memcpy(&w, buf + b0, avail < 8 ? avail : 8); w >>= *pos & 7;
+    int z = __builtin_ctzll(w), nb = z + k; uint32_t v = (uint32_t)(((w >> (z + 1)) & ((1ull << nb) - 1)) | (1ull << nb));
+    *pos += z + 1 + nb; return v - (1u << k); }
+
+static void c5_resize(B5 *b, Cue5 *c, uint32_t nbits) {   /* keeps contents */
+    uint32_t ob = c->nbits <= 32 ? 0 : qcap((c->nbits + 7) / 8), nb = nbits <= 32 ? 0 : qcap((nbits + 7) / 8);
+    if (!c->nbits && nbits) b->nlists++; if (c->nbits && !nbits) b->nlists--;
+    if (ob == nb) { c->nbits = nbits; return; }
+    uint8_t tmp[8]; if (!ob) memcpy(tmp, c->u.in, 8);
+    if (!nb) { uint8_t *old = c->u.p; memcpy(c->u.in, old, 4); free(old); }
+    else if (!ob) { c->u.p = calloc(nb, 1); memcpy(c->u.p, tmp, 4); }
+    else { c->u.p = realloc(c->u.p, nb); if (nb > ob) memset(c->u.p + ob, 0, nb - ob); }
+    b->cuebytes += nb; b->cuebytes -= ob; c->nbits = nbits;
+}
+static int c5_decode(Cue5 *c, uint32_t *out, uint32_t *last) {
+    const uint8_t *buf = c5_buf(c); uint32_t pos = 0, e = 0; int n = 0;
+    uint32_t nby = (c->nbits + 7) / 8; while (pos < c->nbits) { uint32_t g = eg_get(buf, &pos, c->k, nby); e = n ? e + g + 1 : g; if (out) out[n] = e; n++; }
+    if (last) *last = e; return n;
+}
+static void c5_encode(B5 *b, Cue5 *c, const uint32_t *ids, int n) {
+    int k = 0; if (n) { double mean = n > 1 ? (double)(ids[n - 1] - ids[0]) / (n - 1) : ids[0] + 1.0; while (k < 20 && (double)(2u << k) <= mean) k++; }
+    uint32_t bits = 0; for (int j = 0; j < n; j++) bits += eg_len(j ? ids[j] - ids[j - 1] - 1 : ids[j], k);
+    c5_resize(b, c, 0); c->k = k; c5_resize(b, c, bits);
+    uint8_t *buf = c5_buf(c); uint32_t pos = 0; for (int j = 0; j < n; j++) eg_put(buf, &pos, j ? ids[j] - ids[j - 1] - 1 : ids[j], k);
+}
+static void c5_append(B5 *b, Cue5 *c, uint32_t e, uint32_t last, int cnt) {
+    if (!cnt) { c5_encode(b, c, &e, 1); return; }
+    uint32_t x = e - last - 1, pos = c->nbits; c5_resize(b, c, c->nbits + eg_len(x, c->k)); eg_put(c5_buf(c), &pos, x, c->k);
+}
+
+static uint32_t *c5_ids; static int c5_idcap;
+static void c5_room(int n) { if (n > c5_idcap) { c5_idcap = n * 2; c5_ids = realloc(c5_ids, c5_idcap * 4); } }
+
+static int b5_best(B5 *b, const int *w, int n, int minhits, int *hits, int *cnt, uint32_t *last) {
+    B4 *a = &b->base;
+    for (int i = 0; i < n; i++) { Cue5 *c = &b->cue[w[i]]; c5_room(b->base.C + 64); int m = c5_decode(c, c5_ids, last ? &last[i] : 0); if (cnt) cnt[i] = m;
+        for (int s = 0; s < m; s++) acc_add(&a->acc, c5_ids[s], 1); }
+    int best = -1, bh = 0;
+    for (int t = 0; t < a->acc.n; t++) { int e = a->acc.list[t], h = a->acc.v[e]; if (h < minhits) continue;
+        if (best < 0 || h > bh || (h == bh && (EVN(a->ev[e]) < EVN(a->ev[best]) || (EVN(a->ev[e]) == EVN(a->ev[best]) && e > best)))) { best = e; bh = h; } }
+    acc_clear(&a->acc); *hits = bh; return best;
+}
+static void c5_trim(B5 *b, Cue5 *c) {
+    B4 *a = &b->base; c5_room(a->C + 64); int n = c5_decode(c, c5_ids, 0), drop = n - a->C;
+    for (int u = 0; u < 4 && drop > 0; u++) for (int j = 0; j < n && drop > 0; j++) if (c5_ids[j] != 0xffffffffu && EVU(a->ev[c5_ids[j]]) == u) { c5_ids[j] = 0xffffffffu; drop--; }
+    int m = 0; for (int j = 0; j < n; j++) if (c5_ids[j] != 0xffffffffu) c5_ids[m++] = c5_ids[j];
+    c5_encode(b, c, c5_ids, m);
+}
+
+static void b5_prune(B5 *b) {
+    /* events, pool and next exactly as lean2 (its cue lists are empty), then renumber our cues */
+    B4 *a = &b->base; int old = a->nev;
+    PruneKey *p = malloc(old * sizeof(PruneKey));
+    for (int i = 0; i < old; i++) { p[i].k = ((uint64_t)EVU(a->ev[i]) << 32) | (uint32_t)i; p[i].id = i; }
+    qsort(p, old, sizeof(PruneKey), prune_cmp);
+    int nk = old / 10 + 1; if (nk > old) nk = old;
+    int *map = calloc(old, sizeof(int)); for (int j = 0; j < nk; j++) map[p[j].id] = -1;
+    int m = 0; for (int i = 0; i < old; i++) map[i] = map[i] ? -1 : m++;
+    b4_prune(a);   /* same choice: (uses, id) order, same 10% */
+    c5_room(a->C + 64);
+    for (int w = 0; w < a->nvocab; w++) { Cue5 *c = &b->cue[w]; if (!c->nbits) continue; int n = c5_decode(c, c5_ids, 0), k = 0;
+        for (int j = 0; j < n; j++) if (map[c5_ids[j]] >= 0) c5_ids[k++] = map[c5_ids[j]]; c5_encode(b, c, c5_ids, k); }
+    free(map); free(p);
+}
+
+static B5 *b5_make(size_t budget, int nvocab) { B5 *b = calloc(1, sizeof *b); B4 *a = b4_make(budget, nvocab); b->base = *a; free(a); b->cue = calloc(nvocab, sizeof(Cue5)); return b; }
+
+static void b5_store(B5 *b, const Event *e) {
+    B4 *a = &b->base; a->tick++;
+    int cnt[MAXW]; uint32_t last[MAXW];
+    int h, best = b5_best(b, e->w, e->n, (e->n + 1) / 2, &h, cnt, last), ev;
+    if (best >= 0 && h * 100 >= 85 * (e->n + EVN(a->ev[best]) - h)) {
+        ev = best; int u = EVU(a->ev[ev]);
+        if (u < 3 && !(mix(((uint64_t)a->tick << 24) ^ ev) & ((1u << u) - 1))) a->ev[ev] += 16;
+    } else {
+        if (a->nev == a->evcap) { a->evcap *= 2; a->ev = realloc(a->ev, a->evcap); a->chk = realloc(a->chk, (a->evcap / 64 + 1) * 4); acc_grow(&a->acc, a->evcap); }
+        if (pool_bytes(a) + MAXW * 8 > a->poolcap) { a->pool = realloc(a->pool, a->poolcap * 2); memset(a->pool + a->poolcap, 0, a->poolcap); a->poolcap *= 2; }
+        ev = a->nev++; if (!(ev & 63)) a->chk[ev / 64] = a->npool;
+        a->ev[ev] = e->n;
+        for (int i = 0; i < e->n; i++) { pool_put(a, e->w[i]);
+            Cue5 *c = &b->cue[e->w[i]]; c5_append(b, c, ev, last[i], cnt[i]); if (cnt[i] + 1 > a->C + 32) c5_trim(b, c); }
+    }
+    if (a->prev >= 0 && a->prev != ev && !EVX(a->ev[a->prev])) { if (ev == a->prev + 1) a->ev[a->prev] |= 1 << 6; else { a->ev[a->prev] |= 2 << 6; x_put(a, a->prev, ev); } }
+    a->prev = ev;
+    while (b5_bytes(b) > a->budget && a->nev) { size_t was = b5_bytes(b); b5_prune(b); if (b5_bytes(b) >= was) break; }
+}
+static int b5_recall(B5 *b, const int *c, int n, int *out) { int h, ev = b5_best(b, c, n, 1, &h, 0, 0); return ev < 0 ? 0 : b4_out(&b->base, ev, out); }
+static double b5_familiar(B5 *b, const int *w, int n) { int h, ev = b5_best(b, w, n, 1, &h, 0, 0); return ev < 0 ? 0 : (double)h / (n + EVN(b->base.ev[ev]) - h); }
+static int b5_next(B5 *b, const int *w, int n, int *out) { int h, ev = b5_best(b, w, n, 1, &h, 0, 0); if (ev < 0) return 0; int t = b4_nextof(&b->base, ev); return t < 0 || t >= b->base.nev ? 0 : b4_out(&b->base, t, out); }
+
+/* ------------------------------------------------------------------ */
 /* Tests (identical for both)                                           */
 /* ------------------------------------------------------------------ */
 
-static int design; static B1 *g1; static B2 *g2; static B3 *g3;
-static void store(const Event *e) { if (design == 1) b1_store(g1, e); else if (design == 3) b3_store(g3, e); else b2_store(g2, e); }
-static int recall(const int *c, int n, int *o) { return design == 1 ? b1_recall(g1, c, n, o) : design == 3 ? b3_recall(g3, c, n, o) : b2_recall(g2, c, n, o); }
-static double familiar(const int *w, int n) { return design == 1 ? b1_familiar(g1, w, n) : design == 3 ? b3_familiar(g3, w, n) : b2_familiar(g2, w, n); }
-static int next(const int *w, int n, int *o) { return design == 1 ? b1_next(g1, w, n, o) : design == 3 ? b3_next(g3, w, n, o) : b2_next(g2, w, n, o); }
-static size_t bytes(void) { return design == 1 ? b1_bytes(g1) : design == 3 ? b3_bytes(g3) : b2_bytes(g2); }
-static int alive(void) { int c = 0; if (design == 3) return g3->nev; if (design == 1) { for (int i = 0; i < g1->nn; i++) c += g1->meta[i].kind == K_EVENT && g1->meta[i].state != S_FREE; }
+static int design; static B1 *g1; static B2 *g2; static B3 *g3; static B4 *g4; static B5 *g5;
+static void store(const Event *e) { if (design == 1) b1_store(g1, e); else if (design == 3) b3_store(g3, e); else if (design == 4) b4_store(g4, e); else if (design >= 5) b5_store(g5, e); else b2_store(g2, e); }
+static int recall(const int *c, int n, int *o) { return design == 1 ? b1_recall(g1, c, n, o) : design == 4 ? b4_recall(g4, c, n, o) : (design == 5 || design == 6) ? b5_recall(g5, c, n, o) : design == 3 ? b3_recall(g3, c, n, o) : b2_recall(g2, c, n, o); }
+static double familiar(const int *w, int n) { return design == 1 ? b1_familiar(g1, w, n) : design == 4 ? b4_familiar(g4, w, n) : (design == 5 || design == 6) ? b5_familiar(g5, w, n) : design == 3 ? b3_familiar(g3, w, n) : b2_familiar(g2, w, n); }
+static int next(const int *w, int n, int *o) { return design == 1 ? b1_next(g1, w, n, o) : design == 4 ? b4_next(g4, w, n, o) : (design == 5 || design == 6) ? b5_next(g5, w, n, o) : design == 3 ? b3_next(g3, w, n, o) : b2_next(g2, w, n, o); }
+static size_t bytes(void) { return design == 1 ? b1_bytes(g1) : design == 4 ? b4_bytes(g4) : (design == 5 || design == 6) ? b5_bytes(g5) : design == 3 ? b3_bytes(g3) : b2_bytes(g2); }
+static int alive(void) { int c = 0; if (design == 3) return g3->nev; if (design == 4) return g4->nev; if (design >= 5) return g5->base.nev; if (design == 1) { for (int i = 0; i < g1->nn; i++) c += g1->meta[i].kind == K_EVENT && g1->meta[i].state != S_FREE; }
     else { for (int i = NW2; i < g2->nn; i++) c += g2->n[i].life != S_FREE; c /= g2->ke; } return c; }
 
 static double f1(const int *a, int na, const int *b, int nb) {
@@ -568,7 +825,7 @@ int main(int argc, char **argv) {
     int ne, nne; Event *ev = make_events(t, nt, &ne), *nov = make_events(nt2, nnt, &nne);
 
     syn_bytes = 0;
-    if (design == 1) g1 = b1_make(setting, budget, V.n); else if (design == 3) g3 = b3_make(budget, V.n); else g2 = b2_make(setting, budget, V.n);
+    if (design == 1) g1 = b1_make(setting, budget, V.n); else if (design == 3) g3 = b3_make(budget, V.n); else if (design == 4) g4 = b4_make(budget, V.n); else if (design == 5 || design == 6) { g5 = b5_make(budget, V.n); g5->base.bitpool = design == 6; } else g2 = b2_make(setting, budget, V.n);
 
     double t0 = now();
     for (int i = 0; i < ne; i++) store(&ev[i]);
@@ -580,6 +837,6 @@ int main(int argc, char **argv) {
     double T3 = t_recognise(ev, ne, nov, nne, S);
     double T4 = t_next(ev, ne, S);
     printf("design=%s setting=%d budget=%.0fMB events=%d tokens=%ld T1=%.4f T2=%.4f T3=%.4f T4=%.4f store_tok_s=%.0f recall_s=%.0f bytes=%zu stored=%d\n",
-           design == 1 ? "v0.1" : design == 2 ? "v0.2" : "lean", setting, mb, ne, words, T1, T2, T3, T4, words / ts, S / rs, bytes(), alive());
+           design == 1 ? "v0.1" : design == 2 ? "v0.2" : design == 3 ? "lean" : design == 4 ? "lean2" : design == 5 ? "lean3" : "lean4", setting, mb, ne, words, T1, T2, T3, T4, words / ts, S / rs, bytes(), alive());
     return 0;
 }

@@ -160,7 +160,7 @@ Same behaviour, fewer bytes:
 | bytes per event | ≈ 360 | **≈ 55** |
 | T1 / T2 / T3 / T4 | 96.4 / 95.7 / 99.9 / 99.3 | 96.7 / 95.4 / 99.98 / 99.4 |
 | at 4 MB T1 | 38.1 | 96.7 |
-| at 1 MB T1 / T2 | — | 46.0 / 34.9 (8,155 events kept) |
+| at 1 MB T1 / T2 | — | 61.1 / 36.7 (15,912 events kept)¹ |
 | store, little core worst | 193 k tok/s | **863 k tok/s** |
 | store, prime core worst | 1.05 M tok/s | **7.46 M tok/s** |
 | recall/s, little core worst | 6,051 | **35,313** |
@@ -168,6 +168,57 @@ Same behaviour, fewer bytes:
 Everything moved by at most 0.3 points; T2 is 0.3 lower (95.7 → 95.4), the
 rest equal or higher.
 
-Still possible, not done: delta-coded cue lists (~2 B a synapse), 2-byte
-word numbers for frequent words, dropping `uses` to 4 bits. An estimated
-further ~40%.
+¹ First reported as 46.0 / 34.9: lean's night pruning freed events but kept
+the room their cue lists had used, so at small budgets it pruned far more
+than needed (and at 0.5 MB never got under budget). Fixed; the v0.1 / v0.2
+runs were not affected (their pruning already gave room back).
+
+## Shrinking further (owner: "keep shrinking")
+
+Each step keeps the behaviour and is checked on the same tests. Where the
+bytes went guided each cut (lean: cues 1.03 MB, event words 573 KB, events
+295 KB, list headers 128 KB).
+
+| version | what changed | whole book | bytes / event |
+|---|---|---|---|
+| v0.1 as specified | — | 13.3 MB | ≈ 360 |
+| lean | no content bits, word = its number, 8 B event, 3–4 B synapses | 2.03 MB | ≈ 55 |
+| lean2 | event = 1 byte (words 4 bits, log use counter 2 bits, next 2 bits) + a start every 64 events; word numbers as varints; cue lists as gaps (varints), no per-synapse strength (the event's use count decides what a full list drops); lists grow in quarter steps | 959 KB | ≈ 26 |
+| lean3 | cue list headers 12 → 7 B; lists of ≤ 32 bits inside the header; gaps bit-packed as exp-Golomb codes, order chosen per word | 819 KB | ≈ 22 |
+| lean4 | event words bit-packed too (exp-Golomb order 11, chosen on the dev book) | **758 KB** | **≈ 21** |
+
+On the whole book every version scores the same: T1 96.7, T2 95.4, T3 99.98,
+T4 99.35. Under pressure the smaller ones keep more (0.5 MB budget):
+
+| 0.5 MB | events kept | T1 | T2 | T3 | T4 |
+|---|---|---|---|---|---|
+| lean | 7,339 | 44.2 | 34.5 | 66.7 | 19.8 |
+| lean2 | 16,786 | 62.7 | 36.8 | 78.4 | 45.5 |
+| lean3 | 20,457 | 69.5 | 37.8 | 82.6 | 55.3 |
+| lean4 | 24,141 | 76.1 | 38.5 | 86.8 | 65.4 |
+
+Speed, S22 Ultra, whole book, worst of 3 (`results/phone_shrink.txt`):
+
+| | store, prime | store, little | recall/s, prime | recall/s, little |
+|---|---|---|---|---|
+| lean | 3.86 M tok/s | 934 k | 177 k | 36.4 k |
+| lean2 | 2.63 M | 763 k | 115 k | 33.4 k |
+| lean3 | 1.49 M | 678 k | 72 k | 31.2 k |
+| lean4 | 1.46 M | 675 k | 62 k | 29.4 k |
+
+The price of each cut is decoding: lean4 stores 1.4× slower than lean on the
+little core, still 67× the 10 k floor.
+
+### What is left, and its limit
+
+lean4 stores each word-in-event twice, ≈ 14 bits each way, close to the
+information it carries (one of ~17 k words; one of ~37 k events). Further
+cuts must remove information, not packing:
+
+* **Read the words back from the page.** Both specs keep the original text
+  outside the brain. If an event keeps only where it is on the page (~1 B),
+  its word list (≈ 320 KB) goes: an estimated ~0.45 MB for the book. The brain
+  then needs the page to say an event's words (recognition and cued recall
+  still work without it).
+* Keep one direction only (cue lists): ~0.44 MB, but recall must search every
+  list (estimated tens of times slower).
