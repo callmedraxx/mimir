@@ -107,6 +107,26 @@ static int predict_letter(const Reader *r, const uint32_t *feats, int n) {
     return best;
 }
 
+/* A word as written ("Can't") → key "can't" (lower case, apostrophes kept,
+ * for the dictionary and sight words) and letters "cant" (what the
+ * spelling rules read). Returns the number of letters. */
+int reader_word_key(const char *in, char *key, char *letters) {
+    int nk = 0, nl = 0;
+    for (const char *p = in; *p && nk < READER_MAX_WORD - 1; p++) {
+        unsigned char c = (unsigned char)*p;
+        if (isalpha(c)) {
+            key[nk++] = (char)tolower(c);
+            letters[nl++] = (char)tolower(c);
+        } else if (c == '\'' && nk > 0) {
+            key[nk++] = '\'';
+        }
+    }
+    while (nk > 0 && key[nk - 1] == '\'') nk--;          /* "dogs'" → "dogs" */
+    key[nk] = 0;
+    letters[nl] = 0;
+    return nl;
+}
+
 /* ── sight words: mistakes it has fixed, remembered whole ──
  * Open addressing on the word; NULL when the word is not one. */
 static uint32_t word_hash(const char *w) {
@@ -118,23 +138,24 @@ static uint32_t word_hash(const char *w) {
 static const ReaderMemory *sight_find(const Reader *r, const char *w) {
     if (!r->sight) return NULL;
     for (uint32_t h = word_hash(w) & r->sight_mask; r->sight[h].len; h = (h + 1) & r->sight_mask)
-        if (strcmp(r->sight[h].word, w) == 0) return &r->sight[h];
+        if (strcmp(r->sight[h].key, w) == 0) return &r->sight[h];
     return NULL;
 }
 
-static int sight_put(Reader *r, const char *w, int len, const unsigned char *lab) {
+static int sight_put(Reader *r, const char *key, const char *w, int len, const unsigned char *lab) {
     if (!r->sight) {
         r->sight_mask = READER_SIGHT_MAX * 2 - 1;        /* never more than half full */
         r->sight = calloc(r->sight_mask + 1, sizeof *r->sight);
         if (!r->sight) return -1;
     }
-    uint32_t h = word_hash(w) & r->sight_mask;
-    while (r->sight[h].len && strcmp(r->sight[h].word, w) != 0) h = (h + 1) & r->sight_mask;
+    uint32_t h = word_hash(key) & r->sight_mask;
+    while (r->sight[h].len && strcmp(r->sight[h].key, key) != 0) h = (h + 1) & r->sight_mask;
     if (!r->sight[h].len) {
         if (r->nsight >= READER_SIGHT_MAX) return -1;
         r->nsight++;
     }
     snprintf(r->sight[h].word, READER_MAX_WORD, "%s", w);
+    snprintf(r->sight[h].key, READER_MAX_WORD, "%s", key);
     memcpy(r->sight[h].lab, lab, (size_t)len);
     r->sight[h].len = len;
     return 0;
@@ -152,12 +173,9 @@ static void read_rules(const Reader *r, const char *w, int len, int *out) {
 
 /* Sound out a word: out[i] = the class index of letter i. Returns letters read. */
 int reader_read_word(const Reader *r, const char *word, int *out) {
-    char w[READER_MAX_WORD];
-    int len = 0;
-    for (const char *p = word; *p && len < READER_MAX_WORD - 1; p++)
-        if (isalpha((unsigned char)*p)) w[len++] = (char)tolower((unsigned char)*p);
-    w[len] = 0;
-    const ReaderMemory *m = sight_find(r, w);
+    char key[READER_MAX_WORD], w[READER_MAX_WORD];
+    int len = reader_word_key(word, key, w);
+    const ReaderMemory *m = sight_find(r, key);
     if (m) {                                     /* a sight word: known by heart */
         for (int i = 0; i < len; i++) out[i] = m->lab[i];
         return len;
@@ -395,39 +413,64 @@ static const char *say(const char *ph, int *stressed) {
     return "?";
 }
 
-/* "phone" → sounds "F OW1 N", say "FOHn" (the loud part in capitals) */
+/* Sounds "F OW1 N" → a respelling a kid can say, "FOHn": each sound in kid
+ * spelling, the loud syllable (stress 1) in capitals. */
+void reader_respell(const char *sounds, char *out, size_t n) {
+    char tmp[512], *save = NULL;
+    snprintf(tmp, sizeof tmp, "%s", sounds);
+    size_t nsp = 0;
+    out[0] = 0;
+    for (char *t = strtok_r(tmp, " ", &save); t; t = strtok_r(NULL, " ", &save)) {
+        int loud;
+        const char *s = say(t, &loud);
+        /* a loud vowel takes the consonants just before it with it */
+        if (loud) {
+            size_t k = nsp;
+            while (k > 0 && !strchr("aeiouy", out[k - 1]) && islower((unsigned char)out[k - 1])) k--;
+            for (size_t m = k; m < nsp; m++) out[m] = (char)toupper((unsigned char)out[m]);
+        }
+        for (const char *c = s; *c && nsp + 1 < n; c++)
+            out[nsp++] = loud ? (char)toupper((unsigned char)*c) : *c;
+        out[nsp] = 0;
+    }
+}
+
+/* Read a word and write its sounds, "F OW1 N" (silent letters dropped,
+ * pairs like K_S split). Returns the number of sounds. */
+int reader_sounds(const Reader *r, const char *word, char *out, size_t n) {
+    int cls[READER_MAX_WORD];
+    int len = reader_read_word(r, word, cls), count = 0;
+    size_t used = 0;
+    out[0] = 0;
+    for (int i = 0; i < len; i++) {
+        const char *lab = r->label[cls[i]];
+        if (strcmp(lab, "-") == 0) continue;
+        for (const char *c = lab; *c && used + 2 < n; c++) {
+            if (c == lab && used) out[used++] = ' ';
+            out[used++] = *c == '_' ? ' ' : *c;
+            if (*c == '_') count++;
+        }
+        count++;
+        out[used] = 0;
+    }
+    return count;
+}
+
+/* "phone" → "phone  →  FOHn", its sounds, and which letter made which. */
 void reader_say(const Reader *r, const char *word) {
     int out[READER_MAX_WORD];
     int len = reader_read_word(r, word, out);
-    char sounds[512] = "", spoken[256] = "", letters[1024] = "";
-    size_t ns = 0, nsp = 0, nl = 0;
+    char sounds[512], spoken[256], letters[1024] = "";
+    size_t nl = 0;
     int j = 0;
     for (int i = 0; i < len; i++) {
         while (word[j] && !isalpha((unsigned char)word[j])) j++;
-        const char *lab = r->label[out[i]];
         nl += snprintf(letters + nl, sizeof letters - nl, "%s%c→%s", i ? "  " : "",
-                       tolower((unsigned char)word[j++]), lab);
+                       tolower((unsigned char)word[j++]), r->label[out[i]]);
         if (nl >= sizeof letters) nl = sizeof letters - 1;
-        if (strcmp(lab, "-") == 0) continue;     /* silent letter */
-        char tmp[READER_LABEL_LEN];
-        snprintf(tmp, sizeof tmp, "%s", lab);
-        char *save = NULL;   /* strtok_r: the caller may be mid-strtok */
-        for (char *t = strtok_r(tmp, "_", &save); t; t = strtok_r(NULL, "_", &save)) {
-            int loud;
-            const char *s = say(t, &loud);
-            ns += snprintf(sounds + ns, sizeof sounds - ns, "%s%s", ns ? " " : "", t);
-            if (ns >= sizeof sounds) ns = sizeof sounds - 1;
-            /* a loud vowel takes the consonants just before it with it */
-            if (loud) {
-                size_t k = nsp;
-                while (k > 0 && !strchr("aeiouy", spoken[k - 1]) && islower((unsigned char)spoken[k - 1])) k--;
-                for (size_t m = k; m < nsp; m++) spoken[m] = (char)toupper((unsigned char)spoken[m]);
-            }
-            for (const char *c = s; *c && nsp < sizeof spoken - 1; c++)
-                spoken[nsp++] = loud ? (char)toupper((unsigned char)*c) : *c;
-            spoken[nsp] = 0;
-        }
     }
+    reader_sounds(r, word, sounds, sizeof sounds);
+    reader_respell(sounds, spoken, sizeof spoken);
     printf("  %s  →  %s\n", word, spoken);
     printf("  sounds:  %s\n", sounds);
     printf("  letters: %s\n", letters);
@@ -520,6 +563,12 @@ static int lex_find(const ReaderLex *x, const char *w, const char **prons, int m
     return n;
 }
 
+/* Is this word (lower case, apostrophes kept) in the dictionary? */
+int reader_known_word(const Reader *r, const char *key) {
+    const char *p[1];
+    return r->lex && lex_find(r->lex, key, p, 1) > 0;
+}
+
 int reader_lex_load(Reader *r, const char *path) {
     FILE *f = fopen(path, "rb");
     if (!f) return -1;
@@ -542,7 +591,7 @@ int reader_lex_load(Reader *r, const char *path) {
         char *paren = strchr(line, '(');                 /* "word(2)": another way to say it */
         if (paren) *paren = 0;
         int ok = line[0] != 0 && strlen(line) < READER_MAX_WORD;
-        for (char *c = line; *c && ok; c++) ok = *c >= 'a' && *c <= 'z';
+        for (char *c = line; *c && ok; c++) ok = (*c >= 'a' && *c <= 'z') || (*c == '\'' && c > line);
         /* Held back for the test? The same one-in-ten rule as
          * sandbox/reader_data.py (zlib crc32 % 10 == 0), done here in the
          * loop so loading stays one step on the bench, not 100,000. */
@@ -689,19 +738,16 @@ static void learn_word(Reader *r, const char *w, int len, const unsigned char *l
 
 /* Read a word, check it against the dictionary, fix it if wrong. */
 ReadCheck reader_check(Reader *r, const char *word, int verbose) {
-    char w[READER_MAX_WORD];
-    int len = 0;
-    for (const char *p = word; *p && len < READER_MAX_WORD - 1; p++)
-        if (isalpha((unsigned char)*p)) w[len++] = (char)tolower((unsigned char)*p);
-    w[len] = 0;
+    char key[READER_MAX_WORD], w[READER_MAX_WORD];
+    int len = reader_word_key(word, key, w);
     r->seen++;
     const char *prons[8];
-    int np = (r->lex && len) ? lex_find(r->lex, w, prons, 8) : 0;
+    int np = (r->lex && len) ? lex_find(r->lex, key, prons, 8) : 0;
     if (np == 0) { r->unchecked++; return READ_UNCHECKED; }
 
     int out[READER_MAX_WORD];
     char mine[READER_MAX_WORD * 2][8], right[READER_MAX_WORD * 2][8];
-    reader_read_word(r, w, out);
+    reader_read_word(r, key, out);          /* key: its sight word, if any */
     int nm = sounds_of(r, out, len, mine, READER_MAX_WORD * 2);
     for (int p = 0; p < np; p++) {                       /* any way of saying it counts */
         int nr = split_sounds(prons[p], right, READER_MAX_WORD * 2), same = nr == nm;
@@ -719,14 +765,14 @@ ReadCheck reader_check(Reader *r, const char *word, int verbose) {
     /* Remember it whole (a sight word), and, gently, let the spelling
      * rules learn from it too: one small delta step on the wrong letters. */
     if (READER_RULE_LR > 0 && ensure_float(r) == 0) learn_word(r, w, len, lab, READER_RULE_LR);
-    int ok = sight_put(r, w, len, lab) == 0;
+    int ok = sight_put(r, key, w, len, lab) == 0;
     r->dirty = 1;
     if (ok) r->fixed++; else r->stuck++;
     MIMIR_PROBE("reader.fixed", r->fixed);
     if (verbose) {
         printf("  ✗ I said it wrong. The dictionary says %s.\n", prons[0]);
         printf("    %s Now:\n", ok ? "Remembered as a sight word." : "Sight-word memory is full.");
-        reader_say(r, w);
+        reader_say(r, key);
     }
     return ok ? READ_FIXED : READ_STUCK;
 }
@@ -795,7 +841,7 @@ int reader_sight_save(const Reader *r, const char *path) {
     for (uint32_t h = 0; r->sight && h <= r->sight_mask; h++) {
         const ReaderMemory *m = &r->sight[h];
         if (!m->len) continue;
-        fprintf(f, "%s\t", m->word);
+        fprintf(f, "%s\t", m->key);
         for (int i = 0; i < m->len; i++) fprintf(f, "%s%s", i ? " " : "", r->label[m->lab[i]]);
         fprintf(f, "\n");
     }
@@ -810,15 +856,16 @@ int reader_sight_load(Reader *r, const char *path) {
     while (fgets(line, sizeof line, f)) {
         char *save = NULL, *w = strtok_r(line, "\t", &save), *labs = strtok_r(NULL, "\t\n", &save);
         if (!w || !labs || strlen(w) >= READER_MAX_WORD) continue;
+        char key[READER_MAX_WORD], letters[READER_MAX_WORD];
         unsigned char lab[READER_MAX_WORD];
-        int k = 0, len = (int)strlen(w), ok = 1;
+        int k = 0, len = reader_word_key(w, key, letters), ok = 1;
         char *s2 = NULL;
         for (char *t = strtok_r(labs, " ", &s2); t && ok; t = strtok_r(NULL, " ", &s2)) {
             int c = class_of(r, t, 0);
             ok = c >= 0 && k < len;
             if (ok) lab[k++] = (unsigned char)c;
         }
-        if (ok && k == len && sight_put(r, w, len, lab) == 0) n++;
+        if (ok && k == len && sight_put(r, key, letters, len, lab) == 0) n++;
     }
     fclose(f);
     return n;
@@ -857,6 +904,7 @@ int reader_known_load(Reader *r, const char *tsv) {
         if (it[i].test) continue;
         ReaderMemory *m = &r->known[r->nknown++];
         memcpy(m->word, it[i].word, sizeof m->word);
+        memcpy(m->key, it[i].word, sizeof m->key);
         memcpy(m->lab, it[i].lab, sizeof m->lab);
         m->len = it[i].len;
     }

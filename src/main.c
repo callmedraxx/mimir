@@ -465,6 +465,62 @@ static void reader_command(Reader *reader, char *line) {
 }
 
 /*
+ * text_command — `take`, `take <file>`, `context ...`: taking in text and
+ * giving it back.  Called with the replay lock held (it uses the reader).
+ */
+static double now_seconds(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return ts.tv_sec + ts.tv_nsec * 1e-9;
+}
+
+static void text_command(TextContext *ctx, Reader *reader, char *line) {
+    if (strcmp(line, "take") == 0 || strncmp(line, "take ", 5) == 0) {
+        double t0 = now_seconds();
+        uint32_t s0 = ctx->sentences;
+        int n;
+        if (line[4] == ' ') {
+            n = text_take_file(ctx, reader, line + 5);
+            if (n < 0) { printf("  Could not open %s\n\n", line + 5); return; }
+        } else {
+            /* Pasted text: every line until a line that is just "end". */
+            printf("  Paste or type the text. A line with just 'end' finishes it.\n");
+            size_t cap = 1 << 16, len = 0;
+            char *buf = malloc(cap), part[1 << 14];
+            if (!buf) return;
+            while (fgets(part, sizeof part, stdin)) {
+                if (strcmp(part, "end\n") == 0 || strcmp(part, "end") == 0 || strcmp(part, "end\r\n") == 0) break;
+                size_t pl = strlen(part);
+                if (len + pl + 1 > cap) {
+                    char *g = realloc(buf, cap * 2);
+                    if (!g) break;
+                    buf = g;
+                    cap *= 2;
+                }
+                memcpy(buf + len, part, pl);
+                len += pl;
+            }
+            n = text_take(ctx, reader, buf, len);
+            free(buf);
+        }
+        double dt = now_seconds() - t0;
+        printf("\n  Read %d tokens, %u sentences, in %.3f s (%.0f tokens/s).\n",
+               n, ctx->sentences - s0, dt, dt > 0 ? n / dt : 0.0);
+        text_summary(ctx);
+        printf("  Try: context show %u    context find <word>\n\n", s0 + 1);
+        return;
+    }
+    const char *sub = line[7] == ' ' ? line + 8 : "";   /* "context <sub>" */
+    printf("\n");
+    if (!*sub) text_summary(ctx);
+    else if (strncmp(sub, "show ", 5) == 0) text_show(ctx, (uint32_t)strtoul(sub + 5, NULL, 10));
+    else if (strncmp(sub, "find ", 5) == 0) text_find(ctx, sub + 5);
+    else if (strcmp(sub, "clear") == 0) { text_free(ctx); text_init(ctx); printf("  Context cleared.\n"); }
+    else printf("  Try: context / context show <n> / context find <word> / context clear\n");
+    printf("\n");
+}
+
+/*
  * run_cli — the interactive command loop for the whole brain.
  *
  * Handles two networks simultaneously:
@@ -477,7 +533,7 @@ static void reader_command(Reader *reader, char *line) {
  */
 static void run_cli(Network *gate_net, Network *abc_net,
                     AlphaVocab *vocab, ReplayState *replay,
-                    Hippocampus *hippo, Reader *reader) {
+                    Hippocampus *hippo, Reader *reader, TextContext *ctx) {
     printf("\n");
     printf("  +--------------------------------------------------+\n");
     printf("  |         MIMIR  Interactive CLI  v0.2.0          |\n");
@@ -490,7 +546,7 @@ static void run_cli(Network *gate_net, Network *abc_net,
            abc_net->n_inputs, network_neuron_count(abc_net), abc_net->n_outputs);
     printf("  Replay: %s\n\n", replay->running ? "running" : "stopped");
     printf("  Reader: %s\n", reader->ready ? "ready" : "not learned yet (type 'reader learn')");
-    printf("  Try: learn a apple    recall a    recite    quiz    read phone    reader book\n\n");
+    printf("  Try: learn a apple    recall a    quiz    read phone    take <file>    take\n\n");
 
     /* Gate training data used by 'reset' */
     static float reset_inputs[]  = {0,0, 0,1, 1,0, 1,1};
@@ -1224,6 +1280,15 @@ static void run_cli(Network *gate_net, Network *abc_net,
             continue;
         }
 
+        /* ── take / context: text in, context memory, under the replay lock ── */
+        if (strcmp(line, "take") == 0 || strncmp(line, "take ", 5) == 0 ||
+            strcmp(line, "context") == 0 || strncmp(line, "context ", 8) == 0) {
+            pthread_mutex_lock(&replay->lock);
+            text_command(ctx, reader, line);
+            pthread_mutex_unlock(&replay->lock);
+            continue;
+        }
+
         /* ── read / reader: the reader, under the replay lock ── */
         if (strncmp(line, "read ", 5) == 0 || strncmp(line, "reader ", 7) == 0) {
             pthread_mutex_lock(&replay->lock);
@@ -1262,6 +1327,14 @@ static void run_cli(Network *gate_net, Network *abc_net,
             printf("    reader dream             Fold sight words into the rules now (replay\n");
             printf("                             also dreams by itself every %d new sight words)\n", READER_DREAM_AFTER);
             printf("    reader self on/off       Check every word read against the dictionary\n");
+            printf("\n");
+            printf("  ── Text commands ───────────────────────────────────\n");
+            printf("    take <file>              Take in a whole text file (any size)\n");
+            printf("    take                     Paste text; a line with just 'end' finishes\n");
+            printf("    context                  What I hold: tokens, sentences, words\n");
+            printf("    context show <n>         Sentence n: as written, as I say it, tokens\n");
+            printf("    context find <word>      Every place a word is in my context\n");
+            printf("    context clear            Forget the text I took in\n");
             printf("\n");
             printf("  ── Replay commands ─────────────────────────────────\n");
             printf("    replay on/off            Start/stop background training\n");
@@ -1520,7 +1593,10 @@ int main(int argc, char *argv[]) {
     printf("\nStep 5: Interactive CLI -- Talk to the Brain\n");
     printf("----------------------------------------------\n");
 
-    run_cli(&brain, &abc_brain, &vocab, &replay, &hippo, &reader);
+    TextContext ctx;
+    text_init(&ctx);
+    run_cli(&brain, &abc_brain, &vocab, &replay, &hippo, &reader, &ctx);
+    text_free(&ctx);
     if (reader.dirty && reader_sight_save(&reader, READER_SIGHT_PATH) == 0)
         printf("  Reader: %d sight words saved to %s\n", reader.nsight, READER_SIGHT_PATH);
     if (reader.dreams_kept && reader_save(&reader, READER_MODEL_PATH) == 0)

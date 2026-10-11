@@ -1502,7 +1502,7 @@ void replay_pump(ReplayState *r, int steps);
 #define READER_RULE_LR      0.0f        /* also nudge the spelling rules: off, it costs
                                            unseen words (0.02: -0.4 points, 0.1: -1.6) */
 #endif
-#define READER_SIGHT_MAX    (1 << 16)   /* sight words it can hold */
+#define READER_SIGHT_MAX    (1 << 15)   /* sight words it can hold */
 #ifndef READER_DREAM_LR
 #define READER_DREAM_LR     0.01f       /* step size while dreaming (0.02: rules took 59 of
                                            130 sight words; 0.01: 26, but the most
@@ -1521,7 +1521,8 @@ void replay_pump(ReplayState *r, int steps);
 typedef struct ReaderLex ReaderLex;     /* the pronouncing dictionary */
 
 typedef struct {
-    char          word[READER_MAX_WORD];
+    char          word[READER_MAX_WORD];     /* letters only: "cant" */
+    char          key[READER_MAX_WORD];      /* as written, lower case: "can't" */
     unsigned char lab[READER_MAX_WORD];
     int           len;
 } ReaderMemory;                          /* a sight word: a fixed mistake, kept whole */
@@ -1556,6 +1557,10 @@ int  reader_align(Reader *r, const char *w, int len, char ph[][8], int np, unsig
 int  reader_features(const char *w, int len, int i, uint32_t *feats);
 int  reader_read_word(const Reader *r, const char *word, int *out);
 void reader_say(const Reader *r, const char *word);
+int  reader_sounds(const Reader *r, const char *word, char *out, size_t n);
+void reader_respell(const char *sounds, char *out, size_t n);
+int  reader_word_key(const char *in, char *key, char *letters);
+int  reader_known_word(const Reader *r, const char *key);
 int  reader_learn(Reader *r, const char *tsv, int epochs);
 int  reader_test(const Reader *r, const char *tsv);
 void reader_speed(const Reader *r);
@@ -1569,6 +1574,54 @@ int  reader_dream(Reader *r, int verbose);
 ReadCheck reader_check(Reader *r, const char *word, int verbose);
 void reader_book(Reader *r, const char *path);
 void reader_stats(const Reader *r);
+
+/* ════════════════════════════════════════════════════════════════════
+ * TEXT INTAKE AND CONTEXT MEMORY (src/text.c)
+ *
+ * Any text in (an instruction, a whole book): folded to plain letters,
+ * split into words, numbers, punctuation; numbers and abbreviations said
+ * as words; every spoken word given an ID (a token) and read once by the
+ * reader; all of it kept in order in a context memory that can be given
+ * back (a sentence) or searched (a word). No understanding yet.
+ * ════════════════════════════════════════════════════════════════════ */
+
+enum { TEXT_WORD, TEXT_LETTER, TEXT_PUNCT, TEXT_SUFFIX };
+
+typedef struct {
+    char          word[READER_MAX_WORD + 2];  /* "school", "^b" (letter b), "," */
+    char          sounds[96];                 /* "S K UW1 L" (empty: no sound) */
+    uint32_t      count;                      /* times in the context */
+    unsigned char kind;                       /* TEXT_WORD / LETTER / PUNCT / SUFFIX */
+    unsigned char check;                      /* ReadCheck the first time it was read */
+} TextWord;
+
+typedef struct {
+    uint32_t      word;                       /* TextWord id: the token */
+    uint32_t      src;                        /* where it came from in the text */
+    uint16_t      len;                        /* how many bytes of it */
+    unsigned char kind;
+    unsigned char end;                        /* 1: last token of a sentence */
+} TextToken;
+
+typedef struct {
+    char      *src;                           /* every byte taken in, as given */
+    size_t     src_len, src_cap;
+    TextToken *tok;                           /* the context: tokens in order */
+    uint32_t   ntok, tok_cap;
+    TextWord  *voc;                           /* the vocabulary: token id → word */
+    uint32_t   nvoc, voc_cap;
+    uint32_t  *slot, mask;                    /* word → id (open addressing) */
+    uint32_t   sentences, spoken;
+    long       fixed, unchecked;              /* new words fixed / not checkable */
+} TextContext;
+
+void text_init(TextContext *t);
+void text_free(TextContext *t);
+int  text_take(TextContext *t, Reader *r, const char *text, size_t n);
+int  text_take_file(TextContext *t, Reader *r, const char *path);
+void text_summary(const TextContext *t);
+void text_show(const TextContext *t, uint32_t sentence);
+void text_find(const TextContext *t, const char *word);
 
 /* ── Bench probes (browser build) ─────────────────────────────────────
  * MIMIR_PROBE("name", value) shows a live number on this function's chip in
