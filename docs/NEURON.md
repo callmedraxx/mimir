@@ -1,266 +1,246 @@
-# The Mimir neuron — spec, v0.1 (for review)
+# The Mimir neuron — spec, v0.2 (for review)
 
-One brick that everything in Mimir is built from: the reader, word meanings,
-word order, the context window, the gist, and later the gate and ABC brains.
-Every neuron can **store something**, **connect to any other neuron**, **stay
-active for a while**, **learn locally**, and is **born, matures, commits or
-dies** (neurogenesis everywhere). Status: design only; nothing below is built.
+One kind of neuron that everything in Mimir is built from. **As in the
+brain, a neuron holds no information. Information lives in the synapses:
+which neurons are connected, and how strongly.** A word, a sound pattern, an
+event or a memory is an **assembly**: a group of neurons that fire together
+because of the synapses between them. Status: design only; nothing below is
+built.
+
+> v0.1 put a label and 1,024 content bits inside each neuron. The owner
+> asked for the brain's way instead (2026-10-11): neurons only have state;
+> knowledge is in the synapses. The 1,024 content bits of v0.1 become 1,024
+> neurons, and "which bits are on" becomes "which neurons are in the
+> assembly".
 
 ## 1. What a neuron is today (for comparison)
 
-`Neuron` in `src/mimir.h`: a perceptron unit with a lifecycle.
+`Neuron` in `src/mimir.h`: a perceptron unit with a lifecycle,
+`output = activation(bias + Σ weightᵢ × inputᵢ) × maturity`, connected
+all-to-all to the layer before, fixed when the layer is made. Gate brain 23,
+ABC brain 282; reader, context, meanings and gist use tables, not neurons.
 
-```
-output = activation(bias + Σ weightᵢ × inputᵢ) × maturity
-```
+## 2. The rule
 
-* ~64 bytes of state + 4 bytes (or 1 bit, HDC) per input weight.
-* Connects only to every neuron of the layer before it, fixed when the layer
-  is made. No links inside its layer, none backwards, none to anything named.
-* Stores nothing you can point at: knowledge is smeared across its weights.
-* No sense of time beyond an activity average.
-* Lifecycle dormant → immature → mature → committed, apoptosis by low
-  activity; growth only when layer training stalls.
-* In use: gate brain 23 (12 dormant, never woken), ABC brain 282 (256 frozen).
-  Reader, context, meanings, gist: 0 neurons (tables and vectors).
+* A **neuron** has only **state**: how active it is now, how excitable it is,
+  how old, how mature, its place in its lifecycle. No label, no content, no
+  payload. Two neurons of the same area are interchangeable until their
+  synapses make them different.
+* A **synapse** joins one neuron's axon to another neuron's dendrite. It has a
+  **strength** and a **type** (excitatory, inhibitory, modulatory). The
+  sending neuron owns it (it is part of its axon); the receiving neuron sees it
+  as an input on its dendrites.
+* **Information = the set of synapses and their strengths.** Learning changes
+  synapses (and grows or removes them, and recruits new neurons). Nothing
+  else is learned.
 
-Good pattern detector, not a memory unit. The new neuron is a memory unit
-that can also detect patterns.
+## 3. Areas: structure, not information
 
-## 2. The new neuron in one picture
+Neurons are grouped into **areas**, like brain regions. An area says where a
+neuron sits and what it can connect to, as anatomy does; it holds no
+knowledge.
 
-```
-            synapses in (any neuron)             synapses out (any neuron)
-   word "school" ──part-of──►  ┌───────────────┐ ──next──►  event #4,812
-   word "boy"    ──part-of──►  │ EVENT #4,811  │ ──source─► text bytes 9,120..9,177
-   event #4,810  ──next────►   │ content: 1024 │
-                               │ bits (HDC)    │   activation 0.62, fading
-                               │ committed     │   born at tick 51,033
-                               └───────────────┘   fired 7 times
-```
-
-A neuron **stands for one thing** (a letter group, a sound, a word, an event,
-an image...). What it stands for is in three places:
-
-1. its **label** (text, if it has one: "school"),
-2. its **content**: a binary pattern of D bits (hyperdimensional), so two
-   neurons can be compared by how many bits differ,
-3. its **synapses**: what it is connected to, how strongly, and how.
-
-This is closer to a **cell assembly** (a small group of real neurons that
-fire together for one thing; the "concept cells" found in the human
-medial temporal lobe fire for single people or places) than to one biological cell.
-That is deliberate: one Mimir neuron = one meaningful unit, cheap enough to
-have millions.
-
-## 3. Memory layout (fixed sizes, contiguous, fast)
-
-All neurons live in one **pool** of parallel arrays (struct of arrays), so
-hot loops touch only what they need and the phone's caches stay full.
-
-### 3.1 Per neuron: `NeuronMeta`, 32 bytes
-
-| field | type | bytes | meaning |
-|---|---|---|---|
-| `label` | u32 | 4 | offset into the label text arena (0 = no label) |
-| `syn` | u32 | 4 | first synapse in the synapse arena |
-| `nsyn` | u16 | 2 | synapses in use |
-| `capsyn` | u16 | 2 | synapse block size (a power of two) |
-| `kind` | u8 | 1 | what sort of thing: letter group, sound, word, event, image… |
-| `state` | u8 | 1 | free, newborn, mature, committed (§6) |
-| `maturity` | u8 | 1 | 0–255; output is scaled by it while newborn |
-| `flags` | u8 | 1 | kind-specific bits |
-| `born` | u32 | 4 | clock tick when born |
-| `last` | u32 | 4 | clock tick when it last fired (for fading, §5) |
-| `uses` | u32 | 4 | times it has fired (for maturing, committing, pruning) |
-| `value` | u32 | 4 | small payload: a sound class, a text offset, a count |
-
-Plus, in their own arrays:
-
-* `act[N]`: activation, 16-bit fixed point (2 bytes), the hottest field.
-* `content[N][D/64]`: D bits. D is set **per kind** and per device profile:
-  0 for kinds that need no content (sounds), 256–1024 for words and events.
-  1024 bits = 128 bytes.
-
-### 3.2 Per synapse: 8 bytes
-
-| field | type | bytes | meaning |
-|---|---|---|---|
-| `to` | u32 | 4 | the neuron it connects to |
-| `w` | i16 | 2 | strength, fixed point (negative = inhibits) |
-| `kind` | u8 | 1 | how: part-of, next, says (letter group → sound), associates, cue, source |
-| `age` | u8 | 1 | nights since last strengthened (for pruning) |
-
-A neuron's synapses sit together in one block of the **synapse arena**
-(blocks of 4, 8, 16… synapses, with free lists per size). Growing past the
-block moves the list to the next size up. Relations that are read both ways
-(word ↔ event) are stored as a synapse in each direction.
-
-### 3.3 Cost per neuron
-
-| kind | meta | content | typical synapses (estimate) | total |
-|---|---|---|---|---|
-| letter group (reader) | 32 B | 0 | ~3 to sounds: 24 B | ~58 B |
-| word | 32 B | 128 B | ~40 associates: 320 B | ~480 B |
-| event (context) | 32 B | 128 B | its ~8 words + next + source: ~80 B | ~240 B |
-
-## 4. Finding a neuron: recognise or give birth
-
-Every time something comes in, Mimir asks: *do I already have a neuron for
-this?*
-
-* **Labelled things** (letter groups, words): exact lookup, label → neuron, in
-  a hash table. Miss → birth.
-* **Unlabelled things** (events, image patterns): compare content with the
-  candidates (Hamming distance: XOR, then count bits; 1024 bits are 16
-  machine words) and take the closest. If it is closer than the **novelty
-  threshold τ**, that neuron is *recognised* (it fires, it is strengthened).
-  Otherwise a new neuron is *born* for it. This keeps similar but different
-  memories apart (pattern separation, the job the brain's hippocampus is
-  thought to do with its newborn neurons).
-
-## 5. Firing: activation that fades, and only a few winners
-
-* A neuron is **activated** by input (it was just read) or through its
-  synapses: `act[target] += w × act[source]`, through synapses of the kinds
-  the current task uses.
-* Activation **fades** with time: `act × 2^(−(now − last) / half_life)`,
-  computed only when the neuron is next touched (lazy), so idle neurons cost
-  nothing. Half-life is per kind (events fade over a few events, words
-  faster).
-* **Only a few win** (lateral inhibition, k-winners-take-all): within an area
-  (a kind) only the k most active stay active. **The workspace of 4 is
-  exactly this**: k = 4 among event neurons. Nothing else is needed to "hold
-  things in mind".
-* **Cost** is proportional to the neurons and synapses touched, never to the
-  number of neurons that exist. A million idle neurons cost nothing per token.
-
-## 6. Learning: local only, no backprop
-
-Three rules, all local to one synapse or one neuron:
-
-1. **Hebbian, three-factor**, on a synapse: when its two neurons are active
-   together, `Δw = η × act_pre × act_post × M`, where M is a modulator: +1
-   normally, larger on surprise, negative on a mistake (as the reader's fixes
-   are today). A synapse that does not exist is born the first time its two
-   neurons fire together (synaptogenesis).
-2. **Order (spike-timing)**: if A fired just *before* B, the `next` synapse
-   A → B is strengthened. This is word order and event order.
-3. **Content drift** (newborn neurons only): a newborn neuron's content moves
-   toward the bundle (majority vote) of the contents of the neurons it fires
-   with. That is how a new word's meaning forms from its context, the way
-   meanings form today. Committed neurons' content is frozen.
-
-**Homeostasis** keeps it stable: each neuron's outgoing weights are
-rescaled so their total stays bounded (synaptic scaling), so a word seen a
-million times does not drown everything else.
-
-## 7. Lifecycle: neurogenesis everywhere
-
-```
- free ──born──► NEWBORN ──used enough──► MATURE ──stable over 2 nights──► COMMITTED
-                  │                        │
-                  └──unused, out of room───┴──► free (pruned)
-```
-
-| step | when | what happens |
+| area | like | what its neurons do |
 |---|---|---|
-| **birth** | nothing recognises the input (§4) | take a free neuron; label and/or content set; maturity 0 |
-| **maturing** | each use | maturity rises; output is scaled by it, so a newborn cannot dominate |
-| **mature** | `uses` ≥ a per-kind count | full strength; synapses learn normally |
-| **commit** | mature and unchanged across two nights | content frozen; its synapses can still grow but not fall below a floor, so committed knowledge is not forgotten |
-| **pruning** | at night, when the device's budget for that kind is short | free the least used non-committed neurons and synapses (`age` high, `uses` low). Committed neurons are never pruned. |
+| **letter receptors** | retina / early visual cortex | one neuron per (letter, position in a 9-letter window): fires when that letter is there. Meaning fixed by wiring to the outside, as a retina cell's is by its place |
+| **text receptors** | — | punctuation, digits, word edges, the same way |
+| **letter-group area** | visual word form area | neurons that come to fire for letter combinations ("sch" at the start), through learned synapses from receptors |
+| **word area** | temporal cortex (meaning) | words as assemblies; meaning = which other assemblies they connect to |
+| **sound area (motor)** | speech motor cortex | one neuron per sound (162). Firing = saying that sound |
+| **event area** | hippocampus | each event read is a new sparse assembly bound to the word assemblies in it, and to the event before it |
+| **workspace** | prefrontal cortex | holds whatever few assemblies are most active (k-winners, k ≈ 4 events) |
 
-**Capacity is a device setting**, per kind: how many neurons, how many bits of
-content, how many synapses per neuron. A phone gets more than the browser
-bench; a PC more than a phone. When a kind is full, Mimir forgets its least
-useful newborns to make room. It never refuses to learn and never forgets
-committed things.
+Receptor and motor neurons are the only ones whose meaning is fixed in
+advance, and only by where they are wired, never by anything stored in them.
 
-## 8. Night (dream): consolidation
+## 4. Records (fixed sizes, contiguous, fast)
 
-The replay thread already dreams. With neurons, a night:
+### 4.1 Neuron: 24 bytes, state only
 
-1. **Normalises association synapses** (what PPMI does for meanings today:
-   strength = how much more together than chance).
-2. **Updates newborn content** from those synapses (meanings of new words).
-3. **Commits** neurons that were stable since the last night.
-4. **Prunes** where the device is short of room.
-5. **Checks before keeping** (as the reader's dream does): a fixed sample of
-   committed knowledge must not get worse, or the night is undone.
+| field | type | bytes | meaning |
+|---|---|---|---|
+| `act` | i16 | 2 | activation now (fixed point) |
+| `theta` | i16 | 2 | excitability threshold; rises when it fires a lot, falls when idle (homeostasis, as BCM today) |
+| `last` | u32 | 4 | clock tick it last fired (for fading) |
+| `born` | u32 | 4 | clock tick it was born |
+| `uses` | u32 | 4 | times it has fired |
+| `syn` | u32 | 4 | first synapse of its axon in the synapse arena |
+| `nsyn` | u16 | 2 | synapses in use (block size is the next power of two) |
+| `area` | u8 | 1 | which area it sits in (anatomy) |
+| `life` | u8 | 1 | free, newborn, mature, committed; maturity in the top bits |
+
+### 4.2 Synapse: 8 bytes, where the information is
+
+| field | type | bytes | meaning |
+|---|---|---|---|
+| `to` | u32 | 4 | the neuron it reaches |
+| `w` | i16 | 2 | strength (fixed point) |
+| `type` | u8 | 1 | excitatory, inhibitory, modulatory; fast or slow (for order) |
+| `trace` | u8 | 1 | how recently it was used (eligibility for learning, age for pruning) |
+
+A neuron's axon is one block of synapses in the arena (blocks of 4, 8, 16…
+with free lists). Each neuron's outgoing synapses are capped per area (a
+device setting), keeping the strongest.
+
+### 4.3 What things cost
+
+| thing | as neurons and synapses | memory |
+|---|---|---|
+| a word | an assembly of ~32 neurons in the word area, ~100 synapses each (into letter groups, to other words, to sounds) | ~25 KB for its synapses, shared with other words |
+| an event | a new sparse assembly of ~16 neurons in the event area, bound to the words in it and to the event before | ~16 neurons × ~40 synapses ≈ 5 KB |
+| a million tokens of context (≈60,000 events) | event assemblies and their synapses | estimate 100–300 MB: **more than v0.1's ~20 MB**, the price of storing memories the brain's way. Event assemblies are reused when events repeat, and pruned when the device is full (§7). To be measured. |
+
+The original text stays **outside the brain**, as the page on the desk
+(today's context bytes), so a sentence can always be quoted exactly. Brains
+do the same: they look at the page again.
+
+## 5. Firing
+
+* **Input**: receptor neurons are set by what is read (letter "s" at window
+  position −1 fires).
+* **Spreading**: a firing neuron adds `w × act` to every neuron its axon
+  reaches. Inhibitory synapses subtract.
+* **Fading**: `act × 2^(−(now − last) / half_life)`, computed lazily when a
+  neuron is touched; idle neurons cost nothing. Half-life per area (events
+  last longer than letter groups).
+* **Threshold and winners**: within an area, only the k most active neurons
+  above their `theta` fire (lateral inhibition, k-winners-take-all). This is
+  what keeps assemblies sparse and the workspace at ~4.
+* **Cost** is proportional to synapses walked, never to how many neurons
+  exist.
+
+## 6. Recognise, complete, or recruit
+
+When input arrives, activation spreads up the areas.
+
+* **Recognised**: an assembly fires strongly (enough of its neurons above
+  threshold). That is Mimir "knowing" the thing; there is nothing to look up.
+* **Completed**: a partial cue (one word of an event, a misspelt word) lights
+  part of an assembly, and the synapses inside the assembly light the rest
+  (pattern completion, as hippocampal area CA3 is thought to do). This is
+  cued recall.
+* **New**: nothing fires strongly. **Recruit**: take k newborn neurons in that
+  area (neurogenesis), and grow synapses from the currently active inputs to
+  them and among them (one-shot Hebbian binding). They are now the assembly
+  for this new thing. Fresh neurons for new memories keep them from
+  overwriting old ones (pattern separation, the job adult neurogenesis is
+  thought to do in the hippocampus).
+
+## 7. Learning and lifecycle
+
+**Learning (all local, no backprop):**
+
+1. **Hebbian, three-factor**: `Δw = η × pre × post × M`. M is a modulator:
+   +1 normally, larger on surprise, negative after a mistake (the reader's
+   fixes today). Synapses that do not exist are grown when their two neurons
+   fire together.
+2. **Order**: a synapse from an assembly that fired just *before* another
+   strengthens (spike-timing). Word order and event order are these
+   synapses.
+3. **Homeostasis**: each neuron's outgoing strengths are rescaled to a
+   bounded total, and `theta` follows its firing rate, so frequent words
+   do not drown everything else.
+
+**Lifecycle (neurogenesis everywhere):**
+
+```
+ free ──recruited──► NEWBORN ──fires enough──► MATURE ──stable 2 nights──► COMMITTED
+                       │                         │
+                       └──unused, room short─────┴──► free (pruned, synapses removed)
+```
+
+* Newborn neurons fire weakly (maturity scales their output) and learn fast.
+* Committed neurons' synapses do not weaken below a floor: committed
+  knowledge is not forgotten. They are never pruned.
+* Synapses are pruned at night if weak and unused (`trace`), newest first.
+* **Capacity is a device setting** per area: neurons, synapses per neuron.
+  Full area → prune least-used newborns. Never refuse to learn.
+
+## 8. Night (dream)
+
+1. Replay the day's events (re-activate their assemblies) so the word area
+   learns from them slowly (the hippocampus teaching the cortex).
+2. Normalise association synapses (what PPMI does for meanings today).
+3. Commit stable assemblies; prune where room is short.
+4. Check before keeping: a fixed sample of committed knowledge must not get
+   worse, or the night is undone (as the reader's dream does today).
 
 ## 9. Everything built from it
 
-| today | as neurons |
+| today | brain-exact |
 |---|---|
-| **Reader** table: 32,768 hashed rows shared by many letter groups (the cause of the forgetting we fought) | one **letter-group neuron** per letter group actually seen (592,123 in the training words; 159,966 seen 3+ times, the rest pruned when room is short), each with `says` synapses to the 162 **sound neurons**. Reading a letter = fire its 28 group neurons, sum onto sounds, the strongest sound wins. No sharing, so fixing one word cannot disturb another. |
-| **Sight words** | **word neurons** with ordered `says` synapses to sounds |
-| **Word meanings** (vectors in a file) | **word neurons**: content = meaning, `associates` synapses = the day's counts; born on first sight, so new words (Rumpelstiltskin) get a meaning while reading |
-| **Word order** (next build) | `next` synapses between word neurons (rule 2) |
-| **Context window** (token array) | one **event neuron** per event, born as it is read: `part-of` synapses to its word neurons in order (so the exact wording can be rebuilt), `next` to the following event, a `source` value pointing to the original text bytes (for case and punctuation) |
-| **Workspace of 4** | k-winners-take-all among event neurons |
-| **Cued recall** (word → last 8 events) | a word neuron's `part-of` synapses to events, strongest and most recent kept |
-| **Gist** (strength per event) | each event neuron's accumulated activation (`uses` and a strength value) |
-| **Gate and ABC brains** | later: their perceptron units become neurons whose synapses carry the weights (dense kinds); same lifecycle |
+| **Reader** table (hashed rows, shared, so fixes caused forgetting) | letter receptors → letter-group neurons (recruited for groups actually seen) → sound motor neurons. Reading a letter = its window fires receptors; the group neurons that fire drive the sounds; the strongest sound wins |
+| **Sight words** | a word assembly with strong order synapses to its sounds |
+| **Word meanings** (int8 vectors) | word assemblies; similar words share neurons. Learned by co-activation while reading and replay at night |
+| **Word order** | order synapses between word assemblies |
+| **Context window** | event assemblies, each bound to its words and to the event before; the page stays outside |
+| **Workspace of 4** | k-winners among event neurons |
+| **Cued recall** | pattern completion from a word cue |
+| **Gist** | event assemblies that stay active the longest, read out as which words their synapses reach |
+| **Gate and ABC brains** | their units become neurons and their weights synapses, last |
 
-## 10. Speed budget on the phone (estimates, to be measured)
+## 10. Reading a neuron (for people only)
 
-Measured today (S22 Ultra, War and Peace, 667,685 tokens): take in 1.15 M
-tokens/s on the prime core; gist 185 k tokens/s; together 160 k; little core
-together 20 k.
+A neuron has no name, so the bench works one out the way neuroscientists
+do:
 
-With neurons:
+* **receptive field**: what makes it fire (follow synapses backward to the
+  receptors: "fires for 'sch' at the start of a word");
+* **projective field**: what it makes fire (follow its axon forward: "drives
+  S, K");
+* **assembly**: the other neurons it fires with.
 
-* **Comparing meanings**: 1024-bit Hamming (16 × XOR + popcount, NEON CNT)
-  instead of a 256-float cosine. Estimated ~10 ns instead of ~70 ns.
-* **Cued recall**: walking a word neuron's synapses is a sequential read of
-  8-byte records.
-* **Estimate**: gist several times faster than today (most of its time is
-  the cosine), so take in + gist around 500 k tokens/s on the prime core and
-  60–100 k on a little core. The target stays: ≥ 10,000 tokens/s on the
-  slowest core, measured worst case.
-* **Memory**: about 20 MB per million tokens of context (event neurons,
-  their synapses, the original text), about what the context memory takes
-  today (21 MB per million).
+These names are computed for display. Mimir itself never uses them.
 
-## 11. How we build it (each step tested before the next)
+## 11. Speed budget on the phone (estimates, to be measured)
 
-1. **One neuron, alone, on the bench.** The pool, synapse arena, birth,
-   recognise-or-birth, firing with fading, k-winners, the three learning
-   rules, lifecycle, night, save and load. Tests for each, and a speed test
-   on the phone (neurons touched per second, synapses walked per second).
-   A bench view to look inside any neuron: content, synapses, lifecycle.
-2. **Context window + gist on neurons.** Must keep the gist test at least
-   at 13.3% and War and Peace at least as fast.
-3. **Meanings on word neurons**, new words born while reading. WordSim and
-   SimLex must not drop (the binary content must be checked first: §12).
-4. **Reader on letter-group neurons.** Unseen words ≥ 63.2%, and no
-   forgetting when fixing (the test we used for sight words).
-5. **Word order** (`next` synapses), then speaking (`say`).
-6. **Gate and ABC brains** onto neurons, last.
+Today (S22 Ultra, War and Peace, 667,685 tokens): take in + gist 160 k
+tokens/s on the prime core, 20 k on a little core.
 
-## 12. Risks, stated plainly
+Brain-exact, per word: ~32 assembly neurons × ~100 synapses ≈ 3,200
+synapse updates, plus letter-group firing for each letter, plus the event
+area. At ~1 ns a synapse read on the prime core: an estimated ~200–300 k
+words/s, ~30–50 k on a little core. Target unchanged: ≥ 10,000 tokens/s on
+the slowest core, worst case measured. Recognition by firing instead of a
+hash lookup is the biggest cost; it is the first thing to measure.
 
-* **Binary content may lose meaning.** Today's meanings are 256 int8 numbers.
-  Turning them into 1024 bits (keeping only each number's sign, in a random
-  projection) usually keeps most of the similarity, but this must be measured
-  on WordSim and SimLex before anything moves.
-* **One neuron per letter group needs room.** 160 k–600 k reader neurons is
-  ~10–35 MB. Fine on the phone; the bench uses a smaller budget.
-* **Capped synapse lists lose rare links.** A word like "said" connects to
-  thousands of events; keeping only the strongest and most recent drops some.
-  The gist test will show whether it matters.
-* **More moving parts than tables.** That is why step 1 is one neuron, alone,
-  fully tested, before anything is rebuilt on it.
+## 12. How we build it (each step tested before the next)
 
-## 13. Decisions for the owner
+1. **The neuron and synapse arena, alone, on the bench.** Firing, fading,
+   k-winners, recruiting, the three learning rules, lifecycle, night,
+   save/load. A view into any neuron: its receptive and projective fields.
+   Speed on the phone.
+2. **A small proof: assemblies.** Store 1,000 random patterns as
+   assemblies, recall each from half of it (pattern completion), keep
+   recalling the old ones after storing 10,000 more (no forgetting thanks to
+   new neurons). Capacity and speed measured.
+3. **Reader on neurons.** Unseen words ≥ 63.2%, no forgetting when fixing.
+4. **Meanings on word assemblies.** WordSim / SimLex not below today's.
+5. **Context window and gist on event assemblies.** Gist test ≥ 13.3%,
+   War and Peace speed measured.
+6. **Word order, then speaking.**
+7. **Gate and ABC brains**, last.
 
-1. **Content size per device.** Proposed: 1024 bits on phone and PC, 256 on
-   the browser bench.
-2. **Context window wording.** Proposed: rebuild exact words from event
-   neurons' synapses, and keep the original bytes only for case and
-   punctuation (so the page can always be quoted exactly).
-3. **When the device is full.** Proposed: forget the least used newborns,
+## 13. Risks, stated plainly
+
+* **Speed of recognition.** Firing through synapses costs more than a hash
+  lookup. Sparse assemblies and capped synapses keep it bounded; step 1
+  measures it.
+* **Interference.** Shared synapses let new learning disturb old memories:
+  the forgetting we already met in the reader. Answers: sparse assemblies,
+  recruiting new neurons for new things, consolidation at night, committed
+  floors. Step 2 tests exactly this.
+* **Memory for the context.** Storing events as assemblies costs more than a
+  token array (§4.3). The page stays outside; pruning keeps it within the
+  device.
+* **Harder to inspect.** Receptive and projective fields on the bench (§10).
+
+## 14. Decisions for the owner
+
+1. **Assembly size.** Proposed ~32 neurons a word, ~16 an event (sparse:
+   fast and low interference). Bigger is more robust, slower.
+2. **The page.** Proposed: keep the original text outside the brain (as a
+   page you look at again), everything understood inside. Brains do this.
+3. **When the device is full.** Proposed: prune the least used newborns,
    never committed ones, never refuse to learn.
-4. **Gate and ABC brains.** Proposed: move them onto neurons last (step 6),
-   so the reading work does not wait on them.
+4. **Gate and ABC brains.** Proposed: last.
