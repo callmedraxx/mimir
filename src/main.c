@@ -421,7 +421,7 @@ static void run_cli(Network *gate_net, Network *abc_net,
            abc_net->n_inputs, network_neuron_count(abc_net), abc_net->n_outputs);
     printf("  Replay: %s\n\n", replay->running ? "running" : "stopped");
     printf("  Reader: %s\n", reader->ready ? "ready" : "not learned yet (type 'reader learn')");
-    printf("  Try: learn a apple    recall a    recite    quiz    read phone\n\n");
+    printf("  Try: learn a apple    recall a    recite    quiz    read phone    reader book\n\n");
 
     /* Gate training data used by 'reset' */
     static float reset_inputs[]  = {0,0, 0,1, 1,0, 1,1};
@@ -1164,8 +1164,13 @@ static void run_cli(Network *gate_net, Network *abc_net,
             char buf[256];
             snprintf(buf, sizeof buf, "%s", line + 5);
             printf("\n");
-            for (char *w = strtok(buf, " "); w; w = strtok(NULL, " "))
+            for (char *w = strtok(buf, " "); w; w = strtok(NULL, " ")) {
                 reader_say(reader, w);
+                if (!reader->self_learn) continue;
+                ReadCheck c = reader_check(reader, w, 1);
+                if (c == READ_RIGHT) printf("  ✓ Matches my dictionary.\n");
+                if (c == READ_UNCHECKED) printf("  ? Not in my dictionary, so I cannot check it.\n");
+            }
             printf("\n");
             continue;
         }
@@ -1185,12 +1190,26 @@ static void run_cli(Network *gate_net, Network *abc_net,
                 printf("\n");
                 reader_test(reader, READER_DATA_PATH);
                 printf("\n");
+            } else if (strncmp(sub, "book", 4) == 0) {
+                const char *path = sub[4] == ' ' ? sub + 5 : "data/reader/books/alice.txt";
+                printf("\n");
+                reader_book(reader, path);
+                reader_stats(reader);
+                printf("\n");
+            } else if (strcmp(sub, "stats") == 0) {
+                printf("\n");
+                reader_stats(reader);
+                printf("\n");
+            } else if (strcmp(sub, "self on") == 0 || strcmp(sub, "self off") == 0) {
+                reader->self_learn = sub[6] == 'n' && reader->lex;
+                printf("  Checking and fixing while reading: %s\n\n",
+                       reader->self_learn ? "on" : reader->lex ? "off" : "off (no dictionary)");
             } else if (strcmp(sub, "speed") == 0) {
                 printf("\n");
                 reader_speed(reader);
                 printf("\n");
             } else {
-                printf("  Try: reader learn / reader test / reader speed\n\n");
+                printf("  Try: reader learn / test / speed / book / stats / self on|off\n\n");
             }
             continue;
         }
@@ -1220,6 +1239,9 @@ static void run_cli(Network *gate_net, Network *abc_net,
             printf("    reader learn             Learn to read from data/reader/aligned.tsv\n");
             printf("    reader test              Score on words it never learned from\n");
             printf("    reader speed             Letters and words read per second\n");
+            printf("    reader book [file]       Read a whole book, fixing mistakes as it goes\n");
+            printf("    reader stats             Words read, right first time, sight words\n");
+            printf("    reader self on/off       Check every word read against the dictionary\n");
             printf("\n");
             printf("  ── Replay commands ─────────────────────────────────\n");
             printf("    replay on/off            Start/stop background training\n");
@@ -1441,9 +1463,21 @@ int main(int argc, char *argv[]) {
     Reader reader;
     reader_init(&reader);
     if (reader_load(&reader, READER_MODEL_PATH) == 0)
-        printf("  Loaded %s: %d sounds, %d rows\n\n", READER_MODEL_PATH, reader.classes, READER_BUCKETS);
+        printf("  Loaded %s: %d sounds, %d rows\n", READER_MODEL_PATH, reader.classes, READER_BUCKETS);
     else
-        printf("  No reader yet. Type 'reader learn' to teach it.\n\n");
+        printf("  No reader yet. Type 'reader learn' to teach it.\n");
+    int lex_words = reader_lex_load(&reader, READER_LEX_PATH);
+    if (lex_words > 0) {
+        reader.self_learn = 1;
+        printf("  Dictionary: %d words to check myself against (held-back test words left out)\n", lex_words);
+    } else {
+        printf("  No dictionary (%s): I can read but not check myself.\n", READER_LEX_PATH);
+    }
+    if (reader.ready) {
+        int n = reader_sight_load(&reader, READER_SIGHT_PATH);
+        printf("  Sight words: %d\n", n > 0 ? n : 0);
+    }
+    printf("\n");
 
     /* --- Step 4: Replay thread --- */
     printf("Step 4: Starting Replay (Background Self-Training)\n");
@@ -1463,7 +1497,9 @@ int main(int argc, char *argv[]) {
     printf("----------------------------------------------\n");
 
     run_cli(&brain, &abc_brain, &vocab, &replay, &hippo, &reader);
-    reader_free(&reader);
+    if (reader.dirty && reader_sight_save(&reader, READER_SIGHT_PATH) == 0)
+        printf("  Reader: %d sight words saved to %s\n", reader.nsight, READER_SIGHT_PATH);
+    reader_close(&reader);
 
     /* Clean shutdown: stop replay thread before freeing memory */
     replay_stop(&replay);

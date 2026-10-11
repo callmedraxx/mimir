@@ -1493,6 +1493,25 @@ void replay_pump(ReplayState *r, int steps);
 #define READER_MODEL_PATH   "data/reader/reader.model"
 #define READER_DATA_PATH    "data/reader/aligned.tsv"
 
+#define READER_LEX_PATH     "data/reader/cmudict.dict"
+#ifndef READER_RULE_LR
+#define READER_RULE_LR      0.0f        /* also nudge the spelling rules: off, it costs
+                                           unseen words (0.02: -0.4 points, 0.1: -1.6) */
+#endif
+#define READER_SIGHT_MAX    (1 << 16)   /* sight words it can hold */
+#define READER_SIGHT_PATH   "data/reader/sight.words"
+
+typedef struct ReaderLex ReaderLex;     /* the pronouncing dictionary */
+
+typedef struct {
+    char          word[READER_MAX_WORD];
+    unsigned char lab[READER_MAX_WORD];
+    int           len;
+} ReaderMemory;                          /* a sight word: a fixed mistake, kept whole */
+
+/* What happened when the reader checked a word against its dictionary. */
+typedef enum { READ_UNCHECKED, READ_RIGHT, READ_FIXED, READ_STUCK } ReadCheck;
+
 typedef struct {
     int     classes;                                    /* sounds known */
     char    label[READER_MAX_CLASSES][READER_LABEL_LEN];/* "AH0", "K_S", "-" */
@@ -1500,10 +1519,20 @@ typedef struct {
     int8_t *q;                                          /* buckets × classes */
     float  *w;                                          /* float, while learning */
     int     ready;
+    /* learning on the fly */
+    ReaderLex   *lex;                                   /* NULL: cannot check itself */
+    int          self_learn;                            /* check and fix while reading */
+    ReaderMemory *sight;                                /* sight words: fixed mistakes, exact */
+    uint32_t     sight_mask;
+    int          nsight;
+    long         seen, right, fixed, stuck, unchecked;  /* since start-up */
+    int          dirty;                                 /* changed since last save */
 } Reader;
 
 void reader_init(Reader *r);
 void reader_free(Reader *r);
+void reader_close(Reader *r);
+int  reader_align(Reader *r, const char *w, int len, char ph[][8], int np, unsigned char *lab);
 int  reader_features(const char *w, int len, int i, uint32_t *feats);
 int  reader_read_word(const Reader *r, const char *word, int *out);
 void reader_say(const Reader *r, const char *word);
@@ -1512,6 +1541,12 @@ int  reader_test(const Reader *r, const char *tsv);
 void reader_speed(const Reader *r);
 int  reader_save(const Reader *r, const char *path);
 int  reader_load(Reader *r, const char *path);
+int  reader_lex_load(Reader *r, const char *path);
+int  reader_sight_save(const Reader *r, const char *path);
+int  reader_sight_load(Reader *r, const char *path);
+ReadCheck reader_check(Reader *r, const char *word, int verbose);
+void reader_book(Reader *r, const char *path);
+void reader_stats(const Reader *r);
 
 /* ── Bench probes (browser build) ─────────────────────────────────────
  * MIMIR_PROBE("name", value) shows a live number on this function's chip in

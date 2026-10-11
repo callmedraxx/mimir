@@ -83,6 +83,7 @@ void reader_init(Reader *r) {
     memset(r, 0, sizeof *r);
 }
 
+/* Frees the table only; the dictionary stays (see reader_close). */
 void reader_free(Reader *r) {
     free(r->q);
     free(r->w);
@@ -106,12 +107,51 @@ static int predict_letter(const Reader *r, const uint32_t *feats, int n) {
     return best;
 }
 
+/* ── sight words: mistakes it has fixed, remembered whole ──
+ * Open addressing on the word; NULL when the word is not one. */
+static uint32_t word_hash(const char *w) {
+    uint32_t h = 2166136261u;
+    for (; *w; w++) { h ^= (unsigned char)*w; h *= 16777619u; }
+    return h;
+}
+
+static const ReaderMemory *sight_find(const Reader *r, const char *w) {
+    if (!r->sight) return NULL;
+    for (uint32_t h = word_hash(w) & r->sight_mask; r->sight[h].len; h = (h + 1) & r->sight_mask)
+        if (strcmp(r->sight[h].word, w) == 0) return &r->sight[h];
+    return NULL;
+}
+
+static int sight_put(Reader *r, const char *w, int len, const unsigned char *lab) {
+    if (!r->sight) {
+        r->sight_mask = READER_SIGHT_MAX * 2 - 1;        /* never more than half full */
+        r->sight = calloc(r->sight_mask + 1, sizeof *r->sight);
+        if (!r->sight) return -1;
+    }
+    uint32_t h = word_hash(w) & r->sight_mask;
+    while (r->sight[h].len && strcmp(r->sight[h].word, w) != 0) h = (h + 1) & r->sight_mask;
+    if (!r->sight[h].len) {
+        if (r->nsight >= READER_SIGHT_MAX) return -1;
+        r->nsight++;
+    }
+    snprintf(r->sight[h].word, READER_MAX_WORD, "%s", w);
+    memcpy(r->sight[h].lab, lab, (size_t)len);
+    r->sight[h].len = len;
+    return 0;
+}
+
 /* Sound out a word: out[i] = the class index of letter i. Returns letters read. */
 int reader_read_word(const Reader *r, const char *word, int *out) {
     char w[READER_MAX_WORD];
     int len = 0;
     for (const char *p = word; *p && len < READER_MAX_WORD - 1; p++)
         if (isalpha((unsigned char)*p)) w[len++] = (char)tolower((unsigned char)*p);
+    w[len] = 0;
+    const ReaderMemory *m = sight_find(r, w);
+    if (m) {                                     /* a sight word: known by heart */
+        for (int i = 0; i < len; i++) out[i] = m->lab[i];
+        return len;
+    }
     uint32_t feats[READER_FEATS];
     for (int i = 0; i < len; i++) {
         int n = reader_features(w, len, i, feats);
@@ -428,4 +468,349 @@ int reader_load(Reader *r, const char *path) {
     if (!ok) { reader_free(r); return -1; }
     r->ready = 1;
     return 0;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+ * LEARNING ON THE FLY — the reader checks itself and fixes its mistakes
+ *
+ * Nobody teaches it word by word. It carries a pronouncing dictionary
+ * (CMUdict, ~105,000 words once the held-back ones are left out: what a
+ * word sounds like when someone says it). Every word it reads, it
+ * compares its own sounds with the dictionary. If they differ, it:
+ *   1. lines the right sounds up with the letters itself, using its own
+ *      beliefs to decide which letters are silent or make two sounds
+ *      (the best path through its scores: reader_align);
+ *   2. remembers the word whole, as a sight word, the way a child learns
+ *      "said" or "colonel": next time it is read from memory, exactly.
+ * The spelling-rule table is not changed: its rows are shared by many
+ * letter groups (hashing), so nudging them for one word costs others.
+ * Measured on Alice in Wonderland: nudging (READER_RULE_LR 0.02 to 0.1)
+ * cost 0.4 to 1.6 points of held-back words; sight words cost none.
+ * Words not in the dictionary it reads but cannot check.
+ *
+ * The 2,541 held-back test words are left out of the dictionary, so
+ * `reader test` still measures words it has never been corrected on.
+ * ════════════════════════════════════════════════════════════════════ */
+
+/* ── the dictionary: word → one or more pronunciations ── */
+
+struct ReaderLex {
+    char    *text;       /* "word\0PH PH PH\0" ... */
+    uint32_t *slot;      /* open addressing: offset+1 of the word, 0 = empty */
+    uint32_t  mask;
+    int       words;
+};
+
+/* FNV-1a of the word (reader_lex_load has the same loop in line). */
+static uint32_t lex_hash(const char *w) { return fnv(2166136261u, w, (int)strlen(w)); }
+
+/* Every pronunciation of word: calls back with each phoneme string. */
+static int lex_find(const ReaderLex *x, const char *w, const char **prons, int max) {
+    int n = 0;
+    for (uint32_t h = lex_hash(w) & x->mask; x->slot[h] && n < max; h = (h + 1) & x->mask) {
+        const char *e = x->text + x->slot[h] - 1;
+        if (strcmp(e, w) == 0) prons[n++] = e + strlen(e) + 1;
+    }
+    return n;
+}
+
+int reader_lex_load(Reader *r, const char *path) {
+    FILE *f = fopen(path, "rb");
+    if (!f) return -1;
+    fseek(f, 0, SEEK_END);
+    long size = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    ReaderLex *x = calloc(1, sizeof *x);
+    x->text = malloc((size_t)size + 2);
+    x->mask = (1u << 18) - 1;                        /* 262,144 slots */
+    x->slot = calloc(x->mask + 1, sizeof *x->slot);
+    if (!x->text || !x->slot) { fclose(f); free(x->text); free(x->slot); free(x); return -1; }
+    size_t used = 0;
+    char line[512];
+    while (fgets(line, sizeof line, f)) {
+        char *hash = strchr(line, '#');
+        if (hash) *hash = 0;
+        char *sp = strchr(line, ' ');
+        if (!sp) continue;
+        *sp = 0;
+        char *paren = strchr(line, '(');                 /* "word(2)": another way to say it */
+        if (paren) *paren = 0;
+        int ok = line[0] != 0 && strlen(line) < READER_MAX_WORD;
+        for (char *c = line; *c && ok; c++) ok = *c >= 'a' && *c <= 'z';
+        /* Held back for the test? The same one-in-ten rule as
+         * sandbox/reader_data.py (zlib crc32 % 10 == 0), done here in the
+         * loop so loading stays one step on the bench, not 100,000. */
+        uint32_t crc = 0xFFFFFFFFu;
+        for (const char *c = line; *c; c++) {
+            crc ^= (unsigned char)*c;
+            for (int k = 0; k < 8; k++) crc = (crc >> 1) ^ (0xEDB88320u & (0u - (crc & 1)));
+        }
+        if (!ok || (~crc) % 10 == 0) continue;
+        char *ph = sp + 1;
+        size_t pl = strcspn(ph, "\r\n");
+        while (pl && ph[pl - 1] == ' ') pl--;
+        ph[pl] = 0;
+        size_t wl = strlen(line);
+        if (used + wl + pl + 2 > (size_t)size) break;
+        uint32_t h = 2166136261u;                         /* lex_hash, in line */
+        for (const char *c = line; *c; c++) { h ^= (unsigned char)*c; h *= 16777619u; }
+        h &= x->mask;
+        while (x->slot[h]) h = (h + 1) & x->mask;
+        x->slot[h] = (uint32_t)used + 1;
+        memcpy(x->text + used, line, wl + 1);
+        memcpy(x->text + used + wl + 1, ph, pl + 1);
+        used += wl + pl + 2;
+        if (!paren) x->words++;
+        if ((uint32_t)x->words * 2 > x->mask) break;     /* keep the table half empty */
+    }
+    fclose(f);
+    r->lex = x;
+    return x->words;
+}
+
+/* Turn letters' classes into the sounds they make: "-" is silent, "K_S" is two. */
+static int sounds_of(const Reader *r, const int *cls, int len, char sounds[][8], int max) {
+    int n = 0;
+    for (int i = 0; i < len; i++) {
+        const char *lab = r->label[cls[i]];
+        if (strcmp(lab, "-") == 0) continue;
+        char tmp[READER_LABEL_LEN], *save = NULL;
+        snprintf(tmp, sizeof tmp, "%s", lab);
+        for (char *t = strtok_r(tmp, "_", &save); t && n < max; t = strtok_r(NULL, "_", &save))
+            snprintf(sounds[n++], 8, "%s", t);
+    }
+    return n;
+}
+
+static int split_sounds(const char *pron, char sounds[][8], int max) {
+    char tmp[256], *save = NULL;
+    snprintf(tmp, sizeof tmp, "%s", pron);
+    int n = 0;
+    for (char *t = strtok_r(tmp, " ", &save); t && n < max; t = strtok_r(NULL, " ", &save))
+        snprintf(sounds[n++], 8, "%s", t);
+    return n;
+}
+
+/* ── the float table, made on first need from the int8 one ── */
+
+static int ensure_float(Reader *r) {
+    if (r->w) return 0;
+    size_t N = (size_t)READER_BUCKETS * r->classes;
+    r->w = malloc(N * sizeof(float));
+    if (!r->w) return -1;
+    for (size_t i = 0; i < N; i++) r->w[i] = r->q[i] * r->scale;
+    return 0;
+}
+
+/* After learning, copy the changed rows back to int8 (same scale). */
+static void requantize_rows(Reader *r, const uint32_t *feats, int n) {
+    const int K = r->classes;
+    for (int f = 0; f < n; f++) {
+        const float *w = r->w + (size_t)feats[f] * K;
+        int8_t *q = r->q + (size_t)feats[f] * K;
+        for (int k = 0; k < K; k++) {
+            float v = w[k] / r->scale;
+            q[k] = (int8_t)(v > 127 ? 127 : v < -127 ? -127 : lrintf(v));
+        }
+    }
+}
+
+/* ── lining the right sounds up with the letters, by its own beliefs ──
+ * Each letter makes nothing ("-"), one sound, or two ("K_S"). Of all the
+ * ways to split the sounds over the letters, take the one its table
+ * likes best (sum of log-probabilities). Returns 0, or -1 if no split
+ * uses only sounds it knows. */
+int reader_align(Reader *r, const char *w, int len, char ph[][8], int np, unsigned char *lab) {
+    enum { MAXP = READER_MAX_WORD * 2 };
+    if (np > MAXP - 1) return -1;
+    const int K = r->classes;
+    int sil = class_of(r, "-", 0), one[MAXP], two[MAXP];
+    for (int j = 0; j < np; j++) {
+        one[j] = class_of(r, ph[j], 0);
+        char pair[READER_LABEL_LEN * 2];
+        snprintf(pair, sizeof pair, "%s_%s", ph[j], j + 1 < np ? ph[j + 1] : "");
+        two[j] = j + 1 < np ? class_of(r, pair, 0) : -1;
+    }
+    static float best[READER_MAX_WORD + 1][MAXP + 1];
+    static signed char step[READER_MAX_WORD + 1][MAXP + 1];
+    for (int i = 0; i <= len; i++)
+        for (int j = 0; j <= np; j++) best[i][j] = -1e30f;
+    best[0][0] = 0;
+    uint32_t feats[READER_FEATS];
+    float lp[READER_MAX_CLASSES];
+    for (int i = 0; i < len; i++) {
+        int n = reader_features(w, len, i, feats);
+        float m = -1e30f, sum = 0;
+        for (int k = 0; k < K; k++) {
+            float z = 0;
+            for (int f = 0; f < n; f++) z += r->q[(size_t)feats[f] * K + k];
+            lp[k] = z * r->scale;
+            if (lp[k] > m) m = lp[k];
+        }
+        for (int k = 0; k < K; k++) sum += expf(lp[k] - m);
+        float lz = m + logf(sum);
+        for (int j = 0; j <= np; j++) {
+            if (best[i][j] <= -1e29f) continue;
+            if (sil >= 0 && best[i][j] + lp[sil] - lz > best[i + 1][j])
+                best[i + 1][j] = best[i][j] + lp[sil] - lz, step[i + 1][j] = 0;
+            if (j < np && one[j] >= 0 && best[i][j] + lp[one[j]] - lz > best[i + 1][j + 1])
+                best[i + 1][j + 1] = best[i][j] + lp[one[j]] - lz, step[i + 1][j + 1] = 1;
+            if (j + 1 < np && two[j] >= 0 && best[i][j] + lp[two[j]] - lz > best[i + 1][j + 2])
+                best[i + 1][j + 2] = best[i][j] + lp[two[j]] - lz, step[i + 1][j + 2] = 2;
+        }
+    }
+    if (best[len][np] <= -1e29f) return -1;
+    for (int i = len, j = np; i > 0; i--) {
+        int s = step[i][j];
+        j -= s;
+        lab[i - 1] = (unsigned char)(s == 0 ? sil : s == 1 ? one[j] : two[j]);
+    }
+    return 0;
+}
+
+/* One delta-rule pass over the letters it reads wrong; the right ones are left alone. */
+static void learn_word(Reader *r, const char *w, int len, const unsigned char *lab, float lr) {
+    uint32_t feats[READER_FEATS];
+    int out[READER_MAX_WORD];
+    reader_read_word(r, w, out);
+    for (int i = 0; i < len; i++) {
+        if (out[i] == lab[i]) continue;
+        int n = reader_features(w, len, i, feats);
+        learn_letter(r->w, r->classes, feats, n, lab[i], lr);
+        requantize_rows(r, feats, n);
+    }
+}
+
+/* Read a word, check it against the dictionary, fix it if wrong. */
+ReadCheck reader_check(Reader *r, const char *word, int verbose) {
+    char w[READER_MAX_WORD];
+    int len = 0;
+    for (const char *p = word; *p && len < READER_MAX_WORD - 1; p++)
+        if (isalpha((unsigned char)*p)) w[len++] = (char)tolower((unsigned char)*p);
+    w[len] = 0;
+    r->seen++;
+    const char *prons[8];
+    int np = (r->lex && len) ? lex_find(r->lex, w, prons, 8) : 0;
+    if (np == 0) { r->unchecked++; return READ_UNCHECKED; }
+
+    int out[READER_MAX_WORD];
+    char mine[READER_MAX_WORD * 2][8], right[READER_MAX_WORD * 2][8];
+    reader_read_word(r, w, out);
+    int nm = sounds_of(r, out, len, mine, READER_MAX_WORD * 2);
+    for (int p = 0; p < np; p++) {                       /* any way of saying it counts */
+        int nr = split_sounds(prons[p], right, READER_MAX_WORD * 2), same = nr == nm;
+        for (int j = 0; j < nr && same; j++) same = strcmp(mine[j], right[j]) == 0;
+        if (same) { r->right++; return READ_RIGHT; }
+    }
+    /* Wrong: line up the first way of saying it, then fix those rows. */
+    unsigned char lab[READER_MAX_WORD];
+    int nr = split_sounds(prons[0], right, READER_MAX_WORD * 2);
+    if (reader_align(r, w, len, right, nr, lab) != 0) {
+        r->stuck++;
+        if (verbose) printf("  (cannot fix '%s': it needs a sound this reader has not got)\n", w);
+        return READ_STUCK;
+    }
+    /* Remember it whole (a sight word), and, gently, let the spelling
+     * rules learn from it too: one small delta step on the wrong letters. */
+    if (READER_RULE_LR > 0 && ensure_float(r) == 0) learn_word(r, w, len, lab, READER_RULE_LR);
+    int ok = sight_put(r, w, len, lab) == 0;
+    r->dirty = 1;
+    if (ok) r->fixed++; else r->stuck++;
+    MIMIR_PROBE("reader.fixed", r->fixed);
+    if (verbose) {
+        printf("  ✗ I said it wrong. The dictionary says %s.\n", prons[0]);
+        printf("    %s Now:\n", ok ? "Remembered as a sight word." : "Sight-word memory is full.");
+        reader_say(r, w);
+    }
+    return ok ? READ_FIXED : READ_STUCK;
+}
+
+void reader_stats(const Reader *r) {
+    long checked = r->seen - r->unchecked;
+    printf("  Since start-up: read %ld words, checked %ld against the dictionary\n", r->seen, checked);
+    if (checked)
+        printf("  Right first time %ld (%.1f%%), fixed %ld, could not fix %ld; %d sight words\n",
+               r->right, 100.0 * r->right / checked, r->fixed, r->stuck, r->nsight);
+}
+
+/* Read a text file from start to end, checking and fixing as it goes. */
+void reader_book(Reader *r, const char *path) {
+    FILE *f = fopen(path, "r");
+    if (!f) { printf("  Could not open %s\n", path); return; }
+    long seen0 = r->seen, right0 = r->right, unch0 = r->unchecked;
+    long blk_seen = 0, blk_right = 0, blk_unch = 0, n = 0;
+    char w[READER_MAX_WORD];
+    int len = 0, c;
+    printf("  Reading %s, checking every word and fixing mistakes as I go.\n", path);
+    printf("  %8s  %s\n", "words", "right first time (last 2,000 checked words)");
+    do {
+        c = fgetc(f);
+        if (c != EOF && isalpha(c)) {
+            if (len < READER_MAX_WORD - 1) w[len++] = (char)tolower(c);
+            continue;
+        }
+        if (len == 0) continue;
+        w[len] = 0;
+        len = 0;
+        if (strlen(w) == 1 && w[0] != 'a' && w[0] != 'i') continue;   /* the s of "Alice's" */
+        long s0 = r->seen, r0 = r->right, u0 = r->unchecked;
+        reader_check(r, w, 0);
+        n++;
+        blk_seen += r->seen - s0;
+        blk_right += r->right - r0;
+        blk_unch += r->unchecked - u0;
+        if (blk_seen - blk_unch >= 2000) {
+            printf("  %8ld  %5.1f%%\n", n, 100.0 * blk_right / (blk_seen - blk_unch));
+            MIMIR_PROBE("reader.right_first_time", 100.0 * blk_right / (blk_seen - blk_unch));
+            blk_seen = blk_right = blk_unch = 0;
+        }
+    } while (c != EOF);
+    fclose(f);
+    long checked = (r->seen - seen0) - (r->unchecked - unch0);
+    printf("  Done: %ld words, %ld checked, %.1f%% right first time.\n", r->seen - seen0, checked,
+           checked ? 100.0 * (r->right - right0) / checked : 0.0);
+}
+
+void reader_close(Reader *r) {
+    reader_free(r);
+    free(r->sight);
+    r->sight = NULL;
+    r->nsight = 0;
+    if (r->lex) { free(r->lex->text); free(r->lex->slot); free(r->lex); r->lex = NULL; }
+}
+
+/* Sight words as text, one per line: "school\tS K - UW1 - L". */
+int reader_sight_save(const Reader *r, const char *path) {
+    FILE *f = fopen(path, "w");
+    if (!f) return -1;
+    for (uint32_t h = 0; r->sight && h <= r->sight_mask; h++) {
+        const ReaderMemory *m = &r->sight[h];
+        if (!m->len) continue;
+        fprintf(f, "%s\t", m->word);
+        for (int i = 0; i < m->len; i++) fprintf(f, "%s%s", i ? " " : "", r->label[m->lab[i]]);
+        fprintf(f, "\n");
+    }
+    return fclose(f) == 0 ? 0 : -1;
+}
+
+int reader_sight_load(Reader *r, const char *path) {
+    FILE *f = fopen(path, "r");
+    if (!f) return -1;
+    char line[512];
+    int n = 0;
+    while (fgets(line, sizeof line, f)) {
+        char *save = NULL, *w = strtok_r(line, "\t", &save), *labs = strtok_r(NULL, "\t\n", &save);
+        if (!w || !labs || strlen(w) >= READER_MAX_WORD) continue;
+        unsigned char lab[READER_MAX_WORD];
+        int k = 0, len = (int)strlen(w), ok = 1;
+        char *s2 = NULL;
+        for (char *t = strtok_r(labs, " ", &s2); t && ok; t = strtok_r(NULL, " ", &s2)) {
+            int c = class_of(r, t, 0);
+            ok = c >= 0 && k < len;
+            if (ok) lab[k++] = (unsigned char)c;
+        }
+        if (ok && k == len && sight_put(r, w, len, lab) == 0) n++;
+    }
+    fclose(f);
+    return n;
 }
