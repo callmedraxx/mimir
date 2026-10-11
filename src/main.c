@@ -396,6 +396,75 @@ static const char *gate_name(int idx) {
  *   This lets you fine-tune one gate without disturbing the others.
  */
 /*
+ * reader_command — `read <words>` and `reader ...`.  Called with the replay
+ * lock held: the replay thread may be dreaming with the same reader.
+ */
+static void reader_command(Reader *reader, char *line) {
+    /* ── read <words...> — sound out each word ── */
+    if (strncmp(line, "read ", 5) == 0) {
+        if (!reader->ready) {
+            printf("  The reader has not learned yet. Type 'reader learn'.\n\n");
+            return;
+        }
+        char buf[256];
+        snprintf(buf, sizeof buf, "%s", line + 5);
+        printf("\n");
+        for (char *w = strtok(buf, " "); w; w = strtok(NULL, " ")) {
+            reader_say(reader, w);
+            if (!reader->self_learn) return;
+            ReadCheck c = reader_check(reader, w, 1);
+            if (c == READ_RIGHT) printf("  ✓ Matches my dictionary.\n");
+            if (c == READ_UNCHECKED) printf("  ? Not in my dictionary, so I cannot check it.\n");
+        }
+        printf("\n");
+        return;
+    }
+
+    /* ── reader learn / test / speed / save ── */
+    if (strncmp(line, "reader ", 7) == 0) {
+        const char *sub = line + 7;
+        if (strcmp(sub, "learn") == 0) {
+            printf("\n  Learning to read from %s (%d passes)...\n", READER_DATA_PATH, READER_EPOCHS);
+            if (reader_learn(reader, READER_DATA_PATH, READER_EPOCHS) == 0 &&
+                reader_save(reader, READER_MODEL_PATH) == 0)
+                printf("  Saved: %s\n", READER_MODEL_PATH);
+            printf("\n");
+        } else if (!reader->ready) {
+            printf("  The reader has not learned yet. Type 'reader learn'.\n\n");
+        } else if (strcmp(sub, "test") == 0) {
+            printf("\n");
+            reader_test(reader, READER_DATA_PATH);
+            printf("\n");
+        } else if (strncmp(sub, "book", 4) == 0) {
+            const char *path = sub[4] == ' ' ? sub + 5 : "data/reader/books/alice.txt";
+            printf("\n");
+            reader_book(reader, path);
+            reader_stats(reader);
+            printf("\n");
+        } else if (strcmp(sub, "dream") == 0) {
+            printf("\n");
+            reader_dream(reader, 1);
+            printf("\n");
+        } else if (strcmp(sub, "stats") == 0) {
+            printf("\n");
+            reader_stats(reader);
+            printf("\n");
+        } else if (strcmp(sub, "self on") == 0 || strcmp(sub, "self off") == 0) {
+            reader->self_learn = sub[6] == 'n' && reader->lex;
+            printf("  Checking and fixing while reading: %s\n\n",
+                   reader->self_learn ? "on" : reader->lex ? "off" : "off (no dictionary)");
+        } else if (strcmp(sub, "speed") == 0) {
+            printf("\n");
+            reader_speed(reader);
+            printf("\n");
+        } else {
+            printf("  Try: reader learn / test / speed / book / stats / self on|off\n\n");
+        }
+        return;
+    }
+}
+
+/*
  * run_cli — the interactive command loop for the whole brain.
  *
  * Handles two networks simultaneously:
@@ -1155,62 +1224,11 @@ static void run_cli(Network *gate_net, Network *abc_net,
             continue;
         }
 
-        /* ── read <words...> — sound out each word ── */
-        if (strncmp(line, "read ", 5) == 0) {
-            if (!reader->ready) {
-                printf("  The reader has not learned yet. Type 'reader learn'.\n\n");
-                continue;
-            }
-            char buf[256];
-            snprintf(buf, sizeof buf, "%s", line + 5);
-            printf("\n");
-            for (char *w = strtok(buf, " "); w; w = strtok(NULL, " ")) {
-                reader_say(reader, w);
-                if (!reader->self_learn) continue;
-                ReadCheck c = reader_check(reader, w, 1);
-                if (c == READ_RIGHT) printf("  ✓ Matches my dictionary.\n");
-                if (c == READ_UNCHECKED) printf("  ? Not in my dictionary, so I cannot check it.\n");
-            }
-            printf("\n");
-            continue;
-        }
-
-        /* ── reader learn / test / speed / save ── */
-        if (strncmp(line, "reader ", 7) == 0) {
-            const char *sub = line + 7;
-            if (strcmp(sub, "learn") == 0) {
-                printf("\n  Learning to read from %s (%d passes)...\n", READER_DATA_PATH, READER_EPOCHS);
-                if (reader_learn(reader, READER_DATA_PATH, READER_EPOCHS) == 0 &&
-                    reader_save(reader, READER_MODEL_PATH) == 0)
-                    printf("  Saved: %s\n", READER_MODEL_PATH);
-                printf("\n");
-            } else if (!reader->ready) {
-                printf("  The reader has not learned yet. Type 'reader learn'.\n\n");
-            } else if (strcmp(sub, "test") == 0) {
-                printf("\n");
-                reader_test(reader, READER_DATA_PATH);
-                printf("\n");
-            } else if (strncmp(sub, "book", 4) == 0) {
-                const char *path = sub[4] == ' ' ? sub + 5 : "data/reader/books/alice.txt";
-                printf("\n");
-                reader_book(reader, path);
-                reader_stats(reader);
-                printf("\n");
-            } else if (strcmp(sub, "stats") == 0) {
-                printf("\n");
-                reader_stats(reader);
-                printf("\n");
-            } else if (strcmp(sub, "self on") == 0 || strcmp(sub, "self off") == 0) {
-                reader->self_learn = sub[6] == 'n' && reader->lex;
-                printf("  Checking and fixing while reading: %s\n\n",
-                       reader->self_learn ? "on" : reader->lex ? "off" : "off (no dictionary)");
-            } else if (strcmp(sub, "speed") == 0) {
-                printf("\n");
-                reader_speed(reader);
-                printf("\n");
-            } else {
-                printf("  Try: reader learn / test / speed / book / stats / self on|off\n\n");
-            }
+        /* ── read / reader: the reader, under the replay lock ── */
+        if (strncmp(line, "read ", 5) == 0 || strncmp(line, "reader ", 7) == 0) {
+            pthread_mutex_lock(&replay->lock);
+            reader_command(reader, line);
+            pthread_mutex_unlock(&replay->lock);
             continue;
         }
 
@@ -1241,6 +1259,8 @@ static void run_cli(Network *gate_net, Network *abc_net,
             printf("    reader speed             Letters and words read per second\n");
             printf("    reader book [file]       Read a whole book, fixing mistakes as it goes\n");
             printf("    reader stats             Words read, right first time, sight words\n");
+            printf("    reader dream             Fold sight words into the rules now (replay\n");
+            printf("                             also dreams by itself every %d new sight words)\n", READER_DREAM_AFTER);
             printf("    reader self on/off       Check every word read against the dictionary\n");
             printf("\n");
             printf("  ── Replay commands ─────────────────────────────────\n");
@@ -1476,6 +1496,9 @@ int main(int argc, char *argv[]) {
     if (reader.ready) {
         int n = reader_sight_load(&reader, READER_SIGHT_PATH);
         printf("  Sight words: %d\n", n > 0 ? n : 0);
+        int k = reader_known_load(&reader, READER_DATA_PATH);
+        if (k > 0) printf("  Known words to dream with: %d\n", k);
+        reader.dreamed_upto = reader.nsight;     /* dream about new ones only */
     }
     printf("\n");
 
@@ -1490,6 +1513,7 @@ int main(int argc, char *argv[]) {
      */
     ReplayState replay;
     replay_init(&replay, &abc_brain, &vocab);
+    replay.reader = &reader;                     /* replay also dreams for the reader */
     replay_start(&replay);
 
     /* --- Step 5: Interactive CLI --- */
@@ -1499,6 +1523,8 @@ int main(int argc, char *argv[]) {
     run_cli(&brain, &abc_brain, &vocab, &replay, &hippo, &reader);
     if (reader.dirty && reader_sight_save(&reader, READER_SIGHT_PATH) == 0)
         printf("  Reader: %d sight words saved to %s\n", reader.nsight, READER_SIGHT_PATH);
+    if (reader.dreams_kept && reader_save(&reader, READER_MODEL_PATH) == 0)
+        printf("  Reader: what it dreamed saved to %s\n", READER_MODEL_PATH);
     reader_close(&reader);
 
     /* Clean shutdown: stop replay thread before freeing memory */

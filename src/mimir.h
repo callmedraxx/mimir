@@ -1434,6 +1434,10 @@ typedef struct {
     unsigned long    correct;    /* Tests where prediction matched expected     */
     unsigned long    corrected;  /* Tests that triggered a retraining burst    */
     unsigned long    committed;  /* Neurons committed since replay started     */
+
+    struct Reader   *reader;     /* The reader, dreamed for when it has new     */
+                                 /* sight words (NULL: no reader)              */
+    unsigned long    dreams;     /* Dreams started by replay                    */
 } ReplayState;
 
 /*
@@ -1499,6 +1503,19 @@ void replay_pump(ReplayState *r, int steps);
                                            unseen words (0.02: -0.4 points, 0.1: -1.6) */
 #endif
 #define READER_SIGHT_MAX    (1 << 16)   /* sight words it can hold */
+#ifndef READER_DREAM_LR
+#define READER_DREAM_LR     0.01f       /* step size while dreaming (0.02: rules took 59 of
+                                           130 sight words; 0.01: 26, but the most
+                                           known words right; 0.05: would forget) */
+#endif
+#ifndef READER_DREAM_PASSES
+#define READER_DREAM_PASSES 1
+#endif
+#ifndef READER_DREAM_REPEAT
+#define READER_DREAM_REPEAT 3           /* times each sight word comes up in a night */
+#endif
+#define READER_DREAM_CHECK_STEP 7       /* check a dream on every 7th known word */
+#define READER_DREAM_AFTER  20          /* replay dreams once this many new sight words */
 #define READER_SIGHT_PATH   "data/reader/sight.words"
 
 typedef struct ReaderLex ReaderLex;     /* the pronouncing dictionary */
@@ -1512,7 +1529,7 @@ typedef struct {
 /* What happened when the reader checked a word against its dictionary. */
 typedef enum { READ_UNCHECKED, READ_RIGHT, READ_FIXED, READ_STUCK } ReadCheck;
 
-typedef struct {
+typedef struct Reader {
     int     classes;                                    /* sounds known */
     char    label[READER_MAX_CLASSES][READER_LABEL_LEN];/* "AH0", "K_S", "-" */
     float   scale;                                      /* int8 → weight */
@@ -1522,6 +1539,9 @@ typedef struct {
     /* learning on the fly */
     ReaderLex   *lex;                                   /* NULL: cannot check itself */
     int          self_learn;                            /* check and fix while reading */
+    ReaderMemory *known;                                /* words it learned from */
+    int          nknown;
+    int          dreams, dreams_kept, dreamed_upto;     /* dreaming (reader_dream) */
     ReaderMemory *sight;                                /* sight words: fixed mistakes, exact */
     uint32_t     sight_mask;
     int          nsight;
@@ -1544,6 +1564,8 @@ int  reader_load(Reader *r, const char *path);
 int  reader_lex_load(Reader *r, const char *path);
 int  reader_sight_save(const Reader *r, const char *path);
 int  reader_sight_load(Reader *r, const char *path);
+int  reader_known_load(Reader *r, const char *tsv);
+int  reader_dream(Reader *r, int verbose);
 ReadCheck reader_check(Reader *r, const char *word, int verbose);
 void reader_book(Reader *r, const char *path);
 void reader_stats(const Reader *r);

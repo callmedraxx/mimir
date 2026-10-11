@@ -481,6 +481,22 @@ static int replay_step(ReplayState *r, ReplayCursor *k) {
     return 1;
 }
 
+/*
+ * Dreaming: when the reader has READER_DREAM_AFTER new sight words, replay
+ * runs a night for it (reader_dream): every known word once with the sight
+ * words woven in, kept only if no known word is lost.  Holds the lock, so
+ * the CLI waits for the dream to finish (about a second natively).
+ */
+static void replay_dream(ReplayState *r) {
+    struct Reader *rd = r->reader;
+    if (!rd || !rd->ready || rd->nsight - rd->dreamed_upto < READER_DREAM_AFTER) return;
+    pthread_mutex_lock(&r->lock);
+    printf("\n  [Replay] Dreaming about %d new sight words...\n", rd->nsight - rd->dreamed_upto);
+    reader_dream(rd, 1);
+    r->dreams++;
+    pthread_mutex_unlock(&r->lock);
+}
+
 #ifndef MIMIR_WASM
 static void *replay_thread_fn(void *arg) {
     ReplayState *r = (ReplayState *)arg;
@@ -489,6 +505,7 @@ static void *replay_thread_fn(void *arg) {
     while (r->running) {
         /* Sleep OUTSIDE the lock so the CLI thread is not blocked
          * waiting for the replay thread to finish sleeping.            */
+        replay_dream(r);
         if (replay_step(r, &k))
             usleep(REPLAY_SLEEP_US);
         else
@@ -504,6 +521,7 @@ static ReplayCursor wasm_cursor = { 0, REPLAY_SAVE_EVERY, 0 };
 
 void replay_pump(ReplayState *r, int steps) {
     if (!r->running) return;
+    replay_dream(r);
     for (int i = 0; i < steps; i++)
         if (!replay_step(r, &wasm_cursor)) break;
 }
@@ -571,5 +589,8 @@ void replay_status(const ReplayState *r) {
     printf("    Cycles:       %lu  (letter-tests performed)\n", c);
     printf("    Accuracy:     %.1f%%  (%lu / %lu correct)\n", acc, ok, c);
     printf("    Retrains:     %lu  (self-corrections made)\n", r->corrected);
+    if (r->reader)
+        printf("    Dreams:       %lu  (reader: %d kept of %d)\n", r->dreams,
+               r->reader->dreams_kept, r->reader->dreams);
     printf("    Sleep period: %d ms between tests\n\n", REPLAY_SLEEP_US / 1000);
 }

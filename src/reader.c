@@ -140,6 +140,16 @@ static int sight_put(Reader *r, const char *w, int len, const unsigned char *lab
     return 0;
 }
 
+/* Sound a word out by the spelling rules alone (no sight words).
+ * w is already lower-case letters only. */
+static void read_rules(const Reader *r, const char *w, int len, int *out) {
+    uint32_t feats[READER_FEATS];
+    for (int i = 0; i < len; i++) {
+        int n = reader_features(w, len, i, feats);
+        out[i] = predict_letter(r, feats, n);
+    }
+}
+
 /* Sound out a word: out[i] = the class index of letter i. Returns letters read. */
 int reader_read_word(const Reader *r, const char *word, int *out) {
     char w[READER_MAX_WORD];
@@ -152,11 +162,7 @@ int reader_read_word(const Reader *r, const char *word, int *out) {
         for (int i = 0; i < len; i++) out[i] = m->lab[i];
         return len;
     }
-    uint32_t feats[READER_FEATS];
-    for (int i = 0; i < len; i++) {
-        int n = reader_features(w, len, i, feats);
-        out[i] = predict_letter(r, feats, n);
-    }
+    read_rules(r, w, len, out);
     return len;
 }
 
@@ -672,7 +678,7 @@ int reader_align(Reader *r, const char *w, int len, char ph[][8], int np, unsign
 static void learn_word(Reader *r, const char *w, int len, const unsigned char *lab, float lr) {
     uint32_t feats[READER_FEATS];
     int out[READER_MAX_WORD];
-    reader_read_word(r, w, out);
+    read_rules(r, w, len, out);                  /* the rules, not the sight words */
     for (int i = 0; i < len; i++) {
         if (out[i] == lab[i]) continue;
         int n = reader_features(w, len, i, feats);
@@ -776,6 +782,9 @@ void reader_close(Reader *r) {
     free(r->sight);
     r->sight = NULL;
     r->nsight = 0;
+    free(r->known);
+    r->known = NULL;
+    r->nknown = 0;
     if (r->lex) { free(r->lex->text); free(r->lex->slot); free(r->lex); r->lex = NULL; }
 }
 
@@ -813,4 +822,136 @@ int reader_sight_load(Reader *r, const char *path) {
     }
     fclose(f);
     return n;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+ * DREAMING — folding sight words into the spelling rules
+ *
+ * While reading, a fixed word is kept whole (a sight word), which helps
+ * only that word. In a dream the reader practises its sight words against
+ * the spelling-rule table, so "school" can also help "schooling" and
+ * "stool". Each sight word is practised mixed in with words it already
+ * knew (interleaved, the way sleep replays old and new together), and
+ * only the letters the rules get wrong move.
+ *
+ * Changing the rules can make it forget, so a dream is checked before it
+ * is kept: on a fixed sample of words it learned from (never the held-back
+ * test words), the rules must read at least as many right as before.
+ * Otherwise the table is put back exactly as it was. Sight words stay
+ * either way, so a word it fixed is never lost.
+ * ════════════════════════════════════════════════════════════════════ */
+
+/* The words it learned from, kept to practise and to check a dream. */
+int reader_known_load(Reader *r, const char *tsv) {
+    Reader tmp;
+    reader_init(&tmp);
+    memcpy(tmp.label, r->label, sizeof r->label);
+    tmp.classes = r->classes;
+    int n = 0;
+    ReaderItem *it = load_items(&tmp, tsv, &n);
+    if (!it || tmp.classes != r->classes) { free(it); return -1; }
+    free(r->known);
+    r->known = malloc((size_t)n * sizeof *r->known);
+    r->nknown = 0;
+    for (int i = 0; r->known && i < n; i++) {
+        if (it[i].test) continue;
+        ReaderMemory *m = &r->known[r->nknown++];
+        memcpy(m->word, it[i].word, sizeof m->word);
+        memcpy(m->lab, it[i].lab, sizeof m->lab);
+        m->len = it[i].len;
+    }
+    free(it);
+    return r->nknown;
+}
+
+static int rules_read(const Reader *r, const ReaderMemory *m) {
+    int out[READER_MAX_WORD];
+    read_rules(r, m->word, m->len, out);
+    for (int i = 0; i < m->len; i++) if (out[i] != m->lab[i]) return 0;
+    return 1;
+}
+
+/* Words the rules read right: every READER_DREAM_CHECK_STEP-th known word. */
+static int check_known(const Reader *r, int *total) {
+    int ok = 0, n = 0;
+    for (int i = 0; i < r->nknown; i += READER_DREAM_CHECK_STEP, n++) ok += rules_read(r, &r->known[i]);
+    *total = n;
+    return ok;
+}
+
+static int rules_know_sight(const Reader *r) {
+    int ok = 0;
+    for (uint32_t h = 0; r->sight && h <= r->sight_mask; h++)
+        if (r->sight[h].len) ok += rules_read(r, &r->sight[h]);
+    return ok;
+}
+
+int reader_dream(Reader *r, int verbose) {
+    if (!r->ready || !r->nsight || !r->nknown) {
+        if (verbose) printf("  Nothing to dream about: %s.\n", !r->nsight ? "no sight words yet" : "no known words loaded");
+        return 0;
+    }
+    int total;
+    int known_before = check_known(r, &total);
+    int sight_before = rules_know_sight(r);
+    size_t N = (size_t)READER_BUCKETS * r->classes;
+    int8_t *backup = malloc(N);
+    if (!backup || ensure_float(r)) { free(backup); return 0; }
+    memcpy(backup, r->q, N);
+
+    /* One night: every known word once, in a shuffled order, with each
+     * sight word woven in READER_DREAM_REPEAT times. Every letter takes a
+     * full delta-rule step (as in reader_learn), at a small step size. */
+    int nsight = 0;
+    for (uint32_t h = 0; h <= r->sight_mask; h++) nsight += r->sight[h].len > 0;
+    int total_items = r->nknown + nsight * READER_DREAM_REPEAT;
+    const ReaderMemory **night = malloc((size_t)total_items * sizeof *night);
+    if (!night) { free(backup); return 0; }
+    int k = 0;
+    for (int i = 0; i < r->nknown; i++) night[k++] = &r->known[i];
+    for (int rep = 0; rep < READER_DREAM_REPEAT; rep++)
+        for (uint32_t h = 0; h <= r->sight_mask; h++)
+            if (r->sight[h].len) night[k++] = &r->sight[h];
+    static unsigned seed = 88172645u;
+    for (int i = total_items - 1; i > 0; i--) {
+        seed ^= seed << 13; seed ^= seed >> 17; seed ^= seed << 5;
+        int j = (int)(seed % (unsigned)(i + 1));
+        const ReaderMemory *t = night[i]; night[i] = night[j]; night[j] = t;
+    }
+    uint32_t feats[READER_FEATS];
+    for (int pass = 0; pass < READER_DREAM_PASSES; pass++)
+        for (int i = 0; i < total_items; i++) {
+            const ReaderMemory *m = night[i];
+            for (int j = 0; j < m->len; j++) {
+                int nf = reader_features(m->word, m->len, j, feats);
+                learn_letter(r->w, r->classes, feats, nf, m->lab[j], READER_DREAM_LR);
+                requantize_rows(r, feats, nf);
+            }
+        }
+    free(night);
+
+    int known_after = check_known(r, &total);
+    int sight_after = rules_know_sight(r);
+    int keep = known_after >= known_before;
+    r->dreams++;
+    if (keep) {
+        r->dreams_kept++;
+        r->dirty = 1;
+    } else {                                      /* it would forget: wake up unchanged */
+        memcpy(r->q, backup, N);
+        for (size_t i = 0; i < N; i++) r->w[i] = r->q[i] * r->scale;
+    }
+    free(backup);
+    r->dreamed_upto = r->nsight;
+    MIMIR_PROBE("reader.dream_kept", keep);
+    if (verbose) {
+        printf("  Dreamed: %d known words and %d sight words (each %dx), %d pass%s.\n",
+               r->nknown, r->nsight, READER_DREAM_REPEAT, READER_DREAM_PASSES, READER_DREAM_PASSES == 1 ? "" : "es");
+        printf("  Rules alone read %d of %d sight words: %d before the dream%s.\n",
+               sight_after, r->nsight, sight_before, keep ? "" : " (undone)");
+        printf("  Check on %d words it learned from: %d right before, %d after: %s\n",
+               total, known_before, known_after,
+               keep ? "kept the dream." : "it would forget, so the dream was undone.");
+    }
+    return keep;
 }
