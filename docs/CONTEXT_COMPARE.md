@@ -49,6 +49,69 @@ with the reasons.
 
 ---
 
-## Results
+## Results (2026-10-12)
 
-(not yet run)
+Harness: `sandbox/neurons/ctxwin.c` (A is today's text.c + gist.c, included
+unchanged; B streams the same text through the same intake). Checks: both
+cut War and Peace into the same 41,045 events; A's old gist score comes out
+at 13.3% again (120 words of page), as before.
+
+One change made after the first run, for **both**: a word's meaning norm is
+worked out once instead of on every use (identical numbers, faster). B also
+got a word → meaning map (4 B a word, counted in B's bytes). Scores were
+the same before and after.
+
+**The phone was not reachable** (adb "offline"; wireless debugging needs
+re-pairing), so speed is the droplet, one core, worst of 3. The phone binary
+is built and the run is ready (`ctxwin-android`).
+
+| cell | test | A: today's | B: neurons | winner |
+|---|---|---|---|---|
+| G1 | gist, 32 tales, F1 at 60 content words | 13.5% | 14.0% | tie (0.4 pt) |
+| R1 | recall from half an event's words, War and Peace | 97.4% | 92.4% | **A** |
+| F1 | find every event a word is in | 100% | 90.4% | **A** |
+| Q | quote an event exactly | 100% | 0% | **A** |
+| M1 | memory held after War and Peace | 11.3 MB (19.1 MB as allocated) | 1.13 MB | **B** (10×) |
+| M2 | memory peak, taking it in + gist | 58.6 MB | 1.93 MB | **B** (30×) |
+| S | speed, take in + gist (droplet, one core, worst of 3) | 64.9k tok/s | 53.0k tok/s | **A** (B 18% slower) |
+| S1/S2 | phone little / prime core | — | — | not run (phone offline) |
+
+**Count: A 4, B 2, 1 tie, phone speed pending.** Both are far over the
+10k gate on the droplet; the phone has to confirm it on the little core.
+
+### Why, as far as the numbers show
+
+* **Recall and find (A):** 10.3% of War and Peace's events have more than
+  12 content words, and B keeps only the first 12 (lean4's limit). 7.3% of
+  all content words are past that limit, so B cannot find them or give them
+  back. Find on rare words (≤20 events) is 89.2% and common words 91.5%:
+  the limit, not the 512-event cue cap, is the cost here.
+* **Quote (A):** B keeps no page and no glue words; it gives back the event's
+  content words, never the sentence as written.
+* **Memory (B):** A keeps every token (12 B) and every byte of the page, and
+  its gist builds a float meaning for every event of the book at once
+  (41,045 × 1 KB) plus a word index. B holds 38,924 event neurons (≈21 B
+  each) and its gist works on what is in mind: at the last page its parts
+  were 725 KB (mostly meaning parts on recalled candidates), at rest 2 KB
+  (the 64 gist events).
+* **Speed (A):** B does not keep a meaning per event, so every older event
+  that comes back as a candidate has its meaning rebuilt from its words:
+  894,386 times against A's 41,045. That is B's cost for holding 10× less.
+* **Gist (tie):** B merges repeated events into one neuron (a refrain such
+  as "fisherman went home to his wife" is one event that gathers strength
+  every time), which helps on tales built on repetition (Fisherman and his
+  Wife 25.6% vs 12.8%) and hurts on some others. Over 32 tales the
+  difference is under a point.
+
+Not scored: a question costs A a scan of its whole context (recall 4–10 ms,
+find 1–3 ms in War and Peace) and B one cue list (recall ~0.04 ms, find
+~0.001 ms). Who War and Peace is about: A "prince andrew princess man pierre
+mary", B "prince andrew oh chapter eighteen five" (B counts only its 64 gist
+events, and chapter headings got in). Neither gist of War and Peace is good;
+there is no human summary to score it against.
+
+B at 0.5 MB (not scored): 19,949 events kept, recall 67.1%, find 49.4%;
+peak 1.53 MB (the budget covers the neurons; the meaning parts, intake
+buffers and word map are on top).
+
+Results: `sandbox/neurons/results/ctx_*.txt`.

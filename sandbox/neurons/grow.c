@@ -181,6 +181,7 @@ static void g_idle(G *g, int ticks) { for (int i = 0; i < ticks; i++) { g->now++
 
 static double f1s(const int *a, int na, const int *b, int nb) { return f1(a, na, b, nb); }
 
+#ifndef GROW_NO_MAIN
 int main(int argc, char **argv) {
     if (argc < 5) { fprintf(stderr, "grow MODE BUDGET_MB BOOK NOVEL_BOOK\n"); return 1; }
     int mode = atoi(argv[1]); double mb = atof(argv[2]); size_t budget = (size_t)(mb * 1024 * 1024);
@@ -245,3 +246,4 @@ int main(int argc, char **argv) {
            mode ? "lean4+parts" : "lean4", mb, T1, T2, T3, T4, T5, words / ts, g_bytes(&g), b5_bytes(g.b), parts_bytes(&g), g.b->base.nev, committed_rehearsed);
     return 0;
 }
+#endif

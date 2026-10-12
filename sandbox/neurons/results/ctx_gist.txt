@@ -1,0 +1,40 @@
+tale (F1, 60 content words)              A       B    A 120w
+the_golden_bird                       9.7%   11.1%     11.7%   (events A 238, B neurons 232)
+hans_in_luck                         16.6%   16.6%     14.8%   (events A 218, B neurons 216)
+jorinda_and_jorindel                 18.1%   18.1%     15.1%   (events A 113, B neurons 112)
+the_travelling_musicians              6.7%    4.8%      6.8%   (events A 109, B neurons 109)
+the_twelve_dancing_princesses        16.1%   16.6%     13.6%   (events A 136, B neurons 136)
+the_fisherman_and_his_wife           12.8%   25.6%     13.3%   (events A 226, B neurons 187)
+the_frog_prince                       8.9%   10.9%     10.0%   (events A 96, B neurons 90)
+the_goose_girl                       11.9%   13.5%     14.7%   (events A 227, B neurons 205)
+rapunzel                             13.2%   10.0%     14.3%   (events A 116, B neurons 111)
+fundevogel                           11.0%   10.1%      7.7%   (events A 101, B neurons 92)
+the_valiant_little_tailor            10.8%   11.4%     11.8%   (events A 311, B neurons 306)
+hansel_and_gretel                    11.6%   10.6%     11.4%   (events A 281, B neurons 279)
+mother_holle                          7.8%    8.1%      9.1%   (events A 107, B neurons 105)
+rumpelstiltskin                      18.4%   17.7%     16.8%   (events A 115, B neurons 107)
+clever_elsie                         18.8%   16.8%     19.7%   (events A 147, B neurons 132)
+sweetheart_roland                    11.7%   10.0%     12.3%   (events A 137, B neurons 132)
+snowdrop                              6.7%    7.3%      6.4%   (events A 249, B neurons 237)
+the_white_snake                      17.5%   15.6%     16.1%   (events A 139, B neurons 137)
+the_wolf_and_the_seven_little_kids   23.7%   24.4%     23.7%   (events A 107, B neurons 103)
+the_queen_bee                        18.8%   18.8%     16.0%   (events A 78, B neurons 77)
+the_elves_and_the_shoemaker          11.1%   11.1%      8.3%   (events A 62, B neurons 62)
+the_juniper_tree                      9.9%   14.5%     12.3%   (events A 315, B neurons 272)
+the_four_clever_brothers             15.9%   16.9%     13.7%   (events A 147, B neurons 144)
+the_golden_goose                     11.8%   12.5%     11.8%   (events A 138, B neurons 136)
+the_water_of_life                    12.7%   15.4%     13.2%   (events A 244, B neurons 240)
+the_king_of_the_golden_mountain      11.3%   10.6%     14.1%   (events A 240, B neurons 238)
+the_salad                             9.7%    4.9%      9.7%   (events A 191, B neurons 191)
+the_story_of_the_youth_who_went_fo   13.7%   16.0%     12.9%   (events A 388, B neurons 367)
+king_grisly_beard                    13.6%   13.6%     13.8%   (events A 160, B neurons 156)
+iron_hans                            11.5%   11.5%     11.1%   (events A 331, B neurons 320)
+the_seven_ravens                     17.0%   18.3%     16.2%   (events A 90, B neurons 89)
+snow_white_and_rose_red              23.8%   23.1%     23.4%   (events A 239, B neurons 232)
+
+mean over 32 tales      recall     F1   2-word recall
+A (60 content words)     8.8%   13.5%      1.6%
+B (60 content words)     9.1%   14.0%      1.5%
+A (120 words of page)    8.6%   13.3%      1.5%   (reference only)
+B better on 15 tales, A better on 11
+G1 A=0.1353 B=0.1395
