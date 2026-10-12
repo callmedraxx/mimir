@@ -21,6 +21,13 @@ moves one step for every sentence read and every practice question.
   right answer, like a student checking. The facts that support the right option
   get `s = e + 2`, `L = T`: doing counts more than reading. The facts behind a wrong
   choice get `s = e · 0.5`.
+* **Learned for good (consolidation)** — added by the owner before any test ran
+  ("important skills learnt and practiced shouldn't fade, like learning to do maths
+  or coding"): a fact that helped answer a practice question right in **three
+  different practice sessions** no longer fades and is never forgotten. Its
+  strength can still be lowered if it leads to a wrong answer later. Mimir has no
+  skills yet (maths procedures, coding), only facts; when skills come, the same
+  rule applies to them.
 * **Forgetting when full:** the weakest by `e` are dropped until a quarter of the
   room is free (room: 6 million facts, as before).
 * **Trust:** when answering, a fact's confidence comes from `e` (before: from its
