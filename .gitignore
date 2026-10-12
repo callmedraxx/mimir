@@ -27,3 +27,4 @@ data/reader/sight.words
 # Understanding test sets + word classes (tools/understand_fetch.py)
 data/understand/
 data/decide/
+data/shelf/
