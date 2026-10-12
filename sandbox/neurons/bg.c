@@ -59,7 +59,11 @@ static float qqsim(const QW *a, const QW *b) {
 /* ------------------------------------------------------------------ */
 
 #define KA 3
-typedef struct { uint32_t verb, head[KA], mod[KA], prep[KA], count; uint8_t role[KA], narg, flags; uint64_t ptr[2]; } KF;
+typedef struct { uint32_t verb, head[KA], mod[KA], prep[KA], count; uint8_t role[KA], narg, flags; uint64_t ptr[2]; float s; uint32_t L; } KF;
+/* strength (docs/STRENGTH_COMPARE.md): s and the time last met L; the clock moves one step a sentence read or a question practised */
+typedef struct { double fact, joint, open, mean; uint32_t used[16]; int nused; } BParts;
+static int STRENGTH; static uint64_t CLK; static const double H0 = 1e6;
+static double eff(const KF *f) { if (!STRENGTH) return f->count; double age = (double)(CLK - f->L); return f->s * exp2(-age / (H0 * f->s)); }
 static KF *kf; static uint32_t nkf, capkf, *kslot, kmask; static uint64_t forgotten; static int forget_th;
 static uint32_t ROOM = 6000000;
 
@@ -81,7 +85,15 @@ static void kf_rehash(uint32_t slots) {
     for (uint32_t i = 0; i < nkf; i++) { uint32_t h = (uint32_t)kf_hash(&kf[i]) & kmask; while (kslot[h]) h = (h + 1) & kmask; kslot[h] = i + 1; }
 }
 /* the brain is full: what was read only once is forgotten (then twice, ...) until a quarter of the room is free */
+static int cmp_f(const void *a, const void *b) { float x = *(const float *)a, y = *(const float *)b; return x < y ? -1 : x > y; }
 static void forget(void) {
+    if (STRENGTH) {                       /* the weakest now (strength faded by time) go, until a quarter of the room is free */
+        float *e = malloc((size_t)nkf * sizeof *e); for (uint32_t i = 0; i < nkf; i++) e[i] = (float)eff(&kf[i]);
+        float *c = malloc((size_t)nkf * sizeof *c); memcpy(c, e, (size_t)nkf * sizeof *c); qsort(c, nkf, sizeof *c, cmp_f);
+        uint32_t drop = nkf - ROOM * 3 / 4; float th = c[drop]; uint32_t j = 0, dropped = 0;
+        for (uint32_t i = 0; i < nkf; i++) if (e[i] > th || (e[i] == th && dropped >= drop)) kf[j++] = kf[i]; else { dropped++; forgotten++; }
+        nkf = j; free(e); free(c); forget_th++; kf_rehash(kmask + 1); return;
+    }
     while (nkf > ROOM * 3 / 4) {
         forget_th++; uint32_t j = 0;
         for (uint32_t i = 0; i < nkf; i++) if (kf[i].count > (uint32_t)forget_th) kf[j++] = kf[i]; else forgotten++;
@@ -92,11 +104,11 @@ static void forget(void) {
 static void kf_add(const KF *f, uint64_t ptr) {
     if (!kslot) { capkf = 1 << 20; kf = malloc((size_t)capkf * sizeof *kf); kf_rehash(1u << 21); }
     uint32_t h = (uint32_t)kf_hash(f) & kmask;
-    for (; kslot[h]; h = (h + 1) & kmask) { KF *e = &kf[kslot[h] - 1]; if (kf_same(e, f)) { if (e->count < 0xffffffffu) e->count++; if (e->count == 2) e->ptr[1] = ptr; return; } }
+    for (; kslot[h]; h = (h + 1) & kmask) { KF *e = &kf[kslot[h] - 1]; if (kf_same(e, f)) { if (e->count < 0xffffffffu) e->count++; if (e->count == 2) e->ptr[1] = ptr; if (STRENGTH) { e->s = (float)(eff(e) + 1); e->L = (uint32_t)CLK; } return; } }
     if (nkf >= ROOM) { forget(); kf_add(f, ptr); return; }
     if (nkf == capkf) { capkf = capkf * 2 > ROOM ? ROOM : capkf * 2; kf = realloc(kf, (size_t)capkf * sizeof *kf); }
     if ((nkf + 1) * 2 > kmask) { kf[nkf] = *f; kf_rehash((kmask + 1) * 2); h = (uint32_t)kf_hash(f) & kmask; while (kslot[h]) h = (h + 1) & kmask; }
-    KF *e = &kf[nkf]; *e = *f; e->count = 1; e->ptr[0] = ptr; e->ptr[1] = ~0ull; kslot[h] = ++nkf;
+    KF *e = &kf[nkf]; *e = *f; e->count = 1; e->ptr[0] = ptr; e->ptr[1] = ~0ull; e->s = 1; e->L = (uint32_t)CLK; kslot[h] = ++nkf;
 }
 
 /* ------------------------------------------------------------------ */
@@ -127,7 +139,7 @@ static int to_kf(Know *k, const Frame *f, KF *o) {
     return 1;
 }
 #define FID_SHIFT 40
-static const char *SHELF[16]; static int NSHELF;
+static const char *SHELF[64]; static int NSHELF;
 static uint64_t nsent_read, nfacts_read;
 
 /* read one block of the shelf (whole lines); a line end ends a sentence */
@@ -144,7 +156,7 @@ static void read_block(Know *k, const char *b, size_t n, int fid, uint64_t off) 
         if (!t->tok[i].end) continue;
         if (i - a > 120) { a = i + 1; continue; }                 /* not a sentence (a list, a table) */
         uint64_t ptr = ((uint64_t)fid << FID_SHIFT) | (off + t->tok[a].src);
-        k->R.question = 0; int nf = read_span(&k->R, t->tok, a, i + 1, fr, 512, 0); nsent_read++;
+        k->R.question = 0; int nf = read_span(&k->R, t->tok, a, i + 1, fr, 512, 0); nsent_read++; CLK++;
         for (int j = 0; j < nf; j++) { KF f; if (to_kf(k, &fr[j], &f)) { kf_add(&f, ptr); nfacts_read++; } }
         a = i + 1;
     }
@@ -152,10 +164,53 @@ static void read_block(Know *k, const char *b, size_t n, int fid, uint64_t off) 
 }
 
 static int brain_save(const char *path, double secs, uint64_t bytes);
+static int brain_load(const char *path);
+static void build_cues(void);
+typedef struct { char *line; char *q, *opt[8]; int no, want; } PQ;
+static PQ *PQS; static int NPQ;
+static void practice_load(const char *list) {
+    char *l = strdup(list);
+    for (char *fn = strtok(l, " "); fn; fn = strtok(0, " ")) {
+        FILE *f = fopen(fn, "r"); if (!f) { perror(fn); continue; } char line[1 << 16];
+        while (fgets(line, sizeof line, f)) { size_t L = strlen(line); while (L && (line[L - 1] == '\n' || line[L - 1] == '\r')) line[--L] = 0;
+            PQ p; memset(&p, 0, sizeof p); p.line = strdup(line); char *fld[12]; int nf = 0; char *sv;
+            for (char *x = strtok_r(p.line, "\t", &sv); x && nf < 12; x = strtok_r(0, "\t", &sv)) fld[nf++] = x;
+            if (nf < 4) { free(p.line); continue; } p.no = atoi(fld[2]); if (p.no < 2 || p.no > 8 || nf < 4 + p.no) { free(p.line); continue; }
+            p.q = fld[1]; for (int o = 0; o < p.no; o++) p.opt[o] = fld[3 + o]; p.want = atoi(fld[3 + p.no]);
+            PQS = realloc(PQS, (NPQ + 1) * sizeof *PQS); PQS[NPQ++] = p; }
+        fclose(f); }
+    free(l);
+    uint64_t r = 12345; for (int i = NPQ - 1; i > 0; i--) { r = r * 6364136223846793005ull + 1442695040888963407ull; int j = (int)((r >> 33) % (uint64_t)(i + 1)); PQ t = PQS[i]; PQS[i] = PQS[j]; PQS[j] = t; }   /* the sets mixed, the same way every time */
+}
+static void bg_option(Know *A, const char *q, const char *opt, BParts *P);
+static void answer_ctx(Know *A);
+static double bscore(const BParts *p);
+static uint64_t npractised; static double practice_ok;
+/* practise questions [a, b): answer, then be shown the right answer; the facts that support it are strengthened, those behind a wrong choice weakened */
+static void practise(Know *A, int a, int b, const char *what) {
+    if (a < 0) a = 0; if (b > NPQ) b = NPQ; if (a >= b) return;
+    double t0 = now(); build_cues(); double ok = 0;
+    for (int i = a; i < b; i++) { PQ *p = &PQS[i]; BParts P[8]; int best = 0;
+        for (int o = 0; o < p->no; o++) { bg_option(A, p->q, p->opt[o], &P[o]); A->t.ntok = 0; if (bscore(&P[o]) > bscore(&P[best])) best = o; }
+        ok += best == p->want; CLK++;
+        for (int x = 0; x < P[p->want].nused; x++) { KF *e = &kf[P[p->want].used[x]]; e->s = (float)(eff(e) + 2); e->L = (uint32_t)CLK; }
+        if (best != p->want) for (int x = 0; x < P[best].nused; x++) { KF *e = &kf[P[best].used[x]]; int also = 0; for (int y = 0; y < P[p->want].nused; y++) also |= P[p->want].used[y] == P[best].used[x]; if (!also) { e->s = (float)(eff(e) * 0.5); e->L = (uint32_t)CLK; } } }
+    npractised += b - a; practice_ok += ok;
+    fprintf(stderr, "    practised %s: %d questions, %.1f%% right before being shown the answer (%.0f s)\n", what, b - a, 100 * ok / (b - a), now() - t0);
+}
 static int run_read(const char *brain, double seconds, int nfile, char **files) {
     Know k; memset(&k, 0, sizeof k); text_init(&k.t); r2_init(&k.R, &k.t, &k.wm);
     if (getenv("ROOM")) ROOM = (uint32_t)atol(getenv("ROOM"));
     int part = getenv("PART") ? atoi(getenv("PART")) : 1;
+    STRENGTH = getenv("STRENGTH") ? atoi(getenv("STRENGTH")) : 0;
+    if (getenv("FROM")) { setenv("NOCUES", "1", 1); if (brain_load(getenv("FROM"))) return 1; unsetenv("NOCUES");
+        capkf = nkf > (1u << 20) ? nkf : 1u << 20; kf = realloc(kf, (size_t)capkf * sizeof *kf); uint32_t sl = 1u << 21; while (sl < 2 * nkf + 2) sl *= 2; kf_rehash(sl);
+        fprintf(stderr, "continuing %s: %u facts, %u words, clock %llu\n", getenv("FROM"), nkf, LX.n, (unsigned long long)CLK); }
+    uint64_t stopbytes = getenv("STOPBYTES") ? strtoull(getenv("STOPBYTES"), 0, 10) : 0;
+    Know A; int nslice = 0;
+    if (getenv("PRACTICE") && STRENGTH) { answer_ctx(&A); practice_load(getenv("PRACTICE"));
+        uint64_t sum = 0; for (int fi = 0; fi < nfile; fi++) { FILE *f = fopen(files[fi], "rb"); if (!f) break; fseeko(f, 0, SEEK_END); sum += (uint64_t)ftello(f); fclose(f); nslice++; if (stopbytes && sum >= stopbytes) break; }
+        fprintf(stderr, "practice: %d questions in %d slices, one after each shelf file, each reviewed three files later\n", NPQ, nslice); }
     double t0 = now(), next = t0 + 60; uint64_t bytes = 0; const size_t B = 1 << 22; char *buf = malloc(B + 1); int stop = 0;
     for (int fi = 0; fi < nfile && !stop; fi++) {
         SHELF[NSHELF++] = files[fi];
@@ -169,13 +224,17 @@ static int run_read(const char *brain, double seconds, int nfile, char **files) 
             double tn = now();
             if (tn > next) { next = tn + 60; fprintf(stderr, "  %4.0f s  %s  %.0f MB read (%.1f MB/s)  %llu sentences  %u facts kept, %llu forgotten (read once%s)\n",
                 tn - t0, files[fi], bytes / 1e6, bytes / 1e6 / (tn - t0), (unsigned long long)nsent_read, nkf, (unsigned long long)forgotten, forget_th > 1 ? " or more" : ""); }
-            if (tn - t0 > seconds) { stop = 1; break; }
+            if (tn - t0 > seconds || (stopbytes && bytes >= stopbytes)) { stop = 1; break; }
             if (!got && !have) break;
             if (!got) { if (have) { read_block(&k, buf, have, NSHELF - 1, off); bytes += have; } break; }
         }
         fclose(f);
+        if (nslice && fi < nslice) { int per = (NPQ + nslice - 1) / nslice; char w[64];
+            snprintf(w, sizeof w, "slice %d (new)", fi); practise(&A, fi * per, (fi + 1) * per, w);
+            if (fi >= 3) { snprintf(w, sizeof w, "slice %d (review)", fi - 3); practise(&A, (fi - 3) * per, (fi - 2) * per, w); } }
     }
     double secs = now() - t0;
+    if (npractised) fprintf(stderr, "practised %llu questions in all, %.1f%% right before being shown the answer\n", (unsigned long long)npractised, 100 * practice_ok / npractised);
     fprintf(stderr, "read %.0f MB in %.0f s (%.2f MB/s): %llu sentences, %llu facts read; %u kept, %llu forgotten%s\n", bytes / 1e6, secs, bytes / 1e6 / secs,
         (unsigned long long)nsent_read, (unsigned long long)nfacts_read, nkf, (unsigned long long)forgotten, stop ? " (time up)" : " (shelf finished)");
     return brain_save(brain, secs, bytes);
@@ -189,24 +248,27 @@ static int vput64(uint8_t *b, uint64_t v) { int n = 0; while (v >= 128) { b[n++]
 static uint64_t vget64(FILE *f) { uint64_t v = 0; int sh = 0, c; while ((c = fgetc(f)) >= 0) { v |= (uint64_t)(c & 127) << sh; if (c < 128) break; sh += 7; } return v; }
 static int brain_save(const char *path, double secs, uint64_t bytes) {
     FILE *f = fopen(path, "wb"); if (!f) { perror(path); return 1; }
-    fwrite("MIMB2", 1, 5, f); fwrite(&NSHELF, 4, 1, f);
+    fwrite("MIMB3", 1, 5, f); fwrite(&CLK, 8, 1, f); fwrite(&NSHELF, 4, 1, f);
     for (int i = 0; i < NSHELF; i++) { uint16_t l = strlen(SHELF[i]); fwrite(&l, 2, 1, f); fwrite(SHELF[i], 1, l, f); }
     fwrite(&LX.n, 4, 1, f); for (uint32_t i = 0; i < LX.n; i++) { uint8_t l = strlen(LX.s[i]) > 255 ? 255 : strlen(LX.s[i]); fwrite(&l, 1, 1, f); fwrite(LX.s[i], 1, l, f); }
     fwrite(&nkf, 4, 1, f);                       /* facts as varints: ids + 1, a role byte, count, pointers */
     for (uint32_t i = 0; i < nkf; i++) { const KF *e = &kf[i]; uint8_t b[160]; int n = 0;
         n += vput(b + n, e->verb + 1); b[n++] = e->narg | (e->flags & F_NEG) << 4;
         for (int j = 0; j < e->narg; j++) { b[n++] = e->role[j]; n += vput(b + n, e->prep[j] + 1); n += vput(b + n, e->head[j] + 1); n += vput(b + n, e->mod[j] + 1); }
-        n += vput(b + n, e->count); n += vput64(b + n, e->ptr[0] + 1); n += vput64(b + n, e->count > 1 ? e->ptr[1] + 1 : 0); fwrite(b, 1, n, f); }
+        n += vput(b + n, e->count); n += vput64(b + n, e->ptr[0] + 1); n += vput64(b + n, e->count > 1 ? e->ptr[1] + 1 : 0);
+        memcpy(b + n, &e->s, 4); n += 4; n += vput(b + n, e->L); fwrite(b, 1, n, f); }
     long sz = ftell(f); fclose(f);
     printf("RESULT bgread brain=%s bytes=%ld facts=%u words=%u forgotten=%llu read_bytes=%llu seconds=%.0f mb_s=%.2f\n", path, sz, nkf, LX.n,
         (unsigned long long)forgotten, (unsigned long long)bytes, secs, bytes / 1e6 / secs);
     return 0;
 }
-static char *SHELFP[16];
+static char *SHELFP[64];
 static uint32_t *cue_off, *cue;              /* word → facts that hold it, strongest first */
-static int cmp_strong(const void *a, const void *b) { uint32_t x = kf[*(const uint32_t *)a].count, y = kf[*(const uint32_t *)b].count; return x < y ? 1 : x > y ? -1 : 0; }
+static float *EF;
+static int cmp_strong(const void *a, const void *b) { float x = EF[*(const uint32_t *)a], y = EF[*(const uint32_t *)b]; return x < y ? 1 : x > y ? -1 : 0; }
 static int kf_words(const KF *f, uint32_t *w) { int n = 0; if (f->verb != NONE) w[n++] = f->verb; for (int i = 0; i < f->narg; i++) { w[n++] = f->head[i]; if (f->mod[i] != NONE) w[n++] = f->mod[i]; } return n; }
 static void build_cues(void) {
+    free(cue_off); free(cue); free(EF); EF = malloc(((size_t)nkf + 1) * sizeof *EF); for (uint32_t i = 0; i < nkf; i++) EF[i] = (float)eff(&kf[i]);
     cue_off = calloc(LX.n + 2, 4);
     for (uint32_t i = 0; i < nkf; i++) { uint32_t w[8]; int n = kf_words(&kf[i], w); for (int j = 0; j < n; j++) { int dup = 0; for (int x = 0; x < j; x++) dup |= w[x] == w[j]; if (!dup && w[j] < LX.n) cue_off[w[j] + 2]++; } }
     for (uint32_t g = 0; g < LX.n; g++) cue_off[g + 2] += cue_off[g + 1];
@@ -219,7 +281,8 @@ static double gidf(uint32_t g) { return log((nkf + 1.0) / (df_of(g) + 0.5)); }
 static int brain_load(const char *path) {
     if (!strcmp(path, "-")) { build_cues(); return 0; }                  /* the empty brain: nothing read yet */
     FILE *f = fopen(path, "rb"); if (!f) { perror(path); return 1; }
-    char mg[5]; if (fread(mg, 1, 5, f) != 5 || memcmp(mg, "MIMB2", 5)) { fprintf(stderr, "%s: not a brain\n", path); return 1; }
+    char mg[5]; if (fread(mg, 1, 5, f) != 5 || (memcmp(mg, "MIMB2", 5) && memcmp(mg, "MIMB3", 5))) { fprintf(stderr, "%s: not a brain\n", path); return 1; }
+    int v3 = mg[4] == '3'; CLK = 0; if (v3 && fread(&CLK, 8, 1, f) != 1) return 1;
     if (fread(&NSHELF, 4, 1, f) != 1) return 1;
     for (int i = 0; i < NSHELF; i++) { uint16_t l; if (fread(&l, 2, 1, f) != 1) return 1; SHELFP[i] = calloc(l + 1, 1); if (fread(SHELFP[i], 1, l, f) != l) return 1; SHELF[i] = SHELFP[i]; }
     uint32_t nw; if (fread(&nw, 4, 1, f) != 1) return 1;
@@ -229,15 +292,15 @@ static int brain_load(const char *path) {
     for (uint32_t i = 0; i < nkf; i++) { KF *e = &kf[i]; int c;
         e->verb = (uint32_t)vget64(f) - 1; c = fgetc(f); if (c < 0) return 1; e->narg = c & 15; e->flags = (c >> 4) & F_NEG;
         for (int j = 0; j < e->narg; j++) { e->role[j] = fgetc(f); e->prep[j] = (uint32_t)vget64(f) - 1; e->head[j] = (uint32_t)vget64(f) - 1; e->mod[j] = (uint32_t)vget64(f) - 1; }
-        e->count = (uint32_t)vget64(f); e->ptr[0] = vget64(f) - 1; e->ptr[1] = vget64(f) - 1; }
-    fclose(f); build_cues(); return 0;
+        e->count = (uint32_t)vget64(f); e->ptr[0] = vget64(f) - 1; e->ptr[1] = vget64(f) - 1;
+        if (v3) { if (fread(&e->s, 4, 1, f) != 1) return 1; e->L = (uint32_t)vget64(f); } else { e->s = (float)e->count; e->L = 0; } }   /* an older brain: strength = read count */
+    fclose(f); if (!getenv("NOCUES")) build_cues(); return 0;
 }
 
 /* ------------------------------------------------------------------ */
 /* answering from what it knows                                           */
 /* ------------------------------------------------------------------ */
 
-typedef struct { double fact, joint, open, mean; } BParts;
 /* words of a statement read by the answering context, as the brain knows them */
 static int qwords(Know *A, const uint32_t *w, int n, QW *out) {
     for (int i = 0; i < n; i++) { const char *s = A->t.voc[w[i]].word; out[i].g = lx_id(s, 0); out[i].mid = meaning_id(MM, s); } return n;
@@ -265,13 +328,13 @@ static float kfact_sim(Know *A, const Frame *h, const KF *f) {
     double s = num / den; if ((h->flags & F_NEG) != (f->flags & F_NEG) && s > 0.5) s *= 0.3;
     return (float)s;
 }
-static double conf(const KF *f) { return 1.0 - 0.5 / f->count; }
+static double conf(const KF *f) { if (!STRENGTH) return 1.0 - 0.5 / f->count; double e = EF ? EF[f - kf] : eff(f); return 1.0 - 0.5 / (e > 1 ? e : 1); }
 
 /* re-read one sentence from the shelf through a pointer */
 static int reread(Know *A, uint64_t ptr, QW *out, int max) {
     if (ptr == ~0ull) return 0;
     int fid = (int)(ptr >> FID_SHIFT); uint64_t off = ptr & ((1ull << FID_SHIFT) - 1); if (fid >= NSHELF) return 0;
-    static FILE *fp[16]; if (!fp[fid]) fp[fid] = fopen(SHELF[fid], "rb"); if (!fp[fid]) return 0;
+    static FILE *fp[64]; if (!fp[fid]) fp[fid] = fopen(SHELF[fid], "rb"); if (!fp[fid]) return 0;
     char s[1024]; fseeko(fp[fid], (off_t)off, SEEK_SET); size_t n = fread(s, 1, sizeof s - 1, fp[fid]); s[n] = 0;
     char *e = strchr(s, '\n'); if (e) *e = 0;
     for (char *p = s; *p; p++) if ((*p == '.' || *p == '!' || *p == '?') && (p[1] == ' ' || !p[1])) { p[1] = 0; break; }
@@ -303,12 +366,14 @@ static void bg_option(Know *A, const char *q, const char *opt, BParts *P) {
     /* (a) fact agreement, (b) one known fact covering the question and the option */
     int focus = 0; for (int i = 0; i < nh; i++) { uint32_t w[24]; int m; fact_words(&hf[i], w, &m); int has = 0; for (int j = 0; j < m; j++) for (int x = 0; x < now_; x++) has |= w[j] == owl[x]; hf[i].tc = has; focus += has; }
     double fs = 0; int nfs = 0;
-    for (int i = 0; i < nh; i++) { if (focus && !hf[i].tc) continue; double b = 0; for (int c = 0; c < nc; c++) { double s = kfact_sim(A, &hf[i], &kf[cand[c]]) * conf(&kf[cand[c]]); if (s > b) b = s; } fs += b; nfs++; }
+    for (int i = 0; i < nh; i++) { if (focus && !hf[i].tc) continue; double b = 0; int bc = -1; for (int c = 0; c < nc; c++) { double s = kfact_sim(A, &hf[i], &kf[cand[c]]) * conf(&kf[cand[c]]); if (s > b) { b = s; bc = c; } } fs += b; nfs++;
+        if (bc >= 0 && b > 0.5 && P->nused < 16) P->used[P->nused++] = cand[bc]; }
     P->fact = nfs ? fs / nfs : 0;
     int top[3] = { -1, -1, -1 }; double tv[3] = { -1, -1, -1 };
     for (int c = 0; c < nc; c++) { uint32_t w[8]; int n = kf_words(&kf[cand[c]], w); double j = conf(&kf[cand[c]]) * (kcover(Q, nq, w, n) + kcover(O, no, w, n));
         if (j > P->joint) P->joint = j;
         for (int r = 0; r < 3; r++) if (j > tv[r]) { for (int x = 2; x > r; x--) { tv[x] = tv[x - 1]; top[x] = top[x - 1]; } tv[r] = j; top[r] = cand[c]; break; } }
+    for (int r = 0; r < 3; r++) if (top[r] >= 0 && P->nused < 16) { int dup = 0; for (int x = 0; x < P->nused; x++) dup |= P->used[x] == (uint32_t)top[r]; if (!dup) P->used[P->nused++] = top[r]; }
     /* (c) open book: those facts' pointers lead back to the shelf; the sentences re-read */
     for (int r = 0; r < 3; r++) { if (top[r] < 0) continue;
         for (int p = 0; p < 2; p++) { QW S[256]; int ns = reread(A, kf[top[r]].ptr[p], S, 256); if (!ns) continue;
@@ -396,6 +461,7 @@ int main(int argc, char **argv) {
     meaning_norms(&m); MM = &m; RV = 2;
     if (getenv("BW")) sscanf(getenv("BW"), "%lf %lf %lf %lf", &BW[0], &BW[1], &BW[2], &BW[3]);
     if (!strcmp(argv[1], "read") && argc >= 5) return run_read(argv[2], atof(argv[3]), argc - 4, argv + 4);
+    STRENGTH = getenv("STRENGTH") ? atoi(getenv("STRENGTH")) : 0;
     double t0 = now(); if (brain_load(argv[2])) return 1;
     fprintf(stderr, "brain %s: %u facts, %u words (loaded in %.1f s)\n", argv[2], nkf, LX.n, now() - t0);
     if (!strcmp(argv[1], "arc")) return run_arc(argc - 3, argv + 3);
