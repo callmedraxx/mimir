@@ -1,0 +1,15 @@
+events: A 41045, B read 41045 (same cuts), B neurons 17293, B events not matching A's words: 1 (merged repeats count here)
+events with more than 12 content words: 4219 of 41045 (10.3%); content words past the limit: 7.3%
+vocabulary: A 17964 words, B 17964 words (shared, not counted)
+
+A (today's): who: prince andrew princess man pierre mary
+  gist: Contents      BOOK ONE: 1805 BOOK THREE: 1805 BOOK FIVE: 1806 - 07 BOOK EIGHT: 1811 - 12 BOOK ONE: 1805 It was in July, 1805, When Prince Andrew entered the study the old man in his old-age spectacles and white dressing gown, in which he received no one but his son, sat at the table writing. What?” asked both princesses when they saw for a moment at the door Prince Andrew and the figure of the old man in a white dressing gown, spectacled and wigless, shouting in an angry voice. Hardly had Prince Andrew gone when the study door opened quickly and the stern figure of the old man in the white d
+B (neurons): who: prince andrew borodino battle redoubt position
+  gist: eighteen oh five / book eighteen oh five / prince andrew entered study man age spectacles white dressing gown received son sat table writing / hardly prince andrew gone study door opened quickly stern figure man white dressing gown looked / thirdly proof position battle fought foreseen shevardino redoubt advanced post fact twenty fifth barclay de tolly bagration convinced left flank / 
+
+B extra-words parts: 1960 events grew one, 57344 B (core 463789 B)
+B parts: at the last page 725056 B; at rest 2048 B (gist 64 events); peak of all B holds 1533581 B
+recall query: A 8983.3 us (scans its events), B 43.1 us; find: A 2106.8 us, B 1.0 us
+meaning parts: 1953082 uses, 881336 grown
+find B: rare words 0.4683, common words 0.4738
+RESULT budget=0.5MB tokens=667791 R1_A=0.9742 R1_B=0.6310 F1_A=1.0000 F1_B=0.4711 Q_A=1.0000 Q_B=0.0000 M1_A=11287616 M1_A_alloc=19131162 M1_B=726595 M2_A=58550252 M2_A_alloc=66393798 M2_B=1533581 tok_s_A=90256 tok_s_B=64424 takeonly_s_A=0.672

@@ -115,3 +115,45 @@ peak 1.53 MB (the budget covers the neurons; the meaning parts, intake
 buffers and word map are on top).
 
 Results: `sandbox/neurons/results/ctx_*.txt`.
+
+## B grown: no fixed limits (owner: "the whole idea is grow when needed so shouldn't limit to 12")
+
+Same tests, same harness, nothing else changed. Two limits lean4 had are
+gone:
+
+* **Words past 12.** An event with more than 12 content words grows an
+  **extra-words part** (6 B: where its words are in an exp-Golomb pool, how
+  many) and every one of its words gets its cue link. Shorter events grow
+  nothing. In War and Peace 4,219 events (10.3%) grew one: 119 KB.
+* **512 links per word.** With words past 12 fixed, recall was still 3.6
+  points behind A; all 124 events A got right and B got wrong had been
+  dropped from a common word's 512 links ("looked", "me"). Cue links now
+  grow as needed; only the memory budget prunes (at night, least used and
+  oldest first, as before). Cost: 12 KB.
+
+With `LIMIT12=1` the harness gives the old B exactly (recall 92.36%, find
+90.37%, same bytes), so the change is only the growing.
+
+| cell | A: today's | B grown | B before | winner now |
+|---|---|---|---|---|
+| G1 gist (32 tales) | 13.5% | 14.0% (14.05) | 14.0% (13.95) | tie |
+| R1 recall | 97.42% | **97.42%** | 92.4% | tie |
+| F1 find | 100% | **100%** | 90.4% | tie |
+| Q quote | 100% | 0% | 0% | A |
+| M1 memory held | 11.3 MB | 1.29 MB | 1.13 MB | **B** (8.7×) |
+| M2 memory peak | 58.6 MB | 2.25 MB | 1.93 MB | **B** (26×) |
+| S speed, droplet one core, worst of 3 | 56.4k tok/s | 58.2k tok/s | 48.0k tok/s | tie |
+
+**Count: B 2, A 1, 4 ties** (phone speed still pending). B now gives back
+and finds everything A does; the one thing it cannot do is quote the
+sentence as written, because it keeps no page.
+
+Speed honestly: the droplet was noisy this time (A ranged 56k–124k). Worst
+of 3 is a tie, but run by run B was 1.03×, 0.84× and 0.73× of A in the same
+run, so B is probably still somewhat slower; the phone will settle it.
+Growing made B *faster* than the capped B (cut lists no longer get
+rewritten every time they pass the cap).
+
+Under a tight budget growing costs: at 0.5 MB the grown B keeps fewer events
+(the extra words take room), recall 63.1% and find 47.1% (capped: 67.1%,
+49.4%). The owner decides what memory holds; a long event costs what it is.
