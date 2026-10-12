@@ -1,0 +1,6 @@
+  agent_trace_observability    accuracy 0.282  KL 0.593  Brier 0.306   (100 of 500 decisions from learned questions)
+  customer_service             accuracy 0.330  KL 0.743  Brier 0.353   (100 of 500 decisions from learned questions)
+  invoice_processing           accuracy 0.426  KL 0.750  Brier 0.445   (100 of 500 decisions from learned questions)
+  security_incidents           accuracy 0.408  KL 0.530  Brier 0.262   (100 of 500 decisions from learned questions)
+G1 unseen workflow: accuracy 0.361  KL 0.654  Brier 0.341  (2000 decisions, 400 answered from questions learned elsewhere)
+RESULT G1 acc=0.3615 kl=0.6541 brier=0.3414 learned=400

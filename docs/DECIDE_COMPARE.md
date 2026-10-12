@@ -159,3 +159,31 @@ set; settings as T. Shown beside the Prior learned from the same cases, and
 the fitted models at n = 300 (Laya typed-decisions 0.766, ModernBERT 0.646,
 MiniLM 0.587). Reported: the smallest n at which Mimir's **worst** draw passes
 the Prior, MiniLM and ModernBERT.
+
+## Results: G1 and G2 (2026-10-12)
+
+**G1 — unseen workflow: 0.361** (KL 0.654, Brier 0.341). Per workflow: agent
+traces 0.282, customer service 0.330, invoices 0.426, security 0.408. Only
+`urgency` (400 of 2,000 decisions) could use anything learned in the other
+workflows; the rest were answered zero-shot. Against Mimir zero-shot 0.371:
+nothing gained (−1.0 pt). Against Laya as shipped 0.362: tie. **Jev 0.727 wins
+by 37 points.** Mimir does not carry what it learned to a new kind of case:
+its knowledge is tied to the exact features and questions it saw.
+
+**G2 — learning curve** (5 random draws below 300; worst draw in brackets):
+
+| cases per workflow | Mimir accuracy | KL | Brier | Prior from the same cases |
+|---|---|---|---|---|
+| 10 | 0.512 (0.491) | 0.347 | 0.183 | 0.459 (0.441) |
+| 25 | 0.585 (0.555) | 0.292 | 0.153 | 0.484 (0.454) |
+| 50 | 0.637 (0.623) | 0.246 | 0.129 | 0.493 (0.474) |
+| 100 | 0.680 (0.665) | 0.201 | 0.105 | 0.491 (0.470) |
+| 200 | 0.712 (0.705) | 0.165 | 0.087 | 0.490 (0.481) |
+| 300 | 0.726 | 0.154 | 0.081 | 0.483 |
+
+Worst draw passes the Prior at **10** cases per workflow, MiniLM (0.587, fitted
+on all 300) at **50**, ModernBERT (0.646, fitted on all 300) at **100**; Laya
+typed-decisions (0.766) is not reached at 300. So Mimir learns fast from few
+examples of a kind of case, and learns nothing that carries to a new kind.
+
+Results: `sandbox/neurons/results/decide_G1.txt`, `decide_G2.txt`.

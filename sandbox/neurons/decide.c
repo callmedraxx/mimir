@@ -176,11 +176,22 @@ static void read_case(J *state, FSet *s) {
 #define MAXO 8
 typedef struct { char name[64]; int type, no; char opt[MAXO][48]; char text[MAXO][512]; char instr[512]; } Q;   /* type: 0 noul, 1 choice, 2 score */
 static Q QS[64]; static int NQ;
-typedef struct { char id[96]; int nq; int q[8]; float gold[8][MAXO]; int label[8]; FSet f; J *state; } Case;
+typedef struct { char id[96], wf[48]; int nq; int q[8]; float gold[8][MAXO]; int label[8]; FSet f; J *state; } Case;
 
+static int SHARE = 0;   /* G1: a question with the same name, type and options is the same answer neurons in every workflow */
 static int q_of(const char *wf, const char *name, J *qj) {
     char key[160]; snprintf(key, sizeof key, "%s/%s", wf, name);
     for (int i = 0; i < NQ; i++) if (!strcmp(QS[i].name, key)) return i;
+    if (SHARE) {
+        Q t; memset(&t, 0, sizeof t); J *ty = jget(qj, "type"), *cr = jget(qj, "criteria");
+        t.type = !strcmp(ty->s, "noul") ? 0 : !strcmp(ty->s, "choice") ? 1 : 2;
+        for (int i = 0; i < NQ; i++) { Q *q = &QS[i]; const char *sh = strchr(q->name, '/') + 1; if (strcmp(sh, name) || q->type != t.type) continue;
+            int same = 1;
+            if (t.type == 0) { J *f = jget(cr, "false"), *tr = jget(cr, "true"); same = !strcmp(q->text[0], f ? f->s : "") && !strcmp(q->text[1], tr ? tr->s : q->instr); }
+            else if (!cr || cr->n != q->no) same = 0;
+            else for (int k = 0; k < cr->n && same; k++) same = !strcmp(q->text[k], cr->v[k]->s) && (t.type == 2 || !strcmp(q->opt[k], cr->k[k]));
+            if (same) return i; }
+    }
     Q *q = &QS[NQ]; memset(q, 0, sizeof *q); snprintf(q->name, sizeof q->name, "%s", key);
     J *t = jget(qj, "type"), *cr = jget(qj, "criteria"), *in = jget(qj, "instructions");
     snprintf(q->instr, sizeof q->instr, "%s", in && in->t == 's' ? in->s : "");
@@ -199,7 +210,7 @@ static int load(const char *path, Case **out) {
         if (n == cap) { cap *= 2; c = realloc(c, cap * sizeof *c); memset(c + n, 0, (cap - n) * sizeof *c); }
         const char *p = line; J *j = jparse(&p); Case *x = &c[n++];
         snprintf(x->id, sizeof x->id, "%s", jget(j, "id")->s);
-        const char *wf = jget(j, "workflow")->s; J *qs = jget(j, "questions"), *gd = jget(j, "gold");
+        const char *wf = jget(j, "workflow")->s; snprintf(x->wf, sizeof x->wf, "%s", wf); J *qs = jget(j, "questions"), *gd = jget(j, "gold");
         for (int i = 0; i < qs->n && i < 8; i++) {
             int q = q_of(wf, qs->k[i], qs->v[i]); x->q[x->nq] = q;
             J *g = jget(gd, qs->k[i]), *pr = jget(g, "probabilities"), *lb = jget(g, "label");
@@ -392,6 +403,70 @@ static void jwords(J *j, float *v) {
     else if (j->t == 's') mvec(j->s, v);
 }
 static double cosv(const float *a, const float *b, int d) { double x = 0, y = 0, z = 0; for (int i = 0; i < d; i++) { x += a[i] * b[i]; y += a[i] * a[i]; z += b[i] * b[i]; } return y > 0 && z > 0 ? x / sqrt(y * z) : 0; }
+static void zero_q(Case *c, int j, const float *sv, double *p) {
+    Q *q = &QS[c->q[j]]; double cc[MAXO], mx = -1e9, z = 0;
+    for (int k = 0; k < q->no; k++) { float ov[MEANING_MAX_DIMS] = {0}; char t[700]; snprintf(t, sizeof t, "%s %s", q->opt[k], q->text[k]); for (char *x = t; *x; x++) if (*x == '_') *x = ' ';
+        mvec(t, ov); cc[k] = cosv(sv, ov, MM->dims) / 0.1; if (cc[k] > mx) mx = cc[k]; }
+    for (int k = 0; k < q->no; k++) { cc[k] = exp(cc[k] - mx); z += cc[k]; } for (int k = 0; k < q->no; k++) p[k] = cc[k] / z;
+}
+/* the settings chosen for T by 4-fold CV on train (afbf448): smoothing 0.1, k 40 by relevance, mix 0.2, temperatures 8 / 35 / 8 */
+static const Set T_SET = { 0, 4, 1, 0.20, { 8, 35, 8 } };
+
+/* G1: each workflow answered by a memory that learned only the other three */
+static int run_lowo(const char *testp) {
+    Case *T; ADD = 0; int nt = load(testp, &T); for (int i = 0; i < nt; i++) read_case(T[i].state, &T[i].f);
+    const char *W[4] = { "agent_trace_observability", "customer_service", "invoice_processing", "security_incidents" };
+    double A = 0, K = 0, B = 0; int N = 0, learned = 0;
+    for (int w = 0; w < 4; w++) {
+        Mem m = {0}; for (int i = 0; i < NTR; i++) if (strcmp(TR[i].wf, W[w])) learn(&m, &TR[i]);
+        double a = 0, k = 0, b = 0; int n = 0, lw = 0;
+        for (int i = 0; i < nt; i++) { if (strcmp(T[i].wf, W[w])) continue;
+            Votes V[8]; votes(&m, &T[i], 0, V); float sv[MEANING_MAX_DIMS] = {0}; jwords(T[i].state, sv);
+            for (int j = 0; j < T[i].nq; j++) { int q = T[i].q[j]; double p[MAXO];
+                if (m.nq_seen[q]) { mix(&V[j], QS[q].no, &T_SET, QS[q].type, p); lw++; } else zero_q(&T[i], j, sv, p);
+                score1(p, T[i].gold[j], T[i].label[j], QS[q].no, &a, &k, &b); n++; } }
+        printf("  %-28s accuracy %.3f  KL %.3f  Brier %.3f   (%d of %d decisions from learned questions)\n", W[w], a / n, k / n, b / n, lw, n);
+        A += a; K += k; B += b; N += n; learned += lw; mem_free(&m);
+    }
+    printf("G1 unseen workflow: accuracy %.3f  KL %.3f  Brier %.3f  (%d decisions, %d answered from questions learned elsewhere)\n", A / N, K / N, B / N, N, learned);
+    printf("RESULT G1 acc=%.4f kl=%.4f brier=%.4f learned=%d\n", A / N, K / N, B / N, learned);
+    return 0;
+}
+
+/* G2: learning from n cases per workflow */
+static uint64_t rng = 88172645463325252ull;
+static uint64_t rnd(void) { rng ^= rng << 13; rng ^= rng >> 7; rng ^= rng << 17; return rng; }
+static int run_curve(const char *testp) {
+    Case *T; ADD = 0; int nt = load(testp, &T); for (int i = 0; i < nt; i++) read_case(T[i].state, &T[i].f);
+    const char *W[4] = { "agent_trace_observability", "customer_service", "invoice_processing", "security_incidents" };
+    static const int NS[] = { 10, 25, 50, 100, 200, 300 };
+    printf("n per workflow   Mimir mean (worst of draws)          Prior mean (worst)\n");
+    for (int si = 0; si < 6; si++) {
+        int n = NS[si], draws = n < 300 ? 5 : 1; double sa = 0, wa = 1, sk = 0, wk = 0, sb = 0, wb = 0, pa = 0, pwa = 1;
+        for (int d = 0; d < draws; d++) {
+            rng = 88172645463325252ull + 7919 * (uint64_t)(d + 1) * (uint64_t)(n + 1);
+            Mem m = {0}; static int pick[2000]; int np = 0;
+            for (int w = 0; w < 4; w++) { int idx[400], c = 0; for (int i = 0; i < NTR; i++) if (!strcmp(TR[i].wf, W[w])) idx[c++] = i;
+                for (int i = c - 1; i > 0; i--) { int r = rnd() % (i + 1), t = idx[i]; idx[i] = idx[r]; idx[r] = t; }
+                for (int i = 0; i < n && i < c; i++) pick[np++] = idx[i]; }
+            for (int i = 0; i < np; i++) learn(&m, &TR[pick[i]]);
+            double a = 0, k = 0, b = 0, xa = 0, xk = 0, xb = 0; int nd = 0;
+            for (int i = 0; i < nt; i++) { Votes V[8]; votes(&m, &T[i], 0, V);
+                for (int j = 0; j < T[i].nq; j++) { int q = T[i].q[j]; double p[MAXO], pr[MAXO], z = 0;
+                    mix(&V[j], QS[q].no, &T_SET, QS[q].type, p); score1(p, T[i].gold[j], T[i].label[j], QS[q].no, &a, &k, &b);
+                    for (int o = 0; o < QS[q].no; o++) { pr[o] = 0; for (int x = 0; x < np; x++) for (int y = 0; y < TR[pick[x]].nq; y++) if (TR[pick[x]].q[y] == q && TR[pick[x]].label[y] == o) pr[o]++; z += pr[o]; }
+                    for (int o = 0; o < QS[q].no; o++) pr[o] = z ? pr[o] / z : 1.0 / QS[q].no;
+                    score1(pr, T[i].gold[j], T[i].label[j], QS[q].no, &xa, &xk, &xb); nd++; } }
+            a /= nd; k /= nd; b /= nd; xa /= nd;
+            sa += a; sk += k; sb += b; if (a < wa) wa = a; if (k > wk) wk = k; if (b > wb) wb = b; pa += xa; if (xa < pwa) pwa = xa;
+            mem_free(&m);
+        }
+        printf("%5d            %.3f (%.3f)  KL %.3f (%.3f)  Brier %.3f (%.3f)    %.3f (%.3f)\n", n, sa / draws, wa, sk / draws, wk, sb / draws, wb, pa / draws, pwa);
+        printf("RESULT G2 n=%d acc_mean=%.4f acc_worst=%.4f kl_mean=%.4f brier_mean=%.4f prior_mean=%.4f prior_worst=%.4f\n", n, sa / draws, wa, sk / draws, sb / draws, pa / draws, pwa);
+    }
+    return 0;
+}
+
 static int run_zero(const char *testp, const char *outp) {
     Case *T; int nt = load(testp, &T); FILE *o = fopen(outp, "w"); double acc = 0, kl = 0, br = 0; int nd = 0; int d = MM->dims;
     for (int i = 0; i < nt; i++) {
@@ -411,9 +486,12 @@ int main(int argc, char **argv) {
     static Meaning m; meaning_init(&m); if (meaning_load(&m, getenv("MEANING") ? getenv("MEANING") : MEANING_PATH) <= 0) { fprintf(stderr, "no meanings\n"); return 1; } MM = &m;
     if (!strcmp(argv[1], "zero") && argc >= 4) return run_zero(argv[2], argv[3]);
     if (getenv("NOQUAL")) QUALIFY = 0;
+    if (!strcmp(argv[1], "lowo")) SHARE = 1;
+    if (!strcmp(argv[1], "lowo") && argc >= 4) { NTR = load(argv[2], &TR); read_all(TR, NTR); return run_lowo(argv[3]); }
     NTR = load(argv[2], &TR); read_all(TR, NTR);
     if (!strcmp(argv[1], "feats")) { int n = argc > 3 ? atoi(argv[3]) : 1; for (int i = 0; i < n && i < NTR; i++) { printf("%s (%d features)\n", TR[i].id, TR[i].f.n); for (int k = 0; k < TR[i].f.n; k++) printf("  %s\n", F.s[TR[i].f.f[k]]); } return 0; }
     if (!strcmp(argv[1], "cv")) return run_cv();
+    if (!strcmp(argv[1], "curve") && argc >= 4) return run_curve(argv[3]);
     if (!strcmp(argv[1], "test") && argc >= 5) return run_test(argv[3], argv[4]);
     return 1;
 }

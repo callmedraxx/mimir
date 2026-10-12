@@ -20,7 +20,7 @@ meanings, word classes), and the owner's memory as one file that keeps growing.
 | 2 | Neurons: one thing each, grow parts when needed (lean4 + parts) | done | NEURON_COMPARE.md, sandbox/neurons/grow.c |
 | 3 | Context window on neurons: hold a whole book, recall and find any part | done — War and Peace in 1.29 MB (today's 11.3 MB), recall 97.4%, find 100% | CONTEXT_COMPARE.md |
 | 4 | Roles (who did what to whom, where): first understanding | done — bAbI 94% (17/20 tasks); ordinary prose not understood yet | UNDERSTAND_COMPARE.md |
-| 5 | **Decisions like Jev and Laya**: read a case, answer yes/no, pick-one and 0–3 questions as probabilities (Typed Decisions benchmark) | first result — learned from examples 0.726 (Jev 0.727, Laya trained 0.766); zero-shot 0.371 (Jev 0.727). Next: generalize to unseen kinds of case | DECIDE_COMPARE.md |
+| 5 | **Decisions like Jev and Laya**: read a case, answer yes/no, pick-one and 0–3 questions as probabilities (Typed Decisions benchmark) | first result — learned from examples 0.726 (Jev 0.727, Laya trained 0.766); zero-shot 0.371 (Jev 0.727). G1 unseen workflow 0.361 (Jev 0.727); G2 passes ModernBERT with 100 cases per workflow. Next: transfer to unseen kinds of case | DECIDE_COMPARE.md |
 | 6 | Runnable package: `mimir read / ask / decide / save / load`, memory as a `.brain` file; Linux and Android builds people can download | next | — |
 | 7 | Android app (APK) around the same engine | after 6 | — |
 | 8 | Reading ordinary prose well (a better role reader; MCTest, longer documents) | after 5 | — |
