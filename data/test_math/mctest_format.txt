@@ -1,0 +1,12 @@
+S	math.0
+T	A prime number is a whole number greater than 1 that has exactly two factors: 1 and itself. The number 2 is the only even prime number. The first five prime numbers are 2, 3, 5, 7 and 11. A number with more than two factors is called a composite number. For example, 12 is composite because 1, 2, 3, 4, 6 and 12 all divide it. The number 1 is neither prime nor composite. The greatest common divisor of two numbers is the largest number that divides both of them. The greatest common divisor of 12 and 18 is 6. The least common multiple of two numbers is the smallest number that both of them divide into. The least common multiple of 4 and 6 is 12. A number is divisible by 3 when the sum of its digits is divisible by 3. For example, 261 is divisible by 3 because 2 + 6 + 1 = 9. A number is divisible by 5 when its last digit is 0 or 5. A number is divisible by 4 when its last two digits form a number that is divisible by 4. The Greek mathematician Euclid proved, around 300 BC, that there are infinitely many prime numbers. Every whole number greater than 1 can be written as a product of primes in exactly one way. This is called the fundamental theorem of arithmetic. For example, 60 = 2 x 2 x 3 x 5.
+Q	single	Which number is the only even prime number?	4	2	6	1	B
+Q	single	What is the greatest common divisor of 12 and 18?	3	36	6	2	C
+Q	single	What is the least common multiple of 4 and 6?	12	24	2	10	A
+Q	single	Which number is neither prime nor composite?	1	2	11	12	A
+Q	single	Who proved that there are infinitely many prime numbers?	Pythagoras	Archimedes	Newton	Euclid	D
+Q	single	When is a number divisible by 5?	When the sum of its digits is divisible by 5	When its last digit is 0 or 5	When it is an even number	When its last two digits are divisible by 5	B
+Q	single	What is the rule that every whole number greater than 1 is a product of primes in exactly one way called?	The fundamental theorem of arithmetic	The divisibility rule	The prime number theorem	The rule of three	A
+Q	single	How many factors does a prime number have?	One	Two	Three	Infinitely many	B
+Q	single	Using the rule in the text, which of these numbers is divisible by 3?	124	215	312	401	C
+Q	single	Which of these numbers is a prime number?	9	15	13	21	C

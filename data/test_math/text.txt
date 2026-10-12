@@ -1,0 +1,7 @@
+A prime number is a whole number greater than 1 that has exactly two factors: 1 and itself. The number 2 is the only even prime number. The first five prime numbers are 2, 3, 5, 7 and 11. A number with more than two factors is called a composite number. For example, 12 is composite because 1, 2, 3, 4, 6 and 12 all divide it. The number 1 is neither prime nor composite.
+
+The greatest common divisor of two numbers is the largest number that divides both of them. The greatest common divisor of 12 and 18 is 6. The least common multiple of two numbers is the smallest number that both of them divide into. The least common multiple of 4 and 6 is 12.
+
+A number is divisible by 3 when the sum of its digits is divisible by 3. For example, 261 is divisible by 3 because 2 + 6 + 1 = 9. A number is divisible by 5 when its last digit is 0 or 5. A number is divisible by 4 when its last two digits form a number that is divisible by 4.
+
+The Greek mathematician Euclid proved, around 300 BC, that there are infinitely many prime numbers. Every whole number greater than 1 can be written as a product of primes in exactly one way. This is called the fundamental theorem of arithmetic. For example, 60 = 2 x 2 x 3 x 5.

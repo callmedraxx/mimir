@@ -1,0 +1,12 @@
+[
+ {"q": "Which number is the only even prime number?", "options": {"A": "4", "B": "2", "C": "6", "D": "1"}, "answer": "B", "kind": "in the text"},
+ {"q": "What is the greatest common divisor of 12 and 18?", "options": {"A": "3", "B": "36", "C": "6", "D": "2"}, "answer": "C", "kind": "in the text"},
+ {"q": "What is the least common multiple of 4 and 6?", "options": {"A": "12", "B": "24", "C": "2", "D": "10"}, "answer": "A", "kind": "in the text"},
+ {"q": "Which number is neither prime nor composite?", "options": {"A": "1", "B": "2", "C": "11", "D": "12"}, "answer": "A", "kind": "in the text"},
+ {"q": "Who proved that there are infinitely many prime numbers?", "options": {"A": "Pythagoras", "B": "Archimedes", "C": "Newton", "D": "Euclid"}, "answer": "D", "kind": "in the text"},
+ {"q": "When is a number divisible by 5?", "options": {"A": "When the sum of its digits is divisible by 5", "B": "When its last digit is 0 or 5", "C": "When it is an even number", "D": "When its last two digits are divisible by 5"}, "answer": "B", "kind": "in the text"},
+ {"q": "What is the rule that every whole number greater than 1 is a product of primes in exactly one way called?", "options": {"A": "The fundamental theorem of arithmetic", "B": "The divisibility rule", "C": "The prime number theorem", "D": "The rule of three"}, "answer": "A", "kind": "in the text"},
+ {"q": "How many factors does a prime number have?", "options": {"A": "One", "B": "Two", "C": "Three", "D": "Infinitely many"}, "answer": "B", "kind": "in the text"},
+ {"q": "Using the rule in the text, which of these numbers is divisible by 3?", "options": {"A": "124", "B": "215", "C": "312", "D": "401"}, "answer": "C", "kind": "apply a rule"},
+ {"q": "Which of these numbers is a prime number?", "options": {"A": "9", "B": "15", "C": "13", "D": "21"}, "answer": "C", "kind": "apply the idea"}
+]
