@@ -80,12 +80,17 @@ typedef struct {
     Part extra; uint8_t *xp; uint32_t xbits; size_t xcap;   /* extra words: part + exp-Golomb pool (as lean4's pool) */
 } CW;
 
+/* hooks for parts grown by other harnesses (understand.c): unset here, so nothing changes */
+static void (*cw_read_hook)(CW *c, TextContext *t, uint32_t a, uint32_t b, int ev);   /* an event's tokens, before they are forgotten */
+static size_t (*cw_more_bytes)(CW *c);
+static void (*cw_remap_hook)(CW *c, const int *map, int old);
+
 typedef struct { int n, cap; uint32_t *w; int8_t v[MEANING_MAX_DIMS]; } Node;
 static void node_room(Node *o, int n) { if (n > o->cap) { o->cap = n * 2; o->w = realloc(o->w, o->cap * 4); } }
 
 static size_t cw_parts(CW *c) { return part_bytes(&c->ws) + part_bytes(&c->mean) + part_bytes(&c->str) + part_bytes(&c->gist); }
 static size_t cw_xbytes(CW *c) { return part_bytes(&c->extra) + up((c->xbits + 7) / 8); }
-static size_t cw_bytes(CW *c) { return b5_bytes(c->b) + cw_xbytes(c) + cw_parts(c) + c->stream_bytes + (size_t)c->nmid * 4; }
+static size_t cw_bytes(CW *c) { return b5_bytes(c->b) + cw_xbytes(c) + cw_parts(c) + c->stream_bytes + (size_t)c->nmid * 4 + (cw_more_bytes ? cw_more_bytes(c) : 0); }
 
 /* the extra-words part: grown only by events with more than 12 content words */
 static int cw_nextra(CW *c, int ev) { ExtraV *x = (ExtraV *)part_get(&c->extra, ev); return x ? x->n : 0; }
@@ -184,6 +189,7 @@ static void cw_remap(void *ctx, const int *map, int old) {
         free(k); free(v);
     }
     for (int j = 0; j < c->nmap; j++) if (c->map[j] >= 0) c->map[j] = c->map[j] < old ? map[c->map[j]] : -1;
+    if (cw_remap_hook) cw_remap_hook(c, map, old);
     if (c->extra.n) {                    /* extra words of events that stay, rewritten into a fresh pool */
         int n = c->extra.n, m = 0; uint32_t *k = malloc(n * 4), *off = malloc((n + 1) * 4), *ws = 0; size_t nw = 0, capw = 0;
         for (int i = 0; i < c->extra.cap; i++) if (c->extra.key[i] != EMPTY && (int)c->extra.key[i] < old && map[c->extra.key[i]] >= 0) {
@@ -270,6 +276,7 @@ static void cw_event(CW *c, const uint32_t *w, int n) {
     int keep[GIST_WORKSPACE], nk = 0; float ka[GIST_WORKSPACE];
     for (int r = 0; r < GIST_WORKSPACE && r < nn; r++) { int bx = -1; for (int x = 0; x < nn; x++) if (a[x] >= 0 && (bx < 0 || a[x] > a[bx])) bx = x; keep[nk] = id[bx]; ka[nk++] = a[bx]; a[bx] = -1; }
     for (int i = 0; i < nc; i++) { int still = 0; for (int k = 0; k < nk; k++) still |= keep[k] == id[i]; if (!still) part_shrink(&c->ws, id[i]); }
+    { int still = 0; for (int k = 0; k < nk; k++) still |= keep[k] == ev; if (!still) part_shrink(&c->ws, ev); }   /* the event read, if it was carried before and is not now (fixed 2026-10-12: it stayed, and the workspace outgrew 4) */
     for (int k = 0; k < nk; k++) memcpy(part_grow(&c->ws, keep[k]), &ka[k], 4);
     cw_tidy(c, 0);
     size_t now_b = cw_bytes(c); if (now_b > c->peak) c->peak = now_b;
@@ -295,6 +302,7 @@ static void cw_cut(CW *c, TextContext *t, int final) {
         for (uint32_t j = a; j < b; j++) { uint32_t id = t->tok[j].word; if (!cw_content(t, c->m, id)) continue;
             int seen = 0; for (int q = 0; q < en; q++) seen |= ew[q] == id; if (!seen) ew[en++] = id; }
         cw_event(c, ew, en);
+        if (cw_read_hook) cw_read_hook(c, t, a, b, c->map[c->nmap - 1]);
     }
     if (start > t->ntok) start = t->ntok;
     memmove(t->tok, t->tok + start, (t->ntok - start) * sizeof *t->tok); t->ntok -= start;
@@ -315,9 +323,10 @@ static void cw_take(CW *c, TextContext *t, const char *s, size_t n) {
     }
 }
 
+static int cw_nvocab = 1 << 20;     /* word neurons (understand.c makes small windows, one per story) */
 static CW *cw_make(const Meaning *m, const TextContext *t, size_t budget) {
     CW *c = calloc(1, sizeof *c); c->m = m; c->t = t; c->dims = m->dims;
-    c->b = b5_make(budget, 1 << 20); c->b->base.bitpool = 1;
+    c->b = b5_make(budget, cw_nvocab); c->b->base.bitpool = 1;
     c->b->base.keep = cw_keep; c->b->base.remap = cw_remap; c->b->base.ctx = c;
     c->grow = !getenv("LIMIT12"); c->extra = (Part){ .vsize = 6 };
     if (c->grow) c->b->base.C = getenv("CUECAP") ? atoi(getenv("CUECAP")) : 1 << 20;   /* cue links grow as needed; only the memory budget prunes */
@@ -527,6 +536,7 @@ static int run_book(const Meaning *m, const char *path, double mb) {
     return 0;
 }
 
+#ifndef CTXWIN_NO_MAIN
 int main(int argc, char **argv) {
     if (argc < 2) { fprintf(stderr, "ctxwin gist | ctxwin book BOOK BUDGET_MB\n"); return 1; }
     Meaning m; meaning_init(&m);
@@ -536,3 +546,4 @@ int main(int argc, char **argv) {
     if (!strcmp(argv[1], "book") && argc >= 4) return run_book(&m, argv[2], atof(argv[3]));
     return 1;
 }
+#endif
