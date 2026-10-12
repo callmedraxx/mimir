@@ -301,6 +301,7 @@ static int run_book_k(const char *path) {
     return 0;
 }
 
+#ifndef KNOW_NO_MAIN
 int main(int argc, char **argv) {
     if (argc < 2) { fprintf(stderr, "know FILE... | know book BOOK\n"); return 1; }
     lex_load(getenv("WORDCLASS") ? getenv("WORDCLASS") : "data/understand/wordclass.tsv");
@@ -310,3 +311,4 @@ int main(int argc, char **argv) {
     if (!strcmp(argv[1], "book") && argc >= 3) return run_book_k(argv[2]);
     return run_know(argc - 1, argv + 1);
 }
+#endif
