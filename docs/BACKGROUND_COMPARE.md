@@ -109,7 +109,7 @@ times and kept 3.08M, the ones read again and again.
   is in the passage, and general facts pulled the choice away from it. Using
   knowledge for inference, not as extra evidence, is still to be built.
 * For scale: ARC's published retrieval baseline (IR over a large web corpus) scores
-  about 62% on ARC-Easy; Laya and Jev are not reported on ARC.
+  about 62% on ARC-Easy; Laya and Jev were not measured on ARC here.
 * Understanding ended much smaller than the text (4.8%), because forgetting finally
   works: what was read once fades.
 
