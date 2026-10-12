@@ -23,3 +23,6 @@ data/reader/*.npy
 sandbox/__pycache__/
 tools/__pycache__/
 data/reader/sight.words
+
+# Understanding test sets + word classes (tools/understand_fetch.py)
+data/understand/
