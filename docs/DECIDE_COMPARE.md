@@ -117,3 +117,22 @@ examples of the same kind of case, not general judgment: a new kind of case
 (a workflow it has not read) would get the zero-shot result.
 
 Results: `sandbox/neurons/results/decide_test_*.txt`.
+
+## Laya measured by us (2026-10-12, Google Colab, the same machine for both)
+
+Both run in one Colab notebook (T4 GPU runtime), same test set, same scorer
+(`tools/laya_colab.py`, `tools/mimir_colab.sh`, `tools/both_colab.sh`; Laya 0.4.6,
+torch 2.11). Laya on the T4 GPU, one `predict` call per case (five questions);
+Mimir on one CPU core of the same machine, worst of 3.
+
+| | accuracy | KL | Brier | ms per case | where | size |
+|---|---|---|---|---|---|---|
+| Laya, as shipped | 0.362 | 0.569 | 0.315 | 124.5 | T4 GPU | 421M parameters (846 MB) |
+| Laya typed-decisions (fitted on train) | **0.766** | **0.117** | **0.061** | 131.7 | T4 GPU | 421M parameters |
+| Mimir, learned from train | 0.726 | 0.154 | 0.081 | **1.53** | 1 CPU core | 2.9 MB learned + ~8 MB program and base |
+| Mimir, zero-shot | 0.371 | 0.643 | 0.337 | – | 1 CPU core | – |
+
+Laya's published accuracies reproduce exactly (0.362, 0.766). Trained Laya
+beats Mimir on accuracy (4.0 pt), KL and Brier; Mimir answers about 85× faster
+on a CPU core than Laya on a GPU, with about 1/100 of the memory. Untrained,
+both are at the level of guessing.
