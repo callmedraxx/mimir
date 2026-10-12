@@ -1,0 +1,12 @@
+brain -: 0 facts, 0 words (loaded in 0.0 s)
+easy_test.tsv           2376 q    28.87%   (alone: fact 25.02  joint 25.02  open 25.02  meaning 28.87)  0.3 ms/q
+RESULT bgarc file=easy_test.tsv n=2376 acc=28.87 facts=0
+challenge_test.tsv      1172 q    22.68%   (alone: fact 25.02  joint 25.02  open 25.02  meaning 22.68)  0.4 ms/q
+RESULT bgarc file=challenge_test.tsv n=1172 acc=22.68 facts=0
+brain -: 0 facts, 0 words (loaded in 0.0 s)
+test_middle.txt     1436 q   K open 41.09%   K open + background 41.09%
+RESULT bgknow file=test_middle.txt n=1436 kopen=41.09 withbg=41.09 facts=0
+mc160.test.txt       240 q   K open 63.75%   K open + background 63.75%
+RESULT bgknow file=mc160.test.txt n=240 kopen=63.75 withbg=63.75 facts=0
+mc500.test.txt       600 q   K open 52.83%   K open + background 52.83%
+RESULT bgknow file=mc500.test.txt n=600 kopen=52.83 withbg=52.83 facts=0

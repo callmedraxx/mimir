@@ -72,6 +72,45 @@ than 1 point worse = reading hurt; otherwise no change. The count is given as it
 
 ---
 
-## Results
+## Results (2026-10-12)
 
-(to come)
+Harness `sandbox/neurons/bg.c`, frozen in 7450f8f before any test was run; whole run
+`tools/bg_run.sh`. Weights chosen with a dev brain that read 5% of the shelf: ARC
+answer weights (fact 1, joint 0.5, open 2, meaning 4) on ARC train + dev; the
+background weight on passage questions on RACE-M dev and MCTest train/dev, where
+background **hurt at every weight tried** (51.5% at 0 down to 37.0% at 4), so it was
+set to 0. RACE-M and MCTest are therefore the same before and after by construction.
+
+| cell | test | before (nothing read) | after reading | change |
+|---|---|---|---|---|
+| G1 | ARC-Easy (2,376) | 28.87% | **42.89%** | **+14.0: reading helped** |
+| G2 | ARC-Challenge (1,172) | 22.68% | 22.17% | −0.5: no change |
+| G3 | RACE-M (1,436) | 41.09% | 41.09% | no change (weight 0) |
+| G4 | MC160 / MC500 (240 / 600) | 63.75% / 52.83% | 63.75% / 52.83% | no change (weight 0) |
+| G5 | brain | empty | **81.3 MB** on disk: 3.08M facts, 961k words | 4.8% of the 1,694 MB read |
+
+**Count: helped 1 (ARC-Easy), no change 3, hurt 0.** Chance on ARC is about 25%.
+
+Reading: the whole shelf (1,694 MB, 18.2M sentences, 30.6M facts) in **669 s
+(2.53 MB/s, one core)**, so it ran out of shelf after 11 minutes, not an hour. The
+room (6M facts) filled three times; forgetting dropped 22.9M facts read too few
+times and kept 3.08M, the ones read again and again.
+
+### What it shows
+
+* **Background knowledge works for questions without a passage.** Before reading,
+  ARC-Easy is near chance (only word meanings); after, 42.9%. Most of it comes from
+  open book: the facts tell it where to look on the shelf, it re-reads those
+  sentences (open alone 42.0%).
+* **ARC-Challenge does not move.** Those questions were chosen by ARC's makers as
+  the ones retrieval and word co-occurrence get wrong; finding the right sentence is
+  not enough there, it takes reasoning over several facts.
+* **On stories (RACE-M, MCTest) background did not help in this form**: the answer
+  is in the passage, and general facts pulled the choice away from it. Using
+  knowledge for inference, not as extra evidence, is still to be built.
+* For scale: ARC's published retrieval baseline (IR over a large web corpus) scores
+  about 62% on ARC-Easy; Laya and Jev are not reported on ARC.
+* Understanding ended much smaller than the text (4.8%), because forgetting finally
+  works: what was read once fades.
+
+Results: `sandbox/neurons/results/bg_before.txt`, `bg_read.txt`, `bg_after.txt`.
