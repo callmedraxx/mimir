@@ -1,0 +1,6 @@
+4-fold on train (6000 decisions): accuracy 0.728  KL 0.181  Brier 0.097   (Hebbian alone 0.526, episodes alone 0.729)
+chosen: smoothing 0.1, episodes k 40 by relevance, mix 0.2 Hebbian, temperatures yes/no 8 choice 35 score 8
+SET 0 4 1 0.20 8.0 35.0 8.0
+T on test: accuracy 0.726  KL 0.154  Brier 0.081  (2000 decisions)
+learned memory: 21838 feature neurons, 111010 Hebbian links, 1200 episodes: 2932807 B packed; learning took 0.03 s; answering 1.982 ms per case
+RESULT T acc=0.7255 kl=0.1542 brier=0.0808 ms_per_case=1.9817 mem_bytes=2932807

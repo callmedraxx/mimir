@@ -89,3 +89,31 @@ against each of Jev and Laya where they have a number, and against the Prior.
 The count is given as it is, with the reasons.
 
 ---
+
+## Results (2026-10-12)
+
+Engine: `sandbox/neurons/decide.c`, frozen in afbf448 before the test set was
+opened. Developed on `train` only, by 4-fold cross-validation (first version
+0.644; recall of similar cases weighted by each feature's learned relevance to
+the question, 0.724; list items also read by their label and as the last one,
+0.728). The test set was run once.
+
+| cell | | Mimir | Jev | Laya | others | result |
+|---|---|---|---|---|---|---|
+| D1 | accuracy, zero-shot | 0.371 | **0.727** | 0.362 | Prior 0.483 | Jev wins; tie with Laya; **Prior beats Mimir** |
+| D2 | accuracy, learned from train | 0.726 | (0.727 zero-shot) | **0.766** | ModernBERT 0.646, MiniLM 0.587 | **Laya wins** (4.0 pt); Mimir beats both specialists |
+| D3 | KL from gold, learned | **0.154** | 1.442 | – | ModernBERT 0.223, MiniLM 0.262, Prior 0.397 | Mimir beats all with a number |
+| D4 | Brier, learned | **0.081** | 0.148 | – | ModernBERT 0.119, MiniLM 0.143, Prior 0.197 | Mimir beats all with a number |
+| D5 | speed | 2.0 ms per case, droplet CPU one core (phone not run yet) | 236–710 ms hosted | 32.8 ms T4 GPU | | not like-for-like; phone pending |
+| D6 | size | program + base files ~8 MB, learned memory 2.9 MB | closed | 421M parameters | | Mimir far smaller |
+
+**What it means.** Having read the 1,200 training cases once (0.03 s), Mimir
+answers at 0.726 — level with Jev's 0.727 (which learned elsewhere, not from
+these cases), under Laya trained on the same cases (0.766), above the two
+trained specialists, and close to the 0.735 teacher ceiling. Its probabilities
+are much closer to the gold than Jev's (KL 0.154 against 1.442). Without
+training it has nothing: 0.371, under the Prior. So this is learning from
+examples of the same kind of case, not general judgment: a new kind of case
+(a workflow it has not read) would get the zero-shot result.
+
+Results: `sandbox/neurons/results/decide_test_*.txt`.

@@ -1,0 +1,2 @@
+Z on data/decide/test.jsonl: accuracy 0.371  KL 0.643  Brier 0.337  (2000 decisions)
+RESULT Z acc=0.3715 kl=0.6433 brier=0.3370
