@@ -136,3 +136,26 @@ Laya's published accuracies reproduce exactly (0.362, 0.766). Trained Laya
 beats Mimir on accuracy (4.0 pt), KL and Brier; Mimir answers about 85× faster
 on a CPU core than Laya on a GPU, with about 1/100 of the memory. Untrained,
 both are at the level of guessing.
+
+---
+
+## Next tests (rules fixed before running, 2026-10-12)
+
+**G1 — a kind of case never seen (leave one workflow out).** For each workflow,
+Mimir learns from the `train` cases of the **other three** only, then answers
+that workflow's `test` cases; the four results together cover all 2,000 test
+decisions. A question is the same answer neurons wherever it appears if its
+name, type and options are identical (only `urgency` is, in all four); a
+question it has never learned is answered zero-shot (Z). Settings: the ones
+already chosen for T (no new tuning). Compared with Mimir Z (0.371), Laya as
+shipped (0.362, measured by us) and Jev (0.727, published, never trained on
+these workflows). Win by more than 2 points against published, 1 against our
+own runs.
+
+**G2 — how fast it learns (learning curve).** Mimir learns from n training
+cases per workflow, n = 10, 25, 50, 100, 200, 300 (all), drawn at random with 5
+different draws for n < 300 (mean and worst shown), and answers the whole test
+set; settings as T. Shown beside the Prior learned from the same cases, and
+the fitted models at n = 300 (Laya typed-decisions 0.766, ModernBERT 0.646,
+MiniLM 0.587). Reported: the smallest n at which Mimir's **worst** draw passes
+the Prior, MiniLM and ModernBERT.
