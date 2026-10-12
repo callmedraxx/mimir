@@ -1,0 +1,12 @@
+test_middle.txt     1436 q   K closed 36.28%   K open 41.09%   (fact agreement alone 31.55%, evidence alone 30.29%)
+   understanding of all 362 texts: facts + pointers 266827 B, word map 48141 B (5349 words, once per brain) = 314968 B; the texts 390770 B (0.81 of them)
+RESULT know file=test_middle.txt n=1436 closed=36.28 open=41.09 fact=31.55 evid=30.29 facts_bytes=266827 wordmap_bytes=48141 text_bytes=390770
+test.txt             884 q   K closed 87.67%   K open 93.10%   (fact agreement alone 42.76%, evidence alone 80.88%)
+   understanding of all 884 texts: facts + pointers 210340 B, word map 66861 B (7429 words, once per brain) = 277201 B; the texts 423210 B (0.65 of them)
+RESULT know file=test.txt n=884 closed=87.67 open=93.10 fact=42.76 evid=80.88 facts_bytes=210340 wordmap_bytes=66861 text_bytes=423210
+mc160.test.txt       240 q   K closed 56.25%   K open 63.75%   (fact agreement alone 36.67%, evidence alone 42.50%)
+   understanding of all 60 texts: facts + pointers 47286 B, word map 14886 B (1654 words, once per brain) = 62172 B; the texts 62483 B (1.00 of them)
+RESULT know file=mc160.test.txt n=240 closed=56.25 open=63.75 fact=36.67 evid=42.50 facts_bytes=47286 wordmap_bytes=14886 text_bytes=62483
+mc500.test.txt       600 q   K closed 50.83%   K open 52.83%   (fact agreement alone 29.83%, evidence alone 41.33%)
+   understanding of all 150 texts: facts + pointers 119070 B, word map 24300 B (2700 words, once per brain) = 143370 B; the texts 159226 B (0.90 of them)
+RESULT know file=mc500.test.txt n=600 closed=50.83 open=52.83 fact=29.83 evid=41.33 facts_bytes=119070 wordmap_bytes=24300 text_bytes=159226

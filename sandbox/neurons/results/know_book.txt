@@ -1,0 +1,2 @@
+data/reader/books/war_and_peace.txt: 3274124 B of text, 35733 sentences, 98630 facts; understanding: facts + pointers 2256013 B + word map 161298 B = 2417311 B (73.8% of the text); read in 1.00 s
+RESULT kbook text=3274124 facts=98630 bytes=2256013 wordmap=161298 seconds=1.00

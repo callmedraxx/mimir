@@ -23,7 +23,7 @@ meanings, word classes), and the owner's memory as one file that keeps growing.
 | 5 | **Decisions like Jev and Laya**: read a case, answer yes/no, pick-one and 0–3 questions as probabilities (Typed Decisions benchmark) | first result — learned from examples 0.726 (Jev 0.727, Laya trained 0.766); zero-shot 0.371 (Jev 0.727). G1 unseen workflow 0.361 (Jev 0.727); G2 passes ModernBERT with 100 cases per workflow. Next: transfer to unseen kinds of case | DECIDE_COMPARE.md |
 | 6 | Runnable package: `mimir read / ask / decide / save / load`, memory as a `.brain` file; Linux and Android builds people can download | next | — |
 | 7 | Android app (APK) around the same engine | after 6 | — |
-| 8 | Reading ordinary prose well (a better role reader; MCTest, longer documents) | after 5 | — |
+| 8 | Reading ordinary prose well: understanding as facts with pointers (closed / open book) | first result — open book beats today's on SciQ (93.1 vs 91.2), behind on RACE-M (41.1 vs 45.3) and MCTest; closed book behind everywhere; War and Peace understood in 2.4 MB | KNOW_COMPARE.md |
 | 9 | Long-document questions against small open LLMs on the same phone | after 8 | — |
 | 10 | Producing sentences | later | — |
 
