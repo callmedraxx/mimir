@@ -123,7 +123,9 @@ typedef struct { uint32_t verb, part; uint8_t flags, tc, narg; Arg a[MAXARG]; ui
 
 typedef struct {                       /* what the reader carries from sentence to sentence (counted) */
     uint32_t single, group[4]; int ngroup;
+    uint32_t person, thing;            /* reader 2: the latest named person, the latest thing */
 } Refs;
+static int RV = 1;                      /* reader version: 1 as frozen for UNDERSTAND_COMPARE.md; 2 for know.c (KNOW_COMPARE.md) */
 
 typedef struct { uint32_t head, mod, grp[4]; int ngrp; uint8_t det, pron; } NP;
 enum { CH_NP, CH_PP, CH_VG, CH_ADJ, CH_WH, CH_AND, CH_OR, CH_SUB, CH_REL, CH_TIME, CH_NEG, CH_EITHER, CH_COMMA, CH_BEFORE };
@@ -188,6 +190,15 @@ static int chunk(Reader2 *R, Tk *k, int n, Chunk *ch, int max) {
         if (k[i].sp == SP_NO && i + 1 < n && k[i + 1].sp == SP_LONGER) { k[i].c = 'G'; k[i].sp = SP_NOT; k[i + 1].c = 'R'; k[i + 1].sp = SP_NONE; }
         if ((k[i].sp == SP_UP || k[i].sp == SP_DOWN) && i && k[i - 1].c == 'V' && !(i + 1 < n && (k[i + 1].c == 'D' || is_nounish(&k[i + 1])) && 0)) k[i].c = 'T';
         if (k[i].sp == SP_BACK) k[i].c = 'R';
+        if (RV >= 2) {
+            static const char *PT[] = { "over", "out", "away", "off", "along", "around", "by", "in", "on", "down", "up", 0 };
+            int pt = 0; for (int x = 0; PT[x] && k[i].id < OPEN; x++) pt |= !strcmp(R->t->voc[k[i].id].word, PT[x]);
+            /* "came over", "ran away": a particle when no noun phrase follows */
+            if (pt && i && k[i - 1].c == 'V' && !(i + 1 < n && (k[i + 1].c == 'D' || is_nounish(&k[i + 1]) || k[i + 1].c == 'J' || k[i + 1].c == 'O'))) k[i].c = 'T';
+            /* "would like", "will love": a verb after a modal */
+            if (i && k[i - 1].c == 'M' && k[i].c != 'V' && k[i].c != 'X' && k[i].v) k[i].c = 'V';
+            if (i && k[i - 1].c == 'M' && k[i].id < OPEN && !strcmp(R->t->voc[k[i].id].word, "like")) k[i].c = 'V';
+        }
         if ((k[i].sp == SP_BEFORE || k[i].sp == SP_AFTER) && i + 1 < n && (k[i + 1].c == 'D' || is_nounish(&k[i + 1]))) k[i].c = 'I';
         if (k[i].sp == SP_YESTERDAY || ((k[i].sp == SP_MORNING || k[i].sp == SP_AFTERNOON || k[i].sp == SP_EVENING) && i && k[i - 1].sp == SP_THIS)) k[i].c = 'Y';
         if (k[i].sp == SP_THIS && i + 1 < n && (k[i + 1].sp == SP_MORNING || k[i + 1].sp == SP_AFTERNOON || k[i + 1].sp == SP_EVENING)) k[i].c = 'Y';
@@ -299,6 +310,11 @@ static int resolve(Reader2 *R, NP *np, uint32_t *out) {
     if (!np->pron) { if (np->ngrp) { for (int i = 0; i < np->ngrp; i++) out[i] = np->grp[i]; return np->ngrp; } out[0] = np->head; return 1; }
     int sp = special(R->t->voc[np->head].word);
     if (sp == SP_THEY && R->refs.ngroup) { for (int i = 0; i < R->refs.ngroup; i++) out[i] = R->refs.group[i]; return R->refs.ngroup; }
+    if (RV >= 2 && sp == SP_HE) {          /* he / she / him / her: the latest person named; it: the latest thing */
+        int it = !strcmp(R->t->voc[np->head].word, "it");
+        if (!it && R->refs.person != NONE) { out[0] = R->refs.person; return 1; }
+        if (it && R->refs.thing != NONE) { out[0] = R->refs.thing; return 1; }
+    }
     if (R->refs.single != NONE) { out[0] = R->refs.single; return 1; }
     out[0] = np->head; return 1;
 }
@@ -448,6 +464,12 @@ static int read_sentence(Reader2 *R, Tk *k, int n, Frame *out, int max, int *whs
         if (grp) { R->refs.ngroup = 0; for (int r = q; r <= q + grp && R->refs.ngroup < 4; r++) R->refs.group[R->refs.ngroup++] = out[r].a[find_arg(&out[r], A_AGENT)].head; q += grp; }
         else R->refs.single = h;
     }
+    if (RV >= 2) for (int q = 0; q < nf; q++) for (int a = 0; a < out[q].narg; a++) {     /* the latest person named, the latest thing */
+        uint32_t h = out[q].a[a].head; if (h >= OPEN || special(R->t->voc[h].word) != SP_NONE) continue;
+        WC *c = wc_of(R->wm, R->t, h);
+        if (c->c == 'P') R->refs.person = h;
+        else if (c->c == 'N' && out[q].a[a].role != A_AGENT) R->refs.thing = h;
+    }
     return nf;
 }
 
@@ -474,7 +496,7 @@ static int read_span(Reader2 *R, const TextToken *tok, uint32_t a, uint32_t b, F
 }
 
 static void r2_init(Reader2 *R, TextContext *t, WMap *wm) {
-    memset(R, 0, sizeof *R); R->t = t; R->wm = wm; R->refs.single = NONE;
+    memset(R, 0, sizeof *R); R->t = t; R->wm = wm; R->refs.single = NONE; R->refs.person = R->refs.thing = NONE;
     R->w_be = vid(t, "be"); R->w_have = vid(t, "have"); R->w_do = vid(t, "do"); R->w_not = vid(t, "not"); R->w_you = vid(t, "you");
 }
 
@@ -1157,6 +1179,7 @@ static int run_book_roles(const Meaning *m, const char *book, double mb) {
     return rc;
 }
 
+#ifndef UNDERSTAND_NO_MAIN
 int main(int argc, char **argv) {
     if (argc < 2) { fprintf(stderr, "understand babi DIR SPLIT [TASK] | mctest FILE... | parse FILE | book BOOK MB\n"); return 1; }
     lex_load(getenv("WORDCLASS") ? getenv("WORDCLASS") : "data/understand/wordclass.tsv");
@@ -1169,3 +1192,4 @@ int main(int argc, char **argv) {
     if (!strcmp(argv[1], "book") && argc >= 4) return run_book_roles(&m, argv[2], atof(argv[3]));
     return 1;
 }
+#endif
