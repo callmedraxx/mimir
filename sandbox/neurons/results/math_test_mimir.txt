@@ -1,0 +1,12 @@
+  Which number is the only even prime number?  want B | A C | B C | B+ C
+  What is the greatest common divisor of 12 and 18?  want C | A B | B B | B+ B
+  What is the least common multiple of 4 and 6?  want A | A A | B A | B+ C
+  Which number is neither prime nor composite?  want A | A D | B D | B+ D
+  Who proved that there are infinitely many prime numbers?  want D | A D | B D | B+ D
+  When is a number divisible by 5?  want B | A B | B B | B+ B
+  What is the rule that every whole number greater than 1 is a product of primes in exactly one way called?  want A | A A | B A | B+ A
+  How many factors does a prime number have?  want B | A D | B D | B+ D
+  Using the rule in the text, which of these numbers is divisible by 3?  want C | A A | B A | B+ A
+  Which of these numbers is a prime number?  want C | A A | B A | B+ A
+mctest_format.txt    10 questions   A 40.00%   B 40.00%   B+ 30.00%     single: A 40.00 B 40.00 B+ 30.00   multiple: A  -nan B  -nan B+  -nan
+RESULT mctest file=mctest_format.txt n=10 A=40.00 B=40.00 P=30.00 lambda=2.000

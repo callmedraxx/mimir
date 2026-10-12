@@ -1,0 +1,8 @@
+Small maths test (data/test_math, committed 40ae97a before either read it). Key: B C A A D B A B C C
+Mimir (neurons growing roles, B+)   3/10  chose C B C D D B A D A A
+Mimir plain neurons (B)             4/10
+Mimir today's reader (A)            4/10
+Laya (as shipped, Colab T4)         6/10  chose B D A D D C A B C D
+Laya-multilingual                   5/10  chose C C A A D D A D A A
+Laya-typed-decisions                6/10  chose B D A D D C A B C D
+Chance                              2.5/10
