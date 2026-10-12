@@ -1,0 +1,4 @@
+mc160.test.txt      240 questions   A 67.08%   B 65.42%   B+ 67.50%     single: A 75.00 B 66.96 B+ 69.64   multiple: A 60.16 B 64.06 B+ 65.62
+RESULT mctest file=mc160.test.txt n=240 A=67.08 B=65.42 P=67.50 lambda=2.000
+mc500.test.txt      600 questions   A 57.83%   B 55.67%   B+ 54.17%     single: A 61.03 B 57.72 B+ 55.88   multiple: A 55.18 B 53.96 B+ 52.74
+RESULT mctest file=mc500.test.txt n=600 A=57.83 B=55.67 P=54.17 lambda=2.000

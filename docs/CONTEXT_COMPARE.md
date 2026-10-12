@@ -180,3 +180,22 @@ about 2 MB, which stays in the caches.
 **Final count with the phone (grown B): B 3 (memory held, memory peak,
 little-core speed), A 2 (quote, prime-core speed), 3 ties (gist, recall,
 find).** Results: `sandbox/neurons/results/ctx_phone.txt`.
+
+## Correction (2026-10-12): workspace bug
+
+Found while testing understanding (UNDERSTAND_COMPARE.md): when an event
+already carried in B's workspace was read again and was not carried on, it
+was never let go, so the workspace grew past 4 and wrote past the end of an
+array (AddressSanitizer). Fixed in `cw_event`. Every score and byte count
+above is unchanged (gist 14.05%, recall 97.42%, find 100%, 1.29 MB held,
+2.25 MB peak). Speed is not: the extra carried events kept their meaning
+parts, which saved rebuilds. Phone again, worst of 3
+(`results/understand_phone_final.txt`, B = neurons):
+
+| core | A: today's | B fixed | before the fix | winner |
+|---|---|---|---|---|
+| little | 19.6k | **23.3k** (+19%) | 21.3k vs 15.9k (+34%) | **B** |
+| prime | **123.1k** | 94.7k (−23%) | 95.3k vs 137.2k (−31%) | **A** |
+
+Same winners, so the count stays **B 3, A 2, 3 ties**; B's lead on the little
+core is 19%, not 34%.

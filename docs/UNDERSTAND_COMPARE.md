@@ -86,3 +86,91 @@ As before: more than 1 point (scores; tasks passed counts as points) or
 B is shown so the effect of growing roles can be seen on its own.
 
 ---
+
+## Results (2026-10-12)
+
+Harness: `sandbox/neurons/understand.c`, frozen in bb66433 before the test
+sets were opened; data: `tools/understand_fetch.py`. B+ was developed on the
+bAbI train sets and the MCTest train + dev stories only (reader bugs fixed
+there; the role weight, 2, chosen there). The test sets were run once.
+
+**A's check passes.** On MCTest test A gets 67.08% (MC160) and 57.83% (MC500)
+against the published 66.25% and 56.67% for the same algorithm (train + dev:
+70.3% and 59.1% against 67.75% and 58.21%). The small gap is tie-breaking
+(theirs a coin flip) and word splitting.
+
+| cell | test | A: today's | B: neurons | B+: neurons growing roles | winner (A vs B+) |
+|---|---|---|---|---|---|
+| U1 | bAbI, mean of 20 tasks (test) | 20.16% | 20.51% | **94.09%** | **B+** |
+| U2 | bAbI tasks passed (≥ 95%) | 0 | 0 | **17** | **B+** |
+| U3 | MCTest MC160 test | 67.08% | 65.42% | 67.50% | tie (0.4 pt) |
+| U4 | MCTest MC500 test | **57.83%** | 55.67% | 54.17% | **A** (3.7 pt) |
+| M  | memory held after War and Peace | 11.3 MB | 1.29 MB | **3.94 MB** | **B+** (2.9×) |
+| S  | speed, phone little core, worst of 3 | 17.5k tok/s | — | 18.0k tok/s | tie (+3%) |
+
+**Count: B+ 3 (U1, U2, M), A 1 (U4), 2 ties (U3, S).** Both pass the 10k gate.
+
+### bAbI per task (test, 1,000 questions each)
+
+| task | A | B | B+ | | task | A | B | B+ |
+|---|---|---|---|---|---|---|---|---|
+| 1 one fact | 3.4 | 11.5 | 100 | | 11 he/she | 4.9 | 0.6 | 100 |
+| 2 two facts | 0.1 | 0.1 | 100 | | 12 "and" | 1.7 | 6.9 | 100 |
+| 3 three facts | 1.5 | 0.5 | 100 | | 13 they | 1.8 | 1.2 | 100 |
+| 4 two-place relations | 53.9 | 54.4 | 95.6 | | 14 time | 5.0 | 3.4 | 100 |
+| 5 three-place (give) | 5.9 | 9.0 | **40.7** | | 15 deduction | 5.7 | 4.8 | 100 |
+| 6 yes/no | 66.7 | 65.9 | 100 | | 16 induction | 22.4 | 17.8 | 100 |
+| 7 counting | 0.0 | 0.0 | **80.1** | | 17 positions | 47.5 | 47.5 | 100 |
+| 8 lists | 1.2 | 4.0 | 95.8 | | 18 sizes | 53.8 | 53.7 | 100 |
+| 9 negation | 56.9 | 56.5 | 100 | | 19 path finding | 0.0 | 0.0 | 100 |
+| 10 maybe | 67.6 | 66.5 | 100 | | 20 motives | 3.3 | 5.9 | **69.6** |
+
+The three B+ fails are the rules as fixed, not reading errors: in task 5 the
+story says "handed" or "passed" and the question "give" or "received" (rule 1
+wants the same verb); in task 7 things change hands by giving, which rule 3
+(take / let go) does not cover; in task 20 the word meanings choose the wrong
+room for a feeling (bored → bedroom). A and B answer with the word that sits
+nearest the question's words, which is usually the verb ("Mary **moved** to
+the bathroom"): without roles nothing tells a place from a verb.
+
+### What it shows
+
+* **The basics of who-did-what are there.** Growing roles turns 20% into 94%:
+  where people and things are, carrying, giving, time, kinds, negation,
+  either-or, spatial and size chains, paths. Today's and the plain neurons
+  cannot do any of it. As warned above, bAbI is made by a program and rules
+  written for its kinds of questions solve it; this shows the roles exist and
+  are used, not that ordinary text is understood.
+* **On stories people wrote, roles add about nothing.** B+ is +2.1 points
+  over B on MC160 and −1.5 on MC500; overall it is level with today's word
+  matching. The reader breaks on ordinary prose: "It was Jessie Bear's
+  birthday" gives a frame with "it" as who; "she asked them if they would
+  like to have cake" loses "like"; the word-class table takes "bit" for a
+  noun, so "The dog bit the man" gives no frame at all; "She gave the apple
+  to John" makes John a place Mary went to. Understanding ordinary text is
+  not there.
+* **Roles cost memory.** 96,097 frames in War and Peace at about 20 B each
+  (the pool), plus the part table and the word map: 2.6 MB, twice what B
+  holds itself (1.29 MB). B+ is still 2.9× under A.
+
+### Found after the test run (the count above is not changed)
+
+1. **Role links in the shared cue lists cost recall.** The frozen B+ put its
+   extra links (a pronoun read as "Pierre", "wolves" as "wolf") into the same
+   word → event lists that recall uses. On War and Peace that makes recall
+   96.44% instead of 97.42%, and recognising a repeated event counts them, so
+   174 fewer neurons. Moved into lists of their own inside the role part
+   (+0.19 MB): recall 97.42% and find 100% again, the same events as B.
+   That version on the test sets (shown only): bAbI the same (94.09%, 17),
+   MC160 68.33%, MC500 54.33%; memory 4.07 MB; phone little core worst of 3
+   19.8k against A's 14.9k (A had one slow run; same-run ratios 1.10–1.33).
+2. **The book harness compared word numbers across vocabularies.** B+'s
+   reader adds words (base forms) to B's vocabulary, so the numbers no longer
+   lined up with A's and recall/find came out 34.6% / 9.0%
+   (`results/understand_book.txt`). That was the test, not the memory: the
+   harness now matches words by spelling (the same numbers when the
+   vocabularies agree, so ctxwin's results do not move).
+3. **A workspace bug in the neuron context window** (CONTEXT_COMPARE.md): see
+   the correction there.
+
+Results: `sandbox/neurons/results/understand_*.txt` (`*_final` = after 1–2).

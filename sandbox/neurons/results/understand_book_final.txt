@@ -1,0 +1,16 @@
+events: A 41045, B read 41045 (same cuts), B neurons 38910, B events not matching A's words: 1 (merged repeats count here)
+events with more than 12 content words: 4219 of 41045 (10.3%); content words past the limit: 7.3%
+vocabulary: A 17964 words, B 19224 words (shared, not counted)
+
+A (today's): who: prince andrew princess man pierre mary
+  gist: Contents      BOOK ONE: 1805 BOOK THREE: 1805 BOOK FIVE: 1806 - 07 BOOK EIGHT: 1811 - 12 BOOK ONE: 1805 It was in July, 1805, When Prince Andrew entered the study the old man in his old-age spectacles and white dressing gown, in which he received no one but his son, sat at the table writing. What?” asked both princesses when they saw for a moment at the door Prince Andrew and the figure of the old man in a white dressing gown, spectacled and wigless, shouting in an angry voice. Hardly had Prince Andrew gone when the study door opened quickly and the stern figure of the old man in the white d
+B (neurons): who: prince andrew princess man position borodino
+  gist: eighteen oh five / prince andrew entered study man age spectacles white dressing gown received son sat table writing / asked princesses saw moment door prince andrew figure man white dressing gown spectacled wigless shouting angry voice / hardly prince andrew gone study door opened quickly stern figure man white dressing gown looked / blunders krasnoe berezina deprived russian army glory complete victory french / 
+
+B extra-words parts: 4219 events grew one, 118784 B (core 966649 B)
+B parts: at the last page 725056 B; at rest 2048 B (gist 64 events); peak of all B holds 4853211 B
+recall query: A 4843.6 us (scans its events), B 47.7 us; find: A 1588.2 us, B 1.2 us
+meaning parts: 1990675 uses, 916081 grown
+find B: rare words 1.0000, common words 1.0000
+RESULT budget=4.0MB tokens=667791 R1_A=0.9742 R1_B=0.9742 F1_A=1.0000 F1_B=1.0000 Q_A=1.0000 Q_B=0.0000 M1_A=11287616 M1_A_alloc=19131162 M1_B=4069448 M2_A=58550252 M2_A_alloc=66393798 M2_B=4853211 tok_s_A=77547 tok_s_B=32257 takeonly_s_A=0.277
+B+ role parts: 37004 events grew one; frames 96097 (+1713 read again); role links 44251 on 3487 words; role bytes 2773529 (part 524288, pool 1901226, word map 157104, role links 190887)

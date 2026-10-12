@@ -435,6 +435,10 @@ static int run_gist(const Meaning *m) {
 
 static int has(const GEvent *x, uint32_t w) { int lo = 0, hi = x->nw; while (lo < hi) { int mid = (lo + hi) / 2; if (x->w[mid] < w) lo = mid + 1; else hi = mid; } return lo < x->nw && x->w[lo] == w; }
 
+static uint32_t voc_find(const TextContext *t, const char *s) {
+    for (uint32_t h = text_hash(s) & t->mask; t->slot[h]; h = (h + 1) & t->mask) if (!strcmp(t->voc[t->slot[h] - 1].word, s)) return t->slot[h] - 1;
+    return 0;
+}
 static int run_book(const Meaning *m, const char *path, double mb) {
     size_t len; char *book = slurp_all(path, &len);
     /* A: take in, then the gist */
@@ -458,9 +462,14 @@ static int run_book(const Meaning *m, const char *path, double mb) {
     double tB = now() - t0;
     size_t residB = cw_bytes(c);
 
+    /* A's and B's word numbers, matched by spelling (the same unless B's reader added words, as understand.c's does) */
+    uint32_t *a2b = malloc((t.nvoc + 1) * 4), *b2a = malloc((st.nvoc + 1) * 4);
+    for (uint32_t w = 0; w < t.nvoc; w++) a2b[w] = voc_find(&st, t.voc[w].word);
+    for (uint32_t w = 0; w < st.nvoc; w++) b2a[w] = voc_find(&t, st.voc[w].word);
+
     /* the events must be the same ones */
     int same = c->nmap == n, sub = 0;
-    for (int j = 0; j < n && j < c->nmap; j++) { if (c->map[j] < 0) continue; static uint32_t *w; static int wcap; int k = cw_words(c, c->map[j], &w, &wcap), ok = 1; for (int i = 0; i < k; i++) ok &= has(&e[j], w[i]); sub += !ok; }
+    for (int j = 0; j < n && j < c->nmap; j++) { if (c->map[j] < 0) continue; static uint32_t *w; static int wcap; int k = cw_words(c, c->map[j], &w, &wcap), ok = 1; for (int i = 0; i < k; i++) ok &= has(&e[j], b2a[w[i]]); sub += !ok; }
     printf("events: A %d, B read %d (%s), B neurons %d, B events not matching A's words: %d (merged repeats count here)\n", n, c->nmap, same ? "same cuts" : "DIFFERENT CUTS", c->b->base.nev, sub);
     { long over = 0, lost = 0, all = 0; for (int j = 0; j < n; j++) { all += e[j].nw; if (e[j].nw > MAXW) { over++; lost += e[j].nw - MAXW; } }
       printf("events with more than %d content words: %ld of %d (%.1f%%); content words past the limit: %.1f%%\n", MAXW, over, n, 100.0 * over / n, 100.0 * lost / all); }
@@ -480,8 +489,8 @@ static int run_book(const Meaning *m, const char *path, double mb) {
         int truth[1024], nt = 0; for (int i = 0; i < x->nw && nt < 1024; i++) truth[nt++] = x->w[i];
         int got[1024], ng = 0; if (best >= 0) for (int i = 0; i < e[best].nw && ng < 1024; i++) got[ng++] = e[best].w[i];
         rA += f1(got, ng, truth, nt);
-        int cue[1024]; for (int i = 0; i < nc; i++) cue[i] = x->w[i];
-        s0 = now(); int hb, bev = b5_best(c->b, cue, nc, 1, &hb, 0, 0); static uint32_t *gw; static int gcap; ng = bev < 0 ? 0 : cw_words(c, bev, &gw, &gcap); if (ng > 1024) ng = 1024; for (int i = 0; i < ng; i++) got[i] = gw[i]; qb += now() - s0;
+        int cue[1024]; for (int i = 0; i < nc; i++) cue[i] = a2b[x->w[i]];
+        s0 = now(); int hb, bev = b5_best(c->b, cue, nc, 1, &hb, 0, 0); static uint32_t *gw; static int gcap; ng = bev < 0 ? 0 : cw_words(c, bev, &gw, &gcap); if (ng > 1024) ng = 1024; for (int i = 0; i < ng; i++) got[i] = b2a[gw[i]]; qb += now() - s0;
         double fb = f1(got, ng, truth, nt); rB += fb;
         if (getenv("DIAG")) { static int nA, capd, other; double fa = f1(got, 0, truth, nt); (void)fa;
             int aright = best >= 0 && best == (int)(x - e);
@@ -503,7 +512,7 @@ static int run_book(const Meaning *m, const char *path, double mb) {
         int *L = g ? com : rare, nl = g ? nco : nr; if (!nl) continue; uint32_t w = L[(long)nl * q / 250];
         double s0 = now(); int found = 0; for (int j = 0; j < n; j++) found += has(&e[j], w); fa_t += now() - s0;   /* A: scans its context */
         fA += (double)found / evc[w];
-        s0 = now(); c5_room(c->b->base.C + 64); int k = c5_decode(&c->b->cue[w], c5_ids, 0); fb_t += now() - s0;
+        s0 = now(); c5_room(c->b->base.C + 64); int k = c5_decode(&c->b->cue[a2b[w]], c5_ids, 0); fb_t += now() - s0;
         for (int i = 0; i < k; i++) inB[c5_ids[i]] = 1;
         int hit = 0; for (int j = 0; j < n; j++) if (has(&e[j], w) && c->map[j] >= 0 && inB[c->map[j]]) hit++;
         for (int i = 0; i < k; i++) inB[c5_ids[i]] = 0;

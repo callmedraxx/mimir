@@ -507,11 +507,13 @@ typedef struct {
     CW *c; TextContext *t; Reader2 R; WMap wm;
     Part role;                         /* event → 1 + where its latest record starts in the pool */
     uint8_t *pool; size_t np, cap;
+    Part rcue; struct RCue *rc; int nrc, caprc; size_t rcbytes;   /* word → its role links (events where a frame names it but its text does not) */
     long frames, repeats, links;
 } Roles;
+typedef struct RCue { uint8_t *b; uint32_t nb, cap, cnt, last; } RCue;   /* event gaps as varints; counted: buffer + 16 B */
 static Roles *RL;                       /* the B+ whose hooks are on */
 
-static size_t roles_bytes(Roles *r) { return part_bytes(&r->role) + r->np + r->wm.counted + sizeof(Refs); }
+static size_t roles_bytes(Roles *r) { return part_bytes(&r->role) + r->np + r->wm.counted + sizeof(Refs) + part_bytes(&r->rcue) + r->rcbytes; }
 static void pool_room(Roles *r, size_t n) { if (r->np + n > r->cap) { r->cap = r->cap ? r->cap * 2 : 4096; while (r->np + n > r->cap) r->cap *= 2; r->pool = realloc(r->pool, r->cap); } }
 static void pv(Roles *r, uint32_t v) { pool_room(r, 5); r->np += vput(r->pool + r->np, v); }
 static void pb(Roles *r, uint8_t v) { pool_room(r, 1); r->pool[r->np++] = v; }
@@ -543,12 +545,34 @@ static int same_frame(const Frame *a, const Frame *b) {
     for (int i = 0; i < a->narg; i++) if (memcmp(&a->a[i], &b->a[i], sizeof(Arg))) return 0;
     return 1;
 }
-static void cue_add(B5 *b, uint32_t w, uint32_t ev) {   /* a cue link word → event, kept in order */
-    if ((int)w >= b->base.nvocab) return;
-    Cue5 *cl = &b->cue[w]; c5_room(c5_decode(cl, 0, 0) + 2); int n = c5_decode(cl, c5_ids, 0);
-    int j = n; while (j > 0 && c5_ids[j - 1] > ev) j--;
-    if (j > 0 && c5_ids[j - 1] == ev) return;
-    memmove(c5_ids + j + 1, c5_ids + j, (n - j) * 4); c5_ids[j] = ev; c5_encode(b, cl, c5_ids, n + 1); RL->links++;
+static int rc_decode(const RCue *c, uint32_t *out) { size_t i = 0; uint32_t e = 0; for (uint32_t j = 0; j < c->cnt; j++) { e = j ? e + vget(c->b, &i) : vget(c->b, &i); if (out) out[j] = e; } return c->cnt; }
+static void rc_set(Roles *r, RCue *c, const uint32_t *ids, uint32_t n) {
+    uint8_t tmp[8]; uint32_t need = 0; for (uint32_t j = 0; j < n; j++) need += vput(tmp, j ? ids[j] - ids[j - 1] : ids[j]);
+    if (need > c->cap) { uint32_t nc = qcap(need); r->rcbytes += nc - c->cap; c->b = realloc(c->b, nc); c->cap = nc; }
+    c->nb = 0; for (uint32_t j = 0; j < n; j++) c->nb += vput(c->b + c->nb, j ? ids[j] - ids[j - 1] : ids[j]);
+    c->cnt = n; c->last = n ? ids[n - 1] : 0;
+}
+static RCue *rc_of(Roles *r, uint32_t w, int make) {
+    uint32_t *v = (uint32_t *)part_get(&r->rcue, w); if (v) return &r->rc[*v];
+    if (!make) return 0;
+    if (r->nrc == r->caprc) { r->caprc = r->caprc ? r->caprc * 2 : 1024; r->rc = realloc(r->rc, r->caprc * sizeof(RCue)); }
+    memset(&r->rc[r->nrc], 0, sizeof(RCue)); r->rcbytes += 16; *(uint32_t *)part_grow(&r->rcue, w) = r->nrc; return &r->rc[r->nrc++];
+}
+/* a role link word → event (in the role part's own lists: the word's cue list, used for recall, is not touched) */
+static void cue_add(B5 *b, uint32_t w, uint32_t ev) {
+    Roles *r = RL;
+    if ((int)w < b->base.nvocab) { Cue5 *cl = &b->cue[w]; c5_room(c5_decode(cl, 0, 0) + 2); int n = c5_decode(cl, c5_ids, 0);   /* already a cue? */
+        int lo = 0, hi = n - 1; while (lo <= hi) { int mid = (lo + hi) / 2; if (c5_ids[mid] == ev) return; if (c5_ids[mid] < ev) lo = mid + 1; else hi = mid - 1; } }
+    RCue *c = rc_of(r, w, 1);
+    if (!c->cnt || ev > c->last) {               /* the usual case: a newer event, appended */
+        uint8_t tmp[8]; int k = vput(tmp, c->cnt ? ev - c->last : ev);
+        if (c->nb + k > c->cap) { uint32_t nc = qcap(c->nb + k); r->rcbytes += nc - c->cap; c->b = realloc(c->b, nc); c->cap = nc; }
+        memcpy(c->b + c->nb, tmp, k); c->nb += k; c->cnt++; c->last = ev; r->links++; return;
+    }
+    uint32_t *ids = malloc((c->cnt + 1) * 4); int n = rc_decode(c, ids), j = n;
+    while (j > 0 && ids[j - 1] > ev) j--;
+    if (j > 0 && ids[j - 1] == ev) { free(ids); return; }
+    memmove(ids + j + 1, ids + j, (n - j) * 4); ids[j] = ev; rc_set(r, c, ids, n + 1); free(ids); r->links++;
 }
 static int linkable(Roles *r, uint32_t w) { if (w == NONE || w == OPEN) return 0; int sp = special(r->t->voc[w].word); return sp == SP_NONE || sp == SP_MORNING; }
 
@@ -584,6 +608,8 @@ static void roles_remap(CW *c, const int *map, int old) {
     for (int i = 0; i < p->cap; i++) if (p->key[i] != EMPTY && (int)p->key[i] < old && map[p->key[i]] >= 0) { k[m] = map[p->key[i]]; v[m++] = *(uint32_t *)(p->val + (size_t)i * 4); }
     part_clear(p); for (int i = 0; i < m; i++) *(uint32_t *)part_grow(p, k[i]) = v[i];
     free(k); free(v);
+    for (int w = 0; w < r->nrc; w++) { RCue *c = &r->rc[w]; if (!c->cnt) continue; uint32_t *ids = malloc(c->cnt * 4); int n = rc_decode(c, ids), q = 0;
+        for (int j = 0; j < n; j++) if ((int)ids[j] < old && map[ids[j]] >= 0) ids[q++] = map[ids[j]]; rc_set(r, c, ids, q); free(ids); }
 }
 
 /* one story's memories: A (page), B (neuron window), B+ (its own window, the same plus role parts) */
@@ -592,7 +618,7 @@ static const Meaning *MM;
 static void story_open(Story *s, int roles) {
     memset(s, 0, sizeof *s); text_init(&s->ta); text_init(&s->tb); text_init(&s->tp);
     cw_nvocab = 1 << 16; s->c = cw_make(MM, &s->tb, (size_t)64 << 20); s->c2 = cw_make(MM, &s->tp, (size_t)64 << 20);
-    s->r.c = s->c2; s->r.t = &s->tp; s->r.role = (Part){ .vsize = 4 }; r2_init(&s->r.R, &s->tp, &s->r.wm);
+    s->r.c = s->c2; s->r.t = &s->tp; s->r.role = (Part){ .vsize = 4 }; s->r.rcue = (Part){ .vsize = 4 }; r2_init(&s->r.R, &s->tp, &s->r.wm);
     RL = &s->r; (void)roles;
 }
 static void cw_free(CW *c) {
@@ -603,7 +629,7 @@ static void cw_free(CW *c) {
 }
 static void story_close(Story *s) {
     cw_free(s->c); cw_free(s->c2);
-    part_clear(&s->r.role); free(s->r.pool); free(s->r.wm.w);
+    part_clear(&s->r.role); free(s->r.pool); free(s->r.wm.w); part_clear(&s->r.rcue); for (int i = 0; i < s->r.nrc; i++) free(s->r.rc[i].b); free(s->r.rc);
     text_free(&s->ta); text_free(&s->tb); text_free(&s->tp); RL = 0; cw_read_hook = 0; cw_more_bytes = 0; cw_remap_hook = 0;
 }
 static void story_take(Story *s, const char *text) {
@@ -722,7 +748,8 @@ static int fcmp(const void *a, const void *b) { uint64_t x = fkey(a), y = fkey(b
 /* frames that mention a word, found through that word's cue list */
 static void frames_about(Roles *r, uint32_t w, Fr *out) {
     out->n = 0; if (w == NONE || w == OPEN || (int)w >= r->c->b->base.nvocab) return;
-    Cue5 *cl = &r->c->b->cue[w]; int m = c5_decode(cl, 0, 0); uint32_t *ids = malloc((m + 1) * 4); c5_decode(cl, ids, 0);
+    Cue5 *cl = &r->c->b->cue[w]; RCue *rc = rc_of(r, w, 0); int m1 = c5_decode(cl, 0, 0), m2 = rc ? (int)rc->cnt : 0, m = m1 + m2;
+    uint32_t *ids = malloc((m + 1) * 4); c5_decode(cl, ids, 0); if (rc) rc_decode(rc, ids + m1);
     static Frame tmp[1024];
     for (int i = 0; i < m; i++) { int n = event_frames(r, ids[i], tmp, 1024);
         for (int j = 0; j < n; j++) { int on = tmp[j].verb == w; for (int q = 0; q < tmp[j].narg; q++) on |= tmp[j].a[q].head == w || tmp[j].a[q].mod == w; if (on) fr_push(out, &tmp[j]); } }
@@ -1122,11 +1149,11 @@ static int run_mctest(int nfile, char **files) {
 static Roles book_roles;
 static int run_book_roles(const Meaning *m, const char *book, double mb) {
     /* the book's own TextContext is made inside run_book; the reader attaches to it on the first event */
-    memset(&book_roles, 0, sizeof book_roles); book_roles.role = (Part){ .vsize = 4 }; RL = &book_roles;
+    memset(&book_roles, 0, sizeof book_roles); book_roles.role = (Part){ .vsize = 4 }; book_roles.rcue = (Part){ .vsize = 4 }; RL = &book_roles;
     cw_read_hook = book_first; cw_more_bytes = roles_more_bytes; cw_remap_hook = roles_remap;
     int rc = run_book(m, book, mb);
-    printf("B+ role parts: %d events grew one; frames %ld (+%ld read again); extra cue links %ld; role bytes %zu (part %zu, pool %zu, word map %zu)\n",
-           book_roles.role.n, book_roles.frames, book_roles.repeats, book_roles.links, roles_bytes(&book_roles), part_bytes(&book_roles.role), book_roles.np, book_roles.wm.counted);
+    printf("B+ role parts: %d events grew one; frames %ld (+%ld read again); role links %ld on %d words; role bytes %zu (part %zu, pool %zu, word map %zu, role links %zu)\n",
+           book_roles.role.n, book_roles.frames, book_roles.repeats, book_roles.links, book_roles.nrc, roles_bytes(&book_roles), part_bytes(&book_roles.role), book_roles.np, book_roles.wm.counted, part_bytes(&book_roles.rcue) + book_roles.rcbytes);
     return rc;
 }
 
