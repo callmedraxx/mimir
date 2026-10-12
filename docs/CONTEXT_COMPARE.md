@@ -157,3 +157,26 @@ rewritten every time they pass the cap).
 Under a tight budget growing costs: at 0.5 MB the grown B keeps fewer events
 (the extra words take room), recall 63.1% and find 47.1% (capped: 67.1%,
 49.4%). The owner decides what memory holds; a long event costs what it is.
+
+## Phone (S22 Ultra, War and Peace, worst of 3)
+
+The phone came back; same binary for A and both Bs, each run takes in War
+and Peace and gives its gist.
+
+| core | A: today's | B grown | B capped | winner (A vs B grown) |
+|---|---|---|---|---|
+| **little** (S1) | 15.9k tok/s | **21.3k** | 21.6k | **B** (+34%) |
+| **prime** (S2) | **137.2k** | 95.3k | 105.8k | **A** (B −31%) |
+
+Run by run (same run, B grown ÷ A): little 1.18, 1.10, 1.13; prime 0.63,
+0.69, 0.69. Both pass the 10k gate on the little core.
+
+Why it flips: on the prime core A's work is plain float maths and the core
+is fast at it, so B's extra work (rebuilding meanings of recalled events)
+shows. On the little core memory is the cost: A walks 58 MB (every token,
+the page, a 1 KB float meaning for every one of 41,045 events); B works in
+about 2 MB, which stays in the caches.
+
+**Final count with the phone (grown B): B 3 (memory held, memory peak,
+little-core speed), A 2 (quote, prime-core speed), 3 ties (gist, recall,
+find).** Results: `sandbox/neurons/results/ctx_phone.txt`.
