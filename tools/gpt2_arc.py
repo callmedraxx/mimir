@@ -3,7 +3,7 @@
 Scored as language-model papers do (lm-evaluation-harness): each option's log-probability after "Question: ...\\nAnswer:";
 acc = highest total, acc_norm = highest per character. Ties share credit. One RESULT line per test and model.
 
-In Colab:  !curl -sL https://raw.githubusercontent.com/callmedraxx/mimir/reader/tools/gpt2_arc.py -o g.py && python g.py [gpt2 gpt2-medium ...]
+In Colab:  !curl -sL https://raw.githubusercontent.com/callmedraxx/mimir/reader/tools/gpt2_arc.py -o g.py && python g.py [gpt2 gpt2-medium ...] [TEST ...]
 """
 import subprocess, sys, time, urllib.request
 subprocess.run([sys.executable, "-m", "pip", "install", "-q", "transformers"], check=False)
@@ -12,9 +12,11 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 
 B = "https://raw.githubusercontent.com/callmedraxx/mimir/reader/data/arc_tests/"
 dev = "cuda" if torch.cuda.is_available() else "cpu"
-models = sys.argv[1:] or ["gpt2"]
+args = sys.argv[1:]
+models = [a for a in args if not a.endswith("_test") and not a.endswith("_dev")] or ["gpt2"]
+names = [a for a in args if a.endswith("_test") or a.endswith("_dev")] or ["easy_test", "challenge_test", "obqa_test"]
 tests = {n: [l.split("\t") for l in urllib.request.urlopen(B + n + ".tsv").read().decode().splitlines() if l.strip()]
-         for n in ("easy_test", "challenge_test", "obqa_test")}
+         for n in names}
 
 def credit(s, want):
     top = max(s); tied = [i for i, v in enumerate(s) if v >= top - 1e-9]

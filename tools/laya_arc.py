@@ -3,7 +3,8 @@
 Each question is a pick-one: the text is the question, the options are A, B, C, ... (as tools/laya_math.py).
 Scored as bg.c: % right, ties share credit. Prints a table and one RESULT line per test.
 
-In Colab (GPU runtime):  !curl -sL https://raw.githubusercontent.com/callmedraxx/mimir/reader/tools/laya_arc.py -o a.py && python a.py
+In Colab (GPU runtime):  !curl -sL https://raw.githubusercontent.com/callmedraxx/mimir/reader/tools/laya_arc.py -o a.py && python a.py [TEST ...]
+(TEST names from data/arc_tests/, default the three ARC/OpenBookQA tests; mmlu_hs_test and csqa_dev are the general ones)
 """
 import subprocess, sys, time, urllib.request
 subprocess.run([sys.executable, "-m", "pip", "install", "-q", "laya"], check=False)
@@ -14,7 +15,8 @@ dev = "cuda" if torch.cuda.is_available() else "cpu"
 print("laya", laya.__version__, "| torch", torch.__version__, "| device", dev, torch.cuda.get_device_name(0) if dev == "cuda" else "", flush=True)
 ag = laya.load("convaiinnovations/laya", device=dev)
 L = "ABCDEFGH"
-for name in ("easy_test", "challenge_test", "obqa_test"):
+TESTS = [a for a in sys.argv[1:]] or ["easy_test", "challenge_test", "obqa_test"]
+for name in TESTS:
     rows = [l.rstrip("\n").split("\t") for l in urllib.request.urlopen(B + name + ".tsv").read().decode().splitlines() if l.strip()]
     ok = n = 0; t0 = time.time(); odd = 0
     for f in rows:
