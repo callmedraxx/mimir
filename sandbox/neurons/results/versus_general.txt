@@ -1,0 +1,16 @@
+# tools/versus_general.ipynb in Colab (T4), 2026-10-13: Laya as shipped, GPT-2 four sizes; MMLU high school test, CommonsenseQA dev
+laya 0.4.6 | torch 2.11.0+cu130 | device cuda Tesla T4
+mmlu_hs_test      3420 q   33.19%   36.6 ms/q
+csqa_dev          1221 q   44.72%   33.8 ms/q
+gpt2 | torch 2.11.0+cu130 | device cuda Tesla T4
+gpt2         mmlu_hs_test      3420 q  acc  25.01%  acc_norm  28.67%  57.0 ms/q
+gpt2         csqa_dev          1221 q  acc  30.38%  acc_norm  31.33%  53.1 ms/q
+gpt2-medium | torch 2.11.0+cu130 | device cuda Tesla T4
+gpt2-medium  mmlu_hs_test      3420 q  acc  27.40%  acc_norm  29.04%  124.2 ms/q
+gpt2-medium  csqa_dev          1221 q  acc  32.47%  acc_norm  33.58%  99.7 ms/q
+gpt2-large | torch 2.11.0+cu130 | device cuda Tesla T4
+gpt2-large   mmlu_hs_test      3420 q  acc  28.10%  acc_norm  31.20%  227.0 ms/q
+gpt2-large   csqa_dev          1221 q  acc  36.32%  acc_norm  36.12%  143.3 ms/q
+gpt2-xl | torch 2.11.0+cu130 | device cuda Tesla T4
+gpt2-xl      mmlu_hs_test      3420 q  acc  29.93%  acc_norm  31.96%  420.0 ms/q
+gpt2-xl      csqa_dev          1221 q  acc  37.10%  acc_norm  38.98%  216.8 ms/q

@@ -37,6 +37,32 @@ values are uncalibrated (see the result file).
 * **Laya is the only one clearly above chance on them** (30.5%, 40.0%): it was trained to
   decide between options for a question, not to continue text.
 
+## General knowledge (2026-10-13): MMLU high school and CommonsenseQA
+
+Added for the school brain (SCHOOL_BRAIN.md); run in Colab (`tools/versus_general.ipynb`
+for Laya and GPT-2, `tools/school_tests_colab.py` for Mimir), each once. Chance: MMLU 25%,
+CommonsenseQA 20%. Mimir with the stages 1–2 answering settings (LAYA_LEVEL.md).
+
+| system | MMLU high school (3,420) | CommonsenseQA dev (1,221) | ARC-Easy | ARC-Challenge | OpenBookQA |
+|---|---|---|---|---|---|
+| Mimir, empty brain | 24.98% | 20.86% | 28.69% | 22.97% | 24.80% |
+| Mimir, brain E (science) | 26.66% | 26.92% | 46.46% | 22.96% | 17.67% |
+| **Mimir, school brain** | **27.88%** | 25.50% | 45.48% | 21.26% | 20.67% |
+| GPT-2 small (124M) | 25.01% | 30.38% | 43.81% | 19.03% | 12.80% |
+| GPT-2 medium (355M) | 27.40% | 32.47% | 49.07% | 21.50% | 16.20% |
+| GPT-2 large (774M) | 28.10% | 36.32% | 53.16% | 21.67% | 17.00% |
+| GPT-2 XL (1.5B) | 29.93% | 37.10% | 58.29% | 25.00% | 18.20% |
+| **Laya** (421M) | **33.19%** | **44.72%** | 50.08% | 30.46% | 40.00% |
+
+* On high-school subjects the school brain is at GPT-2 medium/large level (27.9 vs
+  27.4 / 28.1), 5.3 points under Laya.
+* **Common sense is Mimir's weakest area**: every GPT-2 beats it (30–37%) and Laya is at
+  44.7. Questions like "a revolving door is a security measure at a … (bank)" are about
+  how people use things; that is spread thinly across text, which models trained on
+  everything absorb, and which single read facts rarely state.
+
+Results: `sandbox/neurons/results/versus_general.txt`, `school_tests.txt`.
+
 ## How to run them (Colab, from the shared browser)
 
 | notebook | what | runtime |
