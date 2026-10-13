@@ -17,6 +17,7 @@
  *      ROOMS="a b": a subject room of a facts and a general room of b, each with its own clock; files named gen_* are
  *      general reading, the rest the subject (docs/TOPIC_COMPARE.md).
  *      KEEP=1: every fact of the FROM brain is learned for good (docs/KEEP_COMPARE.md).
+ *      BW="a b c d e": e weighs the chain part, two facts linked by a word in neither question nor option (docs/CHAIN_COMPARE.md).
  * Run from the repo root.
  */
 #define KNOW_NO_MAIN
@@ -64,7 +65,7 @@ static float qqsim(const QW *a, const QW *b) {
 #define KA 3
 typedef struct { uint32_t verb, head[KA], mod[KA], prep[KA], count; uint8_t role[KA], narg, flags; uint64_t ptr[2]; float s; uint32_t L; uint16_t round; uint8_t uses, perm, room; } KF;
 /* strength (docs/STRENGTH_COMPARE.md): s and the time last met L; the clock moves one step a sentence read or a question practised */
-typedef struct { double fact, joint, open, mean; uint32_t used[16]; int nused; } BParts;
+typedef struct { double fact, joint, open, mean, chain; uint32_t used[16]; int nused; uint32_t cq, co, cw; } BParts;
 static int STRENGTH; static uint64_t CLK; static const double H0 = 1e6;
 /* rooms (docs/TOPIC_COMPARE.md): room 0 the subject, room 1 general reading; each forgets on its own and has its own clock */
 static int NROOM = 1, CUR; static uint64_t CLK1; static uint32_t RROOM[2], nroom[2];
@@ -366,6 +367,41 @@ static int reread(Know *A, uint64_t ptr, QW *out, int max) {
 }
 
 static float *mark; static uint32_t nmark;
+static double BW[5] = { 1, 0.5, 2, 4, 0 };   /* chosen on ARC train + dev with a dev brain (5% of the shelf); the chain's on dev (CHAIN_COMPARE.md) */
+/* (e) chain: a fact about the question and a fact about the option, linked by a word in neither (not a common one) */
+static int CHAINV = 1; static double LINKIDF = 5;   /* chosen on dev (CHAIN_COMPARE.md): both facts must fit (product), the link word rarer than 1 fact in 150 */
+static int is_link(uint32_t g, const QW *Q, int nq, const QW *O, int no) {
+    if (g == NONE || g >= LX.n || gidf(g) < LINKIDF) return 0;
+    for (int i = 0; i < nq; i++) if (Q[i].g == g) return 0;
+    for (int i = 0; i < no; i++) if (O[i].g == g) return 0;
+    return 1;
+}
+static void chain_part(const QW *Q, int nq, const QW *O, int no, const char *q, const uint32_t *cand, int nc, BParts *P) {
+    enum { NQC = 200, LS = 4096, PER = 4 };
+    static char lastq[4096]; static uint32_t qc[NQC]; static float qv[NQC]; static int nqc = -1;
+    if (nqc < 0 || strcmp(lastq, q)) {               /* the question's facts, once per question (mark holds its words' rarity) */
+        float cs[NQC]; nqc = 0; snprintf(lastq, sizeof lastq, "%s", q);
+        for (int i = 0; i < nq; i++) { if (Q[i].g == NONE) continue; int dup = 0; for (int k = 0; k < i; k++) dup |= Q[k].g == Q[i].g; if (dup) continue;
+            uint32_t a = cue_off[Q[i].g], b = cue_off[Q[i].g + 1]; if (b - a > 200000) b = a + 200000;
+            for (uint32_t x = a; x < b; x++) { uint32_t fi = cue[x]; int seen = 0; for (int k = 0; k < nqc; k++) seen |= qc[k] == fi; if (seen) continue;
+                uint32_t w[8]; int n = kf_words(&kf[fi], w); float s = 0; for (int j = 0; j < n; j++) s += mark[w[j]];
+                s = (float)(s * conf(&kf[fi])) + 1e-3f * (float)conf(&kf[fi]);
+                if (nqc < NQC) { qc[nqc] = fi; cs[nqc++] = s; } else { int m = 0; for (int j = 1; j < NQC; j++) if (cs[j] < cs[m]) m = j; if (s > cs[m]) { qc[m] = fi; cs[m] = s; } } } }
+        for (int k = 0; k < nqc; k++) { uint32_t w[8]; int n = kf_words(&kf[qc[k]], w); qv[k] = (float)kcover(Q, nq, w, n); }
+    }
+    /* link words of the option's facts → those facts (a few per word) */
+    static uint32_t lw[LS], lf[LS][PER]; static float lc[LS][PER]; static uint8_t ln[LS]; memset(ln, 0, sizeof ln);
+    for (int c = 0; c < nc; c++) { uint32_t w[8]; int n = kf_words(&kf[cand[c]], w); double co = -1;
+        for (int j = 0; j < n; j++) { if (!is_link(w[j], Q, nq, O, no)) continue; if (co < 0) co = kcover(O, no, w, n);
+            uint32_t h = (w[j] * 2654435761u) & (LS - 1); while (ln[h] && lw[h] != w[j]) h = (h + 1) & (LS - 1);
+            lw[h] = w[j]; int m = ln[h] < PER ? ln[h]++ : 0; if (m == 0 && ln[h] == PER) { for (int k = 1; k < PER; k++) if (lc[h][k] < lc[h][m]) m = k; if (co <= lc[h][m]) continue; }
+            lf[h][m] = cand[c]; lc[h][m] = (float)co; } }
+    for (int k = 0; k < nqc; k++) { uint32_t w[8]; int n = kf_words(&kf[qc[k]], w); double cq = conf(&kf[qc[k]]);
+        for (int j = 0; j < n; j++) { if (!is_link(w[j], Q, nq, O, no)) continue;
+            uint32_t h = (w[j] * 2654435761u) & (LS - 1); while (ln[h] && lw[h] != w[j]) h = (h + 1) & (LS - 1); if (!ln[h]) continue;
+            for (int m = 0; m < ln[h]; m++) { if (lf[h][m] == qc[k]) continue;
+                double v = CHAINV == 1 ? cq * conf(&kf[lf[h][m]]) * qv[k] * lc[h][m] : cq * conf(&kf[lf[h][m]]) * (qv[k] + lc[h][m]) / 2; if (v > P->chain) { P->chain = v; P->cq = qc[k]; P->co = lf[h][m]; P->cw = w[j]; } } } }
+}
 static void bg_option(Know *A, const char *q, const char *opt, BParts *P) {
     char st[4096]; statement(q, opt, st, sizeof st);
     static Frame hf[64], qf[64], of[64]; uint32_t sw[256], qwl[256], owl[128]; int nsw, nq, now_;
@@ -385,6 +421,7 @@ static void bg_option(Know *A, const char *q, const char *opt, BParts *P) {
         for (uint32_t x = a; x < b; x++) { uint32_t fi = cue[x]; uint32_t w[8]; int n = kf_words(&kf[fi], w); float s = 0; for (int j = 0; j < n; j++) s += mark[w[j]];
             s = (float)(s * conf(&kf[fi])) + 1e-3f * (float)conf(&kf[fi]);
             if (nc < NC) { cand[nc] = fi; cs[nc++] = s; } else { int m = 0; for (int j = 1; j < NC; j++) if (cs[j] < cs[m]) m = j; if (s > cs[m]) { cand[m] = fi; cs[m] = s; } } } }
+    if (BW[4] != 0 || getenv("DUMP")) chain_part(Q, nq, O, no, q, cand, nc, P);
     for (int i = 0; i < nq; i++) if (Q[i].g != NONE) mark[Q[i].g] = 0;
     /* (a) fact agreement, (b) one known fact covering the question and the option */
     int focus = 0; for (int i = 0; i < nh; i++) { uint32_t w[24]; int m; fact_words(&hf[i], w, &m); int has = 0; for (int j = 0; j < m; j++) for (int x = 0; x < now_; x++) has |= w[j] == owl[x]; hf[i].tc = has; focus += has; }
@@ -403,8 +440,7 @@ static void bg_option(Know *A, const char *q, const char *opt, BParts *P) {
             double j = qcover(Q, nq, S, ns) + qcover(O, no, S, ns); if (j > P->open) P->open = j; } }
 }
 
-static double BW[4] = { 1, 0.5, 2, 4 };      /* chosen on ARC train + dev with a dev brain (5% of the shelf) */
-static double bscore(const BParts *p) { return BW[0] * p->fact + BW[1] * p->joint + BW[2] * p->open + BW[3] * p->mean; }
+static double bscore(const BParts *p) { return BW[0] * p->fact + BW[1] * p->joint + BW[2] * p->open + BW[3] * p->mean + BW[4] * p->chain; }
 static void answer_ctx(Know *A) { memset(A, 0, sizeof *A); text_init(&A->t); r2_init(&A->R, &A->t, &A->wm); }
 
 /* questions without a passage: id, question, n, options..., answer */
@@ -425,7 +461,10 @@ static int run_arc(int nfile, char **files) {
             if (sc[want] > best - 1e-9) ok += 1.0 / nb;
             for (int c = 0; c < 4; c++) { double b = -1e9; int k = 0; for (int o = 0; o < no; o++) { double v = c == 0 ? P[o].fact : c == 1 ? P[o].joint : c == 2 ? P[o].open : P[o].mean; if (v > b + 1e-9) { b = v; k = 1; } else if (v > b - 1e-9) k++; }
                 double v = c == 0 ? P[want].fact : c == 1 ? P[want].joint : c == 2 ? P[want].open : P[want].mean; if (v > b - 1e-9) okp[c] += 1.0 / k; }
-            if (dump) { const char *bn = strrchr(files[fi], '/'); fprintf(dump, "%s\t%d\t%d", bn ? bn + 1 : files[fi], want, no); for (int o = 0; o < no; o++) fprintf(dump, "\t%.5f %.5f %.5f %.5f", P[o].fact, P[o].joint, P[o].open, P[o].mean); fprintf(dump, "\n"); }
+            if (dump) { const char *bn = strrchr(files[fi], '/'); fprintf(dump, "%s\t%d\t%d", bn ? bn + 1 : files[fi], want, no); for (int o = 0; o < no; o++) fprintf(dump, "\t%.5f %.5f %.5f %.5f %.5f", P[o].fact, P[o].joint, P[o].open, P[o].mean, P[o].chain); fprintf(dump, "\n"); }
+            if (getenv("CHAINSHOW")) { printf("Q %s  [want %d]\n", fld[1], want); for (int o = 0; o < no; o++) { printf("  %c %-28.28s chain %.3f  total %.3f", o == want ? '*' : ' ', fld[3 + o], P[o].chain, sc[o]);
+                if (P[o].chain > 0) { uint32_t w[8]; int n; printf("  via %s: (", LX.s[P[o].cw]); n = kf_words(&kf[P[o].cq], w); for (int j = 0; j < n; j++) printf(" %s", w[j] < LX.n ? LX.s[w[j]] : "?"); printf(" ) + ("); n = kf_words(&kf[P[o].co], w); for (int j = 0; j < n; j++) printf(" %s", w[j] < LX.n ? LX.s[w[j]] : "?"); printf(" )"); }
+                printf("\n"); } }
             if (getenv("SHOW")) printf("  %s  want %d  scores %.2f %.2f %.2f %.2f\n", fld[1], want, sc[0], sc[1], no > 2 ? sc[2] : 0, no > 3 ? sc[3] : 0);
             n++;
         }
@@ -482,7 +521,8 @@ int main(int argc, char **argv) {
     static Meaning m; meaning_init(&m);
     if (meaning_load(&m, getenv("MEANING") ? getenv("MEANING") : MEANING_PATH) <= 0) { fprintf(stderr, "no meanings\n"); return 1; }
     meaning_norms(&m); MM = &m; RV = 2;
-    if (getenv("BW")) sscanf(getenv("BW"), "%lf %lf %lf %lf", &BW[0], &BW[1], &BW[2], &BW[3]);
+    if (getenv("BW")) sscanf(getenv("BW"), "%lf %lf %lf %lf %lf", &BW[0], &BW[1], &BW[2], &BW[3], &BW[4]);
+    if (getenv("CHAINV")) CHAINV = atoi(getenv("CHAINV")); if (getenv("LINKIDF")) LINKIDF = atof(getenv("LINKIDF"));
     if (!strcmp(argv[1], "read") && argc >= 5) return run_read(argv[2], atof(argv[3]), argc - 4, argv + 4);
     STRENGTH = getenv("STRENGTH") ? atoi(getenv("STRENGTH")) : 0;
     double t0 = now(); if (brain_load(argv[2])) return 1;
