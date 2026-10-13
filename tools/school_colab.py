@@ -8,7 +8,12 @@ import glob, hashlib, os, subprocess, sys, time
 from google.colab import files
 
 R = "https://github.com/callmedraxx/mimir/releases/download/brain-E"
-def sh(cmd): print("$", cmd, flush=True); subprocess.run(cmd, shell=True, check=True)
+def sh(cmd):
+    """run a command and show its output in the notebook as it comes"""
+    print("$", cmd, flush=True)
+    p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
+    for line in p.stdout: print(line, end="", flush=True)
+    if p.wait(): raise SystemExit("failed: " + cmd)
 
 os.chdir("/content")
 if not os.path.isdir("mimir"): sh("git clone -q --depth 1 -b reader https://github.com/callmedraxx/mimir")
