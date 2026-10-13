@@ -31,7 +31,7 @@ whatever they are.
 | 5 | 14–18 | what an educated person knows | Wikipedia's Vital Articles, level 4 (10,027 articles Wikipedia's editors list as most essential; text from wikimedia/wikipedia 20231101.en) |
 
 Files in reading order: `01_babylm`, `02_children`, `03_wikijunior`, `04_simplewiki`, `05_textbooks`, `06_wikibooks`, `07_vital`.
-All downloaded and read in Colab (`tools/school_brain.ipynb`); the brain is saved to Google Drive after every file and a restart continues from it; the books stay on the shelf so
+All downloaded and read in Colab (`tools/school_brain.ipynb`); after every shelf file the brain is sent through the browser to the server (`tools/school_receive.py` checks it against its SHA-256 list and keeps the newest), and a restart continues from it (owner chose this over granting Colab's full Drive permissions); the books stay on the shelf so
 open-book answering can re-read them; the brain is packed (`bg pack`) for release.
 
 ## Tests (once, in Colab, after the brain is frozen)
