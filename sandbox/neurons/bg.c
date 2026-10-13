@@ -16,6 +16,7 @@
  *      DUMP=file (per-option parts), SHOW=1.
  *      ROOMS="a b": a subject room of a facts and a general room of b, each with its own clock; files named gen_* are
  *      general reading, the rest the subject (docs/TOPIC_COMPARE.md).
+ *      KEEP=1: every fact of the FROM brain is learned for good (docs/KEEP_COMPARE.md).
  * Run from the repo root.
  */
 #define KNOW_NO_MAIN
@@ -99,13 +100,13 @@ static void forget(void) {
             uint32_t m = nroom[CUR]; float *e = malloc((size_t)nkf * sizeof *e), *c = malloc((size_t)m * sizeof *c); uint32_t k = 0;
             for (uint32_t i = 0; i < nkf; i++) if (kf[i].room == CUR) c[k++] = e[i] = kf[i].perm ? 1e30f : (float)eff(&kf[i]);
             qsort(c, m, sizeof *c, cmp_f); uint32_t drop = m - RROOM[CUR] * 3 / 4; float th = c[drop]; uint32_t j = 0, dropped = 0;
-            for (uint32_t i = 0; i < nkf; i++) if (kf[i].room != CUR || e[i] > th || (e[i] == th && dropped >= drop)) kf[j++] = kf[i]; else { dropped++; forgotten++; }
+            for (uint32_t i = 0; i < nkf; i++) if (kf[i].room != CUR || e[i] > th || (e[i] == th && (dropped >= drop || kf[i].perm))) kf[j++] = kf[i]; else { dropped++; forgotten++; }
             nkf = j; nroom[CUR] -= dropped; free(e); free(c); forget_th++; kf_rehash(kmask + 1); return;
         }
         float *e = malloc((size_t)nkf * sizeof *e); for (uint32_t i = 0; i < nkf; i++) e[i] = kf[i].perm ? 1e30f : (float)eff(&kf[i]);
         float *c = malloc((size_t)nkf * sizeof *c); memcpy(c, e, (size_t)nkf * sizeof *c); qsort(c, nkf, sizeof *c, cmp_f);
         uint32_t drop = nkf - ROOM * 3 / 4; float th = c[drop]; uint32_t j = 0, dropped = 0;
-        for (uint32_t i = 0; i < nkf; i++) if (e[i] > th || (e[i] == th && dropped >= drop)) kf[j++] = kf[i]; else { dropped++; forgotten++; }
+        for (uint32_t i = 0; i < nkf; i++) if (e[i] > th || (e[i] == th && (dropped >= drop || kf[i].perm))) kf[j++] = kf[i]; else { dropped++; forgotten++; }
         nkf = j; free(e); free(c); forget_th++; kf_rehash(kmask + 1); return;
     }
     while (nkf > ROOM * 3 / 4) {
@@ -119,7 +120,8 @@ static void kf_add(const KF *f, uint64_t ptr) {
     if (!kslot) { capkf = 1 << 20; kf = malloc((size_t)capkf * sizeof *kf); kf_rehash(1u << 21); }
     uint32_t h = (uint32_t)kf_hash(f) & kmask;
     for (; kslot[h]; h = (h + 1) & kmask) { KF *e = &kf[kslot[h] - 1]; if (kf_same(e, f)) { if (e->count < 0xffffffffu) e->count++; if (e->count == 2) e->ptr[1] = ptr; if (STRENGTH) { e->s = (float)(eff(e) + 1); e->L = (uint32_t)CLOCK(e->room); } return; } }
-    if (NROOM > 1 ? nroom[CUR] >= RROOM[CUR] : nkf >= ROOM) { forget(); kf_add(f, ptr); return; }
+#define FULL (NROOM > 1 ? nroom[CUR] >= RROOM[CUR] : nkf >= ROOM)
+    if (FULL) { forget(); if (FULL) return; kf_add(f, ptr); return; }   /* a room full of facts learned for good: the new one is not kept */
     if (nkf == capkf) { capkf = capkf * 2 > ROOM ? ROOM : capkf * 2; kf = realloc(kf, (size_t)capkf * sizeof *kf); }
     if ((nkf + 1) * 2 > kmask) { kf[nkf] = *f; kf_rehash((kmask + 1) * 2); h = (uint32_t)kf_hash(f) & kmask; while (kslot[h]) h = (h + 1) & kmask; }
     KF *e = &kf[nkf]; *e = *f; e->count = 1; e->ptr[0] = ptr; e->ptr[1] = ~0ull; e->s = 1; e->L = (uint32_t)CLOCK(CUR); e->round = 0; e->uses = 0; e->perm = 0; e->room = (uint8_t)CUR; nroom[CUR]++; kslot[h] = ++nkf;
@@ -222,6 +224,7 @@ static int run_read(const char *brain, double seconds, int nfile, char **files) 
     STRENGTH = getenv("STRENGTH") ? atoi(getenv("STRENGTH")) : 0;
     if (getenv("FROM")) { setenv("NOCUES", "1", 1); if (brain_load(getenv("FROM"))) return 1; unsetenv("NOCUES");
         capkf = nkf > (1u << 20) ? nkf : 1u << 20; kf = realloc(kf, (size_t)capkf * sizeof *kf); uint32_t sl = 1u << 21; while (sl < 2 * nkf + 2) sl *= 2; kf_rehash(sl); for (uint32_t i = 0; i < nkf; i++) nroom[kf[i].room]++;
+        if (getenv("KEEP") && atoi(getenv("KEEP"))) { for (uint32_t i = 0; i < nkf; i++) kf[i].perm = 1; fprintf(stderr, "what it knew: %u facts learned for good\n", nkf); }
         fprintf(stderr, "continuing %s: %u facts, %u words, clock %llu\n", getenv("FROM"), nkf, LX.n, (unsigned long long)CLK); }
     uint64_t stopbytes = getenv("STOPBYTES") ? strtoull(getenv("STOPBYTES"), 0, 10) : 0;
     Know A; int nslice = 0;
