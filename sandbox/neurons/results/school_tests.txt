@@ -1,0 +1,37 @@
+# tools/school_tests_colab.py in Colab (the session that read the school brain), settings NOPEN=20 POLARITY=1 STRENGTH=1
+=== empty
+brain -: 0 facts, 0 words (loaded in 0.0 s)
+mmlu_hs_test.tsv        3420 q    24.98%   (alone: fact 25.00  joint 25.00  open 25.00  meaning 25.36)  0.5 ms/q
+RESULT bgarc file=mmlu_hs_test.tsv n=3420 acc=24.98 facts=0
+csqa_dev.tsv            1221 q    20.86%   (alone: fact 20.00  joint 20.00  open 20.00  meaning 21.10)  0.1 ms/q
+RESULT bgarc file=csqa_dev.tsv n=1221 acc=20.86 facts=0
+easy_test.tsv           2376 q    28.69%   (alone: fact 25.02  joint 25.02  open 25.02  meaning 28.87)  0.2 ms/q
+RESULT bgarc file=easy_test.tsv n=2376 acc=28.69 facts=0
+challenge_test.tsv      1172 q    22.97%   (alone: fact 25.02  joint 25.02  open 25.02  meaning 22.68)  0.2 ms/q
+RESULT bgarc file=challenge_test.tsv n=1172 acc=22.97 facts=0
+obqa_test.tsv            500 q    24.80%   (alone: fact 25.00  joint 25.00  open 25.00  meaning 24.80)  0.1 ms/q
+RESULT bgarc file=obqa_test.tsv n=500 acc=24.80 facts=0
+=== E
+brain data/pack/mimir_E.brain: 4717363 facts, 1710015 words (loaded in 5.4 s)
+mmlu_hs_test.tsv        3420 q    26.66%   (alone: fact 25.62  joint 23.50  open 27.48  meaning 25.52)  73.0 ms/q
+RESULT bgarc file=mmlu_hs_test.tsv n=3420 acc=26.66 facts=4717363
+csqa_dev.tsv            1221 q    26.92%   (alone: fact 24.01  joint 21.93  open 25.78  meaning 21.03)  34.6 ms/q
+RESULT bgarc file=csqa_dev.tsv n=1221 acc=26.92 facts=4717363
+easy_test.tsv           2376 q    46.46%   (alone: fact 33.06  joint 42.14  open 45.93  meaning 28.85)  46.1 ms/q
+RESULT bgarc file=easy_test.tsv n=2376 acc=46.46 facts=4717363
+challenge_test.tsv      1172 q    22.96%   (alone: fact 28.48  joint 19.92  open 20.58  meaning 22.40)  56.2 ms/q
+RESULT bgarc file=challenge_test.tsv n=1172 acc=22.96 facts=4717363
+obqa_test.tsv            500 q    17.67%   (alone: fact 25.58  joint 16.67  open 18.00  meaning 24.70)  36.4 ms/q
+RESULT bgarc file=obqa_test.tsv n=500 acc=17.67 facts=4717363
+=== school
+brain /content/school.brain: 32489775 facts, 725326 words (loaded in 38.4 s)
+mmlu_hs_test.tsv        3420 q    27.88%   (alone: fact 25.90  joint 23.42  open 27.93  meaning 25.52)  246.9 ms/q
+RESULT bgarc file=mmlu_hs_test.tsv n=3420 acc=27.88 facts=32489775
+csqa_dev.tsv            1221 q    25.50%   (alone: fact 24.86  joint 20.87  open 24.73  meaning 21.11)  174.6 ms/q
+RESULT bgarc file=csqa_dev.tsv n=1221 acc=25.50 facts=32489775
+easy_test.tsv           2376 q    45.48%   (alone: fact 32.77  joint 33.82  open 47.31  meaning 29.02)  142.4 ms/q
+RESULT bgarc file=easy_test.tsv n=2376 acc=45.48 facts=32489775
+challenge_test.tsv      1172 q    21.26%   (alone: fact 27.05  joint 18.15  open 21.93  meaning 22.40)  175.1 ms/q
+RESULT bgarc file=challenge_test.tsv n=1172 acc=21.26 facts=32489775
+obqa_test.tsv            500 q    20.67%   (alone: fact 22.33  joint 15.27  open 22.37  meaning 24.70)  144.1 ms/q
+RESULT bgarc file=obqa_test.tsv n=500 acc=20.67 facts=32489775
