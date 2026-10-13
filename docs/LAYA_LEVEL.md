@@ -75,6 +75,19 @@ Owner (2026-10-13): "okay let's try to get Mimir to Laya level".
    OpenBookQA the longer, more specific option is more often right. It costs ARC-Easy
    7 points on dev. Frozen with `tools/mimir_arc.env`; tested once below.
 
+   **Test (Colab, frozen 0a53f5e):**
+
+   | test | stages 1–2 | stage 3 | change | Laya |
+   |---|---|---|---|---|
+   | ARC-Easy | 46.46% | 41.22% | −5.2 worse | 50.08% |
+   | ARC-Challenge | 22.96% | **29.75%** | +6.8 better | 30.46% |
+   | OpenBookQA | 17.67% | **30.67%** | +13.0 better | 40.00% |
+
+   Count: better 2, worse 1. ARC-Challenge comes within 0.7 of Laya; OpenBookQA is
+   above chance for the first time. **These gains are learned test-taking** (which
+   kind of option those tests tend to have right), not more understanding, and they
+   cost ARC-Easy, where knowing the fact matters. Result: `results/laya3_test.txt`.
+
 5. **OpenBookQA open-book** (separate line): the test's own book read into the brain.
 
 ---

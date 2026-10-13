@@ -1,0 +1,10 @@
+# tools/mimir_arc.ipynb in Colab, frozen 0a53f5e (LAYA_LEVEL.md stage 3), one CPU core
+mimir 0a53f5e | 2 cores |  Intel(R) Xeon(R) CPU @ 2.20GHz
+settings: export NOPEN=20 POLARITY=1 LEARNED=sandbox/neurons/results/laya3_weights.txt
+brain data/pack/mimir_E.brain: 4717363 facts, 1710015 words (loaded in 5.8 s)
+easy_test.tsv           2376 q    41.22%   (alone: fact 33.06  joint 42.14  open 45.93  meaning 28.85)  91.0 ms/q
+RESULT bgarc file=easy_test.tsv n=2376 acc=41.22 facts=4717363
+challenge_test.tsv      1172 q    29.75%   (alone: fact 28.48  joint 19.92  open 20.58  meaning 22.40)  103.0 ms/q
+RESULT bgarc file=challenge_test.tsv n=1172 acc=29.75 facts=4717363
+obqa_test.tsv            500 q    30.67%   (alone: fact 25.58  joint 16.67  open 18.00  meaning 24.70)  58.0 ms/q
+RESULT bgarc file=obqa_test.tsv n=500 acc=30.67 facts=4717363
