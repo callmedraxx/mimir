@@ -1,0 +1,2 @@
+# answer neurons, LAYA_LEVEL.md stage 3, trained on b: all training questions; weight per input, already divided by its spread
+0.888478 0.505580 0.296988 5.280940 -3.303112 0.084959 -0.236504 0.173872 0.666328 0.867496 1.263792

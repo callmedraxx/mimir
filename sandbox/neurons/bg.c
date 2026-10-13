@@ -382,6 +382,7 @@ static int reread(Know *A, uint64_t ptr, QW *out, int max) {
 static float *mark; static uint32_t nmark;
 static double BW[5] = { 1, 0.5, 2, 4, 0 };   /* chosen on ARC train + dev with a dev brain (5% of the shelf); the chain's on dev (CHAIN_COMPARE.md) */
 /* (e) chain: a fact about the question and a fact about the option, linked by a word in neither (not a common one) */
+static int LEARNED;     /* answer neurons from training questions are in use (LAYA_LEVEL.md stage 3) */
 static int NOPEN = 3;   /* facts whose shelf sentences are re-read when answering (LAYA_LEVEL.md stage 1) */
 static int CHAINV = 1; static double LINKIDF = 5;   /* chosen on dev (CHAIN_COMPARE.md): both facts must fit (product), the link word rarer than 1 fact in 150 */
 static int is_link(uint32_t g, const QW *Q, int nq, const QW *O, int no) {
@@ -436,7 +437,7 @@ static void bg_option(Know *A, const char *q, const char *opt, BParts *P) {
         for (uint32_t x = a; x < b; x++) { uint32_t fi = cue[x]; uint32_t w[8]; int n = kf_words(&kf[fi], w); float s = 0; for (int j = 0; j < n; j++) s += mark[w[j]];
             s = (float)(s * conf(&kf[fi])) + 1e-3f * (float)conf(&kf[fi]);
             if (nc < NC) { cand[nc] = fi; cs[nc++] = s; } else { int m = 0; for (int j = 1; j < NC; j++) if (cs[j] < cs[m]) m = j; if (s > cs[m]) { cand[m] = fi; cs[m] = s; } } } }
-    if (BW[4] != 0 || getenv("DUMP")) chain_part(Q, nq, O, no, q, cand, nc, P);
+    if (BW[4] != 0 || LEARNED || getenv("DUMP")) chain_part(Q, nq, O, no, q, cand, nc, P);
     for (int i = 0; i < nq; i++) if (Q[i].g != NONE) mark[Q[i].g] = 0;
     /* (a) fact agreement, (b) one known fact covering the question and the option */
     int focus = 0; for (int i = 0; i < nh; i++) { uint32_t w[24]; int m; fact_words(&hf[i], w, &m); int has = 0; for (int j = 0; j < m; j++) for (int x = 0; x < now_; x++) has |= w[j] == owl[x]; hf[i].tc = has; focus += has; }
@@ -469,6 +470,17 @@ static int asks_opposite(const char *q) {
     return 0;
 }
 static double qscore(const char *q, const BParts *p) { double s = bscore(p); return POLARITY && asks_opposite(q) ? -s : s; }
+/* answer neurons learned from training questions (LAYA_LEVEL.md stage 3): one weight per input, the options compete */
+static double LW[11];
+static void scores(const char *q, const BParts *P, int no, double *sc) {
+    if (!LEARNED) { for (int o = 0; o < no; o++) sc[o] = qscore(q, &P[o]); return; }
+    double so = 0, sj = 0; for (int o = 0; o < no; o++) { so += P[o].open; sj += P[o].joint; }
+    int neg = POLARITY && asks_opposite(q);
+    for (int o = 0; o < no; o++) { const BParts *p = &P[o];
+        double v[11] = { p->fact, p->joint, p->open, p->mean, p->chain, p->open2, p->open3, p->spec, p->olen,
+                         p->open - (so - p->open) / (no - 1), p->joint - (sj - p->joint) / (no - 1) };
+        double s = 0; for (int i = 0; i < 11; i++) s += LW[i] * v[i]; sc[o] = neg ? -s : s; }
+}
 static void answer_ctx(Know *A) { memset(A, 0, sizeof *A); text_init(&A->t); r2_init(&A->R, &A->t, &A->wm); }
 
 /* questions without a passage: id, question, n, options..., answer */
@@ -483,7 +495,8 @@ static int run_arc(int nfile, char **files) {
             char *fld[12]; int nf = 0; for (char *p = strtok(line, "\t"); p && nf < 12; p = strtok(0, "\t")) fld[nf++] = p;
             if (nf < 4) continue; int no = atoi(fld[2]); if (no < 2 || no > 8 || nf < 4 + no) continue; int want = atoi(fld[3 + no]);
             BParts P[8]; double sc[8];
-            for (int o = 0; o < no; o++) { bg_option(&A, fld[1], fld[3 + o], &P[o]); sc[o] = qscore(fld[1], &P[o]); A.t.ntok = 0; }
+            for (int o = 0; o < no; o++) { bg_option(&A, fld[1], fld[3 + o], &P[o]); A.t.ntok = 0; }
+            scores(fld[1], P, no, sc);
             /* ties share the credit */
             double best = -1e9; int nb = 0; for (int o = 0; o < no; o++) if (sc[o] > best + 1e-9) { best = sc[o]; nb = 1; } else if (sc[o] > best - 1e-9) nb++;
             if (sc[want] > best - 1e-9) ok += 1.0 / nb;
@@ -515,7 +528,8 @@ static int run_serve(void) {
         char *fld[10]; int nf = 0; for (char *p = strtok(line, "\t"); p && nf < 10; p = strtok(0, "\t")) fld[nf++] = p;
         if (nf < 3) { printf("{\"error\":\"need a question and at least two options\"}\n"); fflush(stdout); continue; }
         double t0 = now(); int no = nf - 1, best = 0; BParts P[9]; double sc[9];
-        for (int o = 0; o < no; o++) { bg_option(&A, fld[0], fld[1 + o], &P[o]); sc[o] = qscore(fld[0], &P[o]); A.t.ntok = 0; if (sc[o] > sc[best] + 1e-9) best = o; }
+        for (int o = 0; o < no; o++) { bg_option(&A, fld[0], fld[1 + o], &P[o]); A.t.ntok = 0; }
+        scores(fld[0], P, no, sc); for (int o = 1; o < no; o++) if (sc[o] > sc[best] + 1e-9) best = o;
         printf("{\"pick\":%d,\"ms\":%.0f,\"options\":[", best, 1000 * (now() - t0));
         for (int o = 0; o < no; o++) { char s[1024] = ""; uint64_t ptr = P[o].optr;
             if (ptr != ~0ull) { int fid = (int)(ptr >> FID_SHIFT); FILE *f = fid < NSHELF ? fopen(SHELF[fid], "rb") : NULL;
@@ -594,6 +608,8 @@ int main(int argc, char **argv) {
     if (meaning_load(&m, getenv("MEANING") ? getenv("MEANING") : MEANING_PATH) <= 0) { fprintf(stderr, "no meanings\n"); return 1; }
     meaning_norms(&m); MM = &m; RV = 2;
     if (getenv("BW")) sscanf(getenv("BW"), "%lf %lf %lf %lf %lf", &BW[0], &BW[1], &BW[2], &BW[3], &BW[4]);
+    if (getenv("LEARNED")) { FILE *f = fopen(getenv("LEARNED"), "r"); char l[4096]; if (!f) { perror(getenv("LEARNED")); return 1; }
+        while (fgets(l, sizeof l, f)) if (l[0] != '#') { char *e = l; for (int i = 0; i < 11; i++) LW[i] = strtod(e, &e); LEARNED = 1; } fclose(f); }
     if (getenv("POLARITY")) POLARITY = atoi(getenv("POLARITY"));
     if (getenv("NOPEN")) NOPEN = atoi(getenv("NOPEN"));
     if (getenv("CHAINV")) CHAINV = atoi(getenv("CHAINV")); if (getenv("LINKIDF")) LINKIDF = atof(getenv("LINKIDF"));

@@ -60,6 +60,21 @@ Owner (2026-10-13): "okay let's try to get Mimir to Laya level".
 
 4. **Facts that keep their relation** (cause → effect, kind of, part of, has property,
    needs, used for) and chains that follow relations. Understanding (reasoning).
+   **Dev (2026-10-13)**, `sandbox/neurons/laya_learn.py` on the inputs in
+   `results/laya3_*_inputs.txt*`:
+
+   | | all dev | ARC-Easy | ARC-Challenge | OpenBookQA |
+   |---|---|---|---|---|
+   | stages 1–2 (fixed weights) | 31.18% | 46.67 | 21.18 | 19.50 |
+   | (a) learned from SciQ dev+test (1,771) | 32.32% | 44.39 | 24.55 | 23.20 |
+   | **(b) learned from all training (10,098)** | **34.87%** | 39.82 | 29.57 | 32.40 |
+
+   Kept: (b), weights `results/laya3_weights.txt` (Mimir's own code gives the same dev
+   numbers). **What it learned is mostly test-taking:** its largest weights are on the
+   option's length (+0.85 scaled) and specificity (+0.59): on ARC-Challenge and
+   OpenBookQA the longer, more specific option is more often right. It costs ARC-Easy
+   7 points on dev. Frozen with `tools/mimir_arc.env`; tested once below.
+
 5. **OpenBookQA open-book** (separate line): the test's own book read into the brain.
 
 ---
