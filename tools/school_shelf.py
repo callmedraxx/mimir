@@ -3,7 +3,8 @@
 one paragraph a line, a blank line between documents, in reading order:
 
   data/school/01_babylm.txt       BabyLM 100M: speech to and around children (CHILDES), children's stories, BNC spoken, subtitles, TED
-  data/school/02_children.txt     Project Gutenberg children's books (bookshelves "Children's ..." and "Children & Young Adult Reading")
+  data/school/02_children.txt     Project Gutenberg children's books (bookshelves "Children's ..." and "Children & Young Adult Reading",
+                                  from Gutenberg's catalogue pg_catalog.csv; texts from the manu/project_gutenberg mirror)
   data/school/03_wikijunior.txt   Wikijunior (children's encyclopedia books on Wikibooks)
   data/school/04_simplewiki.txt   Simple English Wikipedia
   data/school/05_textbooks.txt    OpenStax textbooks (school level), from the philschatz/* markdown mirrors
@@ -108,12 +109,12 @@ def babylm():
 
 # ---- 2. Gutenberg children's books
 def gutenberg_ids():
-    ids, url = {}, "https://gutendex.com/books/?topic=children&languages=en"
-    while url:
-        d = json.loads(get(url))
-        for b in d["results"]:
-            if any(s.startswith("Children") or s == "Category: Children & Young Adult Reading" for s in b["bookshelves"]): ids[str(b["id"])] = b["title"]
-        url = d["next"]
+    """Project Gutenberg's own catalogue (one file): English texts on a "Children's ..." or "Children & Young Adult Reading" shelf"""
+    import csv, io
+    ids = {}
+    for b in csv.DictReader(io.StringIO(get("https://www.gutenberg.org/cache/epub/feeds/pg_catalog.csv").decode("utf-8", "replace"))):
+        shelves = [s.strip() for s in (b.get("Bookshelves") or "").split(";")]
+        if b["Language"] == "en" and b["Type"] == "Text" and any(s.startswith("Children") or s == "Category: Children & Young Adult Reading" for s in shelves): ids[b["Text#"]] = b["Title"]
     print("  gutenberg children's books:", len(ids), flush=True); return ids
 
 def gutenberg_text(t):

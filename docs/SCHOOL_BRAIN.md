@@ -25,7 +25,7 @@ whatever they are.
 | stage | age | what | source (open licence) |
 |---|---|---|---|
 | 1 | 0–6 | speech to and around children, picture-book stories | BabyLM 100M: CHILDES transcripts, children's stories, BNC spoken, subtitles, TED (Hugging Face `nilq/babylm-100M`) |
-| 2 | 6–12 | children's books | Project Gutenberg, the Children's Literature and children's instruction shelves (Gutendex `topic=children`, English) |
+| 2 | 6–12 | children's books | Project Gutenberg, English books on its "Children's …" and "Children & Young Adult Reading" shelves (6,929 in Gutenberg's own catalogue `pg_catalog.csv`; Gutendex was too slow, 65 s a page) |
 | 3 | 6–14 | children's encyclopedia and general knowledge | Wikijunior (Wikibooks) and Simple English Wikipedia |
 | 4 | 12–18 | high school textbooks | OpenStax books from their markdown mirrors (`philschatz/*-book`): concepts of biology, biology, anatomy, chemistry, physics, astronomy, US history, economics, psychology, sociology, statistics, algebra and trigonometry, precalculus; then Wikibooks (open textbooks). World history, American government and prealgebra have no mirror there and are left out |
 | 5 | 14–18 | what an educated person knows | Wikipedia's Vital Articles, level 4 (10,027 articles Wikipedia's editors list as most essential; text from wikimedia/wikipedia 20231101.en) |
