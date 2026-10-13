@@ -1,0 +1,12 @@
+# tools/mimir_arc.ipynb in Colab (shared browser, 2026-10-13), brain E from the brain-E release, one CPU core
+mimir_E.brain: OK
+shelf_E.txt: OK
+wordclass.tsv: OK
+mimir 8d0c797 | 2 cores |  Intel(R) Xeon(R) CPU @ 2.20GHz
+brain data/pack/mimir_E.brain: 4717363 facts, 1710015 words (loaded in 4.3 s)
+easy_test.tsv           2376 q    44.63%   (alone: fact 33.06  joint 42.14  open 43.61  meaning 28.85)  43.9 ms/q
+RESULT bgarc file=easy_test.tsv n=2376 acc=44.63 facts=4717363
+challenge_test.tsv      1172 q    22.32%   (alone: fact 28.48  joint 19.92  open 22.24  meaning 22.40)  52.5 ms/q
+RESULT bgarc file=challenge_test.tsv n=1172 acc=22.32 facts=4717363
+obqa_test.tsv            500 q    18.47%   (alone: fact 25.58  joint 16.67  open 19.77  meaning 24.70)  31.2 ms/q
+RESULT bgarc file=obqa_test.tsv n=500 acc=18.47 facts=4717363

@@ -1,0 +1,29 @@
+# tools/gpt2_arc.ipynb in Colab (shared browser, 2026-10-13), T4 GPU; acc = highest total log-probability, acc_norm = per character
+gpt2 | torch 2.11.0+cu130 | device cuda Tesla T4
+gpt2         easy_test         2376 q  acc  43.81%  acc_norm  39.94%  46.5 ms/q
+RESULT gpt2_arc model=gpt2 file=easy_test n=2376 acc=43.81 acc_norm=39.94
+gpt2         challenge_test    1172 q  acc  19.03%  acc_norm  22.44%  45.8 ms/q
+RESULT gpt2_arc model=gpt2 file=challenge_test n=1172 acc=19.03 acc_norm=22.44
+gpt2         obqa_test          500 q  acc  12.80%  acc_norm  26.80%  43.7 ms/q
+RESULT gpt2_arc model=gpt2 file=obqa_test n=500 acc=12.80 acc_norm=26.80
+gpt2-medium | torch 2.11.0+cu130 | device cuda Tesla T4
+gpt2-medium  easy_test         2376 q  acc  49.07%  acc_norm  44.32%  84.1 ms/q
+RESULT gpt2_arc model=gpt2-medium file=easy_test n=2376 acc=49.07 acc_norm=44.32
+gpt2-medium  challenge_test    1172 q  acc  21.50%  acc_norm  25.17%  85.8 ms/q
+RESULT gpt2_arc model=gpt2-medium file=challenge_test n=1172 acc=21.50 acc_norm=25.17
+gpt2-medium  obqa_test          500 q  acc  16.20%  acc_norm  29.60%  85.1 ms/q
+RESULT gpt2_arc model=gpt2-medium file=obqa_test n=500 acc=16.20 acc_norm=29.60
+gpt2-large | torch 2.11.0+cu130 | device cuda Tesla T4
+gpt2-large   easy_test         2376 q  acc  53.16%  acc_norm  47.22%  137.4 ms/q
+RESULT gpt2_arc model=gpt2-large file=easy_test n=2376 acc=53.16 acc_norm=47.22
+gpt2-large   challenge_test    1172 q  acc  21.67%  acc_norm  25.00%  139.5 ms/q
+RESULT gpt2_arc model=gpt2-large file=challenge_test n=1172 acc=21.67 acc_norm=25.00
+gpt2-large   obqa_test          500 q  acc  17.00%  acc_norm  29.60%  120.8 ms/q
+RESULT gpt2_arc model=gpt2-large file=obqa_test n=500 acc=17.00 acc_norm=29.60
+gpt2-xl | torch 2.11.0+cu130 | device cuda Tesla T4
+gpt2-xl      easy_test         2376 q  acc  58.29%  acc_norm  51.85%  224.6 ms/q
+RESULT gpt2_arc model=gpt2-xl file=easy_test n=2376 acc=58.29 acc_norm=51.85
+gpt2-xl      challenge_test    1172 q  acc  25.00%  acc_norm  28.58%  244.6 ms/q
+RESULT gpt2_arc model=gpt2-xl file=challenge_test n=1172 acc=25.00 acc_norm=28.58
+gpt2-xl      obqa_test          500 q  acc  18.20%  acc_norm  29.40%  188.3 ms/q
+RESULT gpt2_arc model=gpt2-xl file=obqa_test n=500 acc=18.20 acc_norm=29.40
