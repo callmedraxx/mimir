@@ -80,3 +80,15 @@ on the dumps `results/laya1_dev_open*.txt`:
 
 Chosen: **20 facts and polarity on** (+1.1 points on dev, ARC-Challenge dev 19.0 → 21.2).
 Frozen with `tools/mimir_arc.env`; test below, once, in Colab.
+
+**Test (Colab, frozen b8c6b7f):**
+
+| test | brain E before | stages 1–2 | change | Laya |
+|---|---|---|---|---|
+| ARC-Easy | 44.63% | **46.46%** | +1.8 better | 50.08% |
+| ARC-Challenge | 22.32% | 22.96% | +0.6 tie | 30.46% |
+| OpenBookQA | 18.47% | 17.67% | −0.8 tie | 40.00% |
+
+Count: better 1, tie 2. Understanding gains, small: re-reading more of the shelf
+helps the questions that need the right sentence (ARC-Easy); the hard tests do not
+move. Result: `results/laya12_test.txt`.

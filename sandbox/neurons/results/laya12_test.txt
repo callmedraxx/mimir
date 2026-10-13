@@ -1,0 +1,10 @@
+# tools/mimir_arc.ipynb in Colab, frozen b8c6b7f (LAYA_LEVEL.md stages 1-2), one CPU core
+mimir b8c6b7f | 2 cores |  Intel(R) Xeon(R) CPU @ 2.20GHz
+settings: export NOPEN=20 POLARITY=1
+brain data/pack/mimir_E.brain: 4717363 facts, 1710015 words (loaded in 4.2 s)
+easy_test.tsv           2376 q    46.46%   (alone: fact 33.06  joint 42.14  open 45.93  meaning 28.85)  57.5 ms/q
+RESULT bgarc file=easy_test.tsv n=2376 acc=46.46 facts=4717363
+challenge_test.tsv      1172 q    22.96%   (alone: fact 28.48  joint 19.92  open 20.58  meaning 22.40)  68.1 ms/q
+RESULT bgarc file=challenge_test.tsv n=1172 acc=22.96 facts=4717363
+obqa_test.tsv            500 q    17.67%   (alone: fact 25.58  joint 16.67  open 18.00  meaning 24.70)  43.4 ms/q
+RESULT bgarc file=obqa_test.tsv n=500 acc=17.67 facts=4717363
