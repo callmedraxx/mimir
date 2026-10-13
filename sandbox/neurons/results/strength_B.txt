@@ -1,0 +1,7 @@
+brain data/shelf/mimir_B.brain: 4950783 facts, 3483029 words (loaded in 8.1 s)
+easy_test.tsv           2376 q    36.81%   (alone: fact 30.33  joint 34.41  open 36.17  meaning 28.93)  34.8 ms/q
+RESULT bgarc file=easy_test.tsv n=2376 acc=36.81 facts=4950783
+challenge_test.tsv      1172 q    21.37%   (alone: fact 26.78  joint 19.50  open 22.50  meaning 22.40)  48.1 ms/q
+RESULT bgarc file=challenge_test.tsv n=1172 acc=21.37 facts=4950783
+obqa_test.tsv            500 q    18.77%   (alone: fact 25.20  joint 17.17  open 20.33  meaning 24.70)  33.4 ms/q
+RESULT bgarc file=obqa_test.tsv n=500 acc=18.77 facts=4950783
