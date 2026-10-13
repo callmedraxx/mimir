@@ -12,6 +12,7 @@
  *   bg read BRAIN SECONDS FILE...   read the shelf files in order for at most SECONDS, save BRAIN
  *   bg arc BRAIN|- FILE.tsv...      questions without a passage (tools/shelf_fetch.py); '-' = empty brain
  *   bg know BRAIN|- FILE...         MCTest-format (passage): K open (know.c) + background
+ *   bg serve BRAIN                  one question a line on stdin, JSON answers on stdout (tools/versus/)
  * Env: ROOM (facts, default 6000000), BW="a b c d" answer weights, PART=n read only every n-th block (dev brain),
  *      DUMP=file (per-option parts), SHOW=1.
  *      ROOMS="a b": a subject room of a facts and a general room of b, each with its own clock; files named gen_* are
@@ -65,7 +66,7 @@ static float qqsim(const QW *a, const QW *b) {
 #define KA 3
 typedef struct { uint32_t verb, head[KA], mod[KA], prep[KA], count; uint8_t role[KA], narg, flags; uint64_t ptr[2]; float s; uint32_t L; uint16_t round; uint8_t uses, perm, room; } KF;
 /* strength (docs/STRENGTH_COMPARE.md): s and the time last met L; the clock moves one step a sentence read or a question practised */
-typedef struct { double fact, joint, open, mean, chain; uint32_t used[16]; int nused; uint32_t cq, co, cw; } BParts;
+typedef struct { double fact, joint, open, mean, chain; uint32_t used[16]; int nused; uint32_t cq, co, cw; uint64_t optr; } BParts;
 static int STRENGTH; static uint64_t CLK; static const double H0 = 1e6;
 /* rooms (docs/TOPIC_COMPARE.md): room 0 the subject, room 1 general reading; each forgets on its own and has its own clock */
 static int NROOM = 1, CUR; static uint64_t CLK1; static uint32_t RROOM[2], nroom[2];
@@ -408,7 +409,7 @@ static void bg_option(Know *A, const char *q, const char *opt, BParts *P) {
     int nh = read_statement(A, st, hf, 64, sw, &nsw, 256); read_statement(A, q, qf, 64, qwl, &nq, 256); read_statement(A, opt, of, 64, owl, &now_, 128);
     QW Q[256], O[128]; qwords(A, qwl, nq, Q);
     int no = 0; for (int i = 0; i < now_; i++) { int inq = 0; for (int j = 0; j < nq; j++) inq |= qwl[j] == owl[i]; if (!inq) { const char *s = A->t.voc[owl[i]].word; O[no].g = lx_id(s, 0); O[no++].mid = meaning_id(MM, s); } }
-    memset(P, 0, sizeof *P);
+    memset(P, 0, sizeof *P); P->optr = ~0ull;
     /* (d) how close in meaning the option's own words are to the question's */
     P->mean = no && nq ? qcover(O, no, Q, nq) : 0;
     if (!nkf || !no) return;
@@ -437,7 +438,7 @@ static void bg_option(Know *A, const char *q, const char *opt, BParts *P) {
     /* (c) open book: those facts' pointers lead back to the shelf; the sentences re-read */
     for (int r = 0; r < 3; r++) { if (top[r] < 0) continue;
         for (int p = 0; p < 2; p++) { QW S[256]; int ns = reread(A, kf[top[r]].ptr[p], S, 256); if (!ns) continue;
-            double j = qcover(Q, nq, S, ns) + qcover(O, no, S, ns); if (j > P->open) P->open = j; } }
+            double j = qcover(Q, nq, S, ns) + qcover(O, no, S, ns); if (j > P->open) { P->open = j; P->optr = kf[top[r]].ptr[p]; } } }
 }
 
 static double bscore(const BParts *p) { return BW[0] * p->fact + BW[1] * p->joint + BW[2] * p->open + BW[3] * p->mean + BW[4] * p->chain; }
@@ -474,6 +475,50 @@ static int run_arc(int nfile, char **files) {
         printf("RESULT bgarc file=%s n=%d acc=%.2f facts=%u\n", b, n, 100 * ok / n, nkf);
     }
     return 0;
+}
+
+/* one question at a time (tools/versus/): "question<TAB>option<TAB>option..." in, one JSON line out:
+   each option's score and the shelf sentence its open-book part came from */
+static void jstr(const char *s) { putchar('"'); for (; *s; s++) { unsigned char c = (unsigned char)*s; if (c == '"' || c == '\\') printf("\\%c", c); else if (c < 32) putchar(' '); else putchar(c); } putchar('"'); }
+static int run_serve(void) {
+    Know A; answer_ctx(&A); char line[1 << 16];
+    printf("{\"ready\":true,\"facts\":%u}\n", nkf); fflush(stdout);
+    while (fgets(line, sizeof line, stdin)) {
+        size_t L = strlen(line); while (L && (line[L - 1] == '\n' || line[L - 1] == '\r')) line[--L] = 0;
+        char *fld[10]; int nf = 0; for (char *p = strtok(line, "\t"); p && nf < 10; p = strtok(0, "\t")) fld[nf++] = p;
+        if (nf < 3) { printf("{\"error\":\"need a question and at least two options\"}\n"); fflush(stdout); continue; }
+        double t0 = now(); int no = nf - 1, best = 0; BParts P[9]; double sc[9];
+        for (int o = 0; o < no; o++) { bg_option(&A, fld[0], fld[1 + o], &P[o]); sc[o] = bscore(&P[o]); A.t.ntok = 0; if (sc[o] > sc[best] + 1e-9) best = o; }
+        printf("{\"pick\":%d,\"ms\":%.0f,\"options\":[", best, 1000 * (now() - t0));
+        for (int o = 0; o < no; o++) { char s[1024] = ""; uint64_t ptr = P[o].optr;
+            if (ptr != ~0ull) { int fid = (int)(ptr >> FID_SHIFT); FILE *f = fid < NSHELF ? fopen(SHELF[fid], "rb") : NULL;
+                if (f) { fseeko(f, (off_t)(ptr & ((1ull << FID_SHIFT) - 1)), SEEK_SET); size_t n = fread(s, 1, sizeof s - 1, f); s[n] = 0; fclose(f);
+                    char *e = strchr(s, '\n'); if (e) *e = 0; for (char *x = s; *x; x++) if ((*x == '.' || *x == '!' || *x == '?') && (x[1] == ' ' || !x[1])) { x[1] = 0; break; } } }
+            printf("%s{\"score\":%.4f,\"fact\":%.4f,\"joint\":%.4f,\"open\":%.4f,\"meaning\":%.4f,\"from\":", o ? "," : "", sc[o], P[o].fact, P[o].joint, P[o].open, P[o].mean); jstr(s);
+            const char *src = ""; if (ptr != ~0ull && (int)(ptr >> FID_SHIFT) < NSHELF) { src = strrchr(SHELF[ptr >> FID_SHIFT], '/'); src = src ? src + 1 : SHELF[ptr >> FID_SHIFT]; }
+            printf(",\"book\":"); jstr(src); printf("}"); }
+        printf("]}\n"); fflush(stdout);
+    }
+    return 0;
+}
+
+/* pack: the brain with only the shelf sentences its pointers lead to, in one file (to carry the brain elsewhere, e.g.
+   Colab); each sentence is cut exactly as reread() cuts it, so answers do not change */
+static int cmp_u64(const void *a, const void *b) { uint64_t x = *(const uint64_t *)a, y = *(const uint64_t *)b; return x < y ? -1 : x > y; }
+static int run_pack(const char *outbrain, const char *outshelf) {
+    uint64_t n = 0, *P = malloc((size_t)nkf * 2 * sizeof *P); for (uint32_t i = 0; i < nkf; i++) for (int p = 0; p < 2; p++) if (kf[i].ptr[p] != ~0ull) P[n++] = kf[i].ptr[p];
+    qsort(P, n, sizeof *P, cmp_u64); uint64_t m = 0; for (uint64_t i = 0; i < n; i++) if (!m || P[i] != P[m - 1]) P[m++] = P[i];
+    uint64_t *NP = malloc(m * sizeof *NP); FILE *o = fopen(outshelf, "wb"); if (!o) { perror(outshelf); return 1; } uint64_t off = 0; FILE *f = NULL; int cur = -1;
+    for (uint64_t i = 0; i < m; i++) { int fid = (int)(P[i] >> FID_SHIFT); char s[1024] = "";
+        if (fid != cur) { if (f) fclose(f); f = fid < NSHELF ? fopen(SHELF[fid], "rb") : NULL; cur = fid; if (!f) { perror(SHELF[fid]); return 1; } }
+        fseeko(f, (off_t)(P[i] & ((1ull << FID_SHIFT) - 1)), SEEK_SET); size_t k = fread(s, 1, sizeof s - 1, f); s[k] = 0;
+        char *e = strchr(s, '\n'); if (e) *e = 0; for (char *x = s; *x; x++) if ((*x == '.' || *x == '!' || *x == '?') && (x[1] == ' ' || !x[1])) { x[1] = 0; break; }
+        NP[i] = off; size_t L = strlen(s); fwrite(s, 1, L, o); fputc('\n', o); off += L + 1; }
+    if (f) fclose(f); fclose(o);
+    for (uint32_t i = 0; i < nkf; i++) for (int p = 0; p < 2; p++) if (kf[i].ptr[p] != ~0ull) { uint64_t *h = bsearch(&kf[i].ptr[p], P, m, sizeof *P, cmp_u64); kf[i].ptr[p] = NP[h - P]; }
+    NSHELF = 1; SHELF[0] = outshelf;   /* the packed shelf, by the path given (relative to where Mimir runs) */
+    fprintf(stderr, "packed %llu sentences, %.1f MB\n", (unsigned long long)m, off / 1e6);
+    return brain_save(outbrain, 0, 0);
 }
 
 /* with a passage: K open (know.c, its frozen weights) plus the background score */
@@ -529,5 +574,7 @@ int main(int argc, char **argv) {
     fprintf(stderr, "brain %s: %u facts, %u words (loaded in %.1f s)\n", argv[2], nkf, LX.n, now() - t0);
     if (!strcmp(argv[1], "arc")) return run_arc(argc - 3, argv + 3);
     if (!strcmp(argv[1], "know")) return run_know_bg(argc - 3, argv + 3);
+    if (!strcmp(argv[1], "serve")) return run_serve();
+    if (!strcmp(argv[1], "pack") && argc >= 5) return run_pack(argv[3], argv[4]);
     return 1;
 }
