@@ -1,0 +1,30 @@
+science 237666633 words, general 34576616 words
+cut-off score -0.0918 (top 20% of 148836 articles in data/shelf/enwiki_00.txt)
+data/shelf/enwiki_00.txt: 148836 articles, 29767 on topic (20.0%), 159 MB on topic
+data/shelf/enwiki_01.txt: 148309 articles, 26143 on topic (17.6%), 114 MB on topic
+data/shelf/enwiki_02.txt: 148280 articles, 24604 on topic (16.6%), 103 MB on topic
+data/shelf/enwiki_03.txt: 149103 articles, 26210 on topic (17.6%), 113 MB on topic
+data/shelf/enwiki_04.txt: 148482 articles, 24166 on topic (16.3%), 97 MB on topic
+data/shelf/enwiki_05.txt: 150588 articles, 43656 on topic (29.0%), 93 MB on topic
+data/shelf/enwiki_06.txt: 148563 articles, 29162 on topic (19.6%), 92 MB on topic
+data/shelf/enwiki_07.txt: 149237 articles, 20651 on topic (13.8%), 69 MB on topic
+data/shelf/enwiki_08.txt: 148638 articles, 20542 on topic (13.8%), 76 MB on topic
+data/shelf/enwiki_09.txt: 148817 articles, 18682 on topic (12.6%), 76 MB on topic
+data/shelf/enwiki_10.txt: 149661 articles, 20689 on topic (13.8%), 78 MB on topic
+data/shelf/enwiki_11.txt: 148508 articles, 24113 on topic (16.2%), 73 MB on topic
+data/shelf/enwiki_12.txt: 148829 articles, 24679 on topic (16.6%), 75 MB on topic
+data/shelf/enwiki_13.txt: 148762 articles, 29860 on topic (20.1%), 80 MB on topic
+data/shelf/enwiki_14.txt: 148937 articles, 25225 on topic (16.9%), 69 MB on topic
+data/shelf/enwiki_15.txt: 148955 articles, 23104 on topic (15.5%), 72 MB on topic
+data/shelf/enwiki_16.txt: 149805 articles, 24834 on topic (16.6%), 183 MB on topic
+data/shelf/enwiki_17.txt: 148301 articles, 21869 on topic (14.7%), 70 MB on topic
+data/shelf/enwiki_18.txt: 147690 articles, 23993 on topic (16.2%), 77 MB on topic
+data/shelf/enwiki_19.txt: 145773 articles, 19995 on topic (13.7%), 58 MB on topic
+data/shelf/enwiki_20.txt: 145664 articles, 21884 on topic (15.0%), 68 MB on topic
+data/shelf/enwiki_21.txt: 146640 articles, 20836 on topic (14.2%), 63 MB on topic
+data/shelf/enwiki_22.txt: 149552 articles, 20885 on topic (14.0%), 57 MB on topic
+data/shelf/enwiki_23.txt: 149425 articles, 20716 on topic (13.9%), 60 MB on topic
+data/shelf/enwiki_24.txt: 150552 articles, 21751 on topic (14.4%), 62 MB on topic
+data/shelf/enwiki_25.txt: 149439 articles, 20667 on topic (13.8%), 62 MB on topic
+data/shelf/enwiki_26.txt: 149332 articles, 19219 on topic (12.9%), 57 MB on topic
+data/shelf/enwiki_27.txt: 148680 articles, 19843 on topic (13.3%), 58 MB on topic
