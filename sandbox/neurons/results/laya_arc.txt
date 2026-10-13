@@ -1,0 +1,9 @@
+# tools/laya_arc.py in Colab (shared browser, 2026-10-13), convaiinnovations/laya as shipped, no training
+laya 0.4.6 | torch 2.11.0+cu130 | device cuda Tesla T4
+/usr/local/lib/python3.13/dist-packages/laya/agent.py:2148: RuntimeWarning: laya: this checkpoint ships invalid temperatures or values outside [0.5, 5]; using choice:11+=0.10058280825614929 -> 0.5. Treat confidence from the affected entries as uncalibrated.
+easy_test         2376 q   50.08%   39.1 ms/q
+RESULT laya_arc file=easy_test n=2376 acc=50.08
+challenge_test    1172 q   30.46%   38.9 ms/q
+RESULT laya_arc file=challenge_test n=1172 acc=30.46
+obqa_test          500 q   40.00%   36.7 ms/q
+RESULT laya_arc file=obqa_test n=500 acc=40.00
