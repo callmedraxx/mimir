@@ -370,6 +370,7 @@ static int reread(Know *A, uint64_t ptr, QW *out, int max) {
 static float *mark; static uint32_t nmark;
 static double BW[5] = { 1, 0.5, 2, 4, 0 };   /* chosen on ARC train + dev with a dev brain (5% of the shelf); the chain's on dev (CHAIN_COMPARE.md) */
 /* (e) chain: a fact about the question and a fact about the option, linked by a word in neither (not a common one) */
+static int NOPEN = 3;   /* facts whose shelf sentences are re-read when answering (LAYA_LEVEL.md stage 1) */
 static int CHAINV = 1; static double LINKIDF = 5;   /* chosen on dev (CHAIN_COMPARE.md): both facts must fit (product), the link word rarer than 1 fact in 150 */
 static int is_link(uint32_t g, const QW *Q, int nq, const QW *O, int no) {
     if (g == NONE || g >= LX.n || gidf(g) < LINKIDF) return 0;
@@ -430,18 +431,28 @@ static void bg_option(Know *A, const char *q, const char *opt, BParts *P) {
     for (int i = 0; i < nh; i++) { if (focus && !hf[i].tc) continue; double b = 0; int bc = -1; for (int c = 0; c < nc; c++) { double s = kfact_sim(A, &hf[i], &kf[cand[c]]) * conf(&kf[cand[c]]); if (s > b) { b = s; bc = c; } } fs += b; nfs++;
         if (bc >= 0 && b > 0.5 && P->nused < 16) P->used[P->nused++] = cand[bc]; }
     P->fact = nfs ? fs / nfs : 0;
-    int top[3] = { -1, -1, -1 }; double tv[3] = { -1, -1, -1 };
+    enum { TOPMAX = 64 }; int top[TOPMAX]; double tv[TOPMAX]; int K = NOPEN < 3 ? 3 : NOPEN > TOPMAX ? TOPMAX : NOPEN; for (int r = 0; r < K; r++) { top[r] = -1; tv[r] = -1; }
     for (int c = 0; c < nc; c++) { uint32_t w[8]; int n = kf_words(&kf[cand[c]], w); double j = conf(&kf[cand[c]]) * (kcover(Q, nq, w, n) + kcover(O, no, w, n));
         if (j > P->joint) P->joint = j;
-        for (int r = 0; r < 3; r++) if (j > tv[r]) { for (int x = 2; x > r; x--) { tv[x] = tv[x - 1]; top[x] = top[x - 1]; } tv[r] = j; top[r] = cand[c]; break; } }
+        for (int r = 0; r < K; r++) if (j > tv[r]) { for (int x = K - 1; x > r; x--) { tv[x] = tv[x - 1]; top[x] = top[x - 1]; } tv[r] = j; top[r] = cand[c]; break; } }
     for (int r = 0; r < 3; r++) if (top[r] >= 0 && P->nused < 16) { int dup = 0; for (int x = 0; x < P->nused; x++) dup |= P->used[x] == (uint32_t)top[r]; if (!dup) P->used[P->nused++] = top[r]; }
     /* (c) open book: those facts' pointers lead back to the shelf; the sentences re-read */
-    for (int r = 0; r < 3; r++) { if (top[r] < 0) continue;
+    for (int r = 0; r < K; r++) { if (top[r] < 0) continue;
         for (int p = 0; p < 2; p++) { QW S[256]; int ns = reread(A, kf[top[r]].ptr[p], S, 256); if (!ns) continue;
             double j = qcover(Q, nq, S, ns) + qcover(O, no, S, ns); if (j > P->open) { P->open = j; P->optr = kf[top[r]].ptr[p]; } } }
 }
 
 static double bscore(const BParts *p) { return BW[0] * p->fact + BW[1] * p->joint + BW[2] * p->open + BW[3] * p->mean + BW[4] * p->chain; }
+/* the question asks for the option that is NOT so ("not", "least", "except", ...): support is turned around (LAYA_LEVEL.md stage 2) */
+static int POLARITY;
+static int asks_opposite(const char *q) {
+    static const char *W[] = { "not", "least", "except", "false", "unlikely", "cannot", "never", "incorrect", "untrue", "isn't", "doesn't", "can't", "won't", "wouldn't", "aren't", 0 };
+    char w[32]; int n = 0;
+    for (const char *s = q;; s++) { if (isalpha((unsigned char)*s) || *s == '\'') { if (n < 31) w[n++] = (char)tolower((unsigned char)*s); continue; }
+        if (n) { w[n] = 0; for (int i = 0; W[i]; i++) if (!strcmp(w, W[i])) return 1; n = 0; } if (!*s) break; }
+    return 0;
+}
+static double qscore(const char *q, const BParts *p) { double s = bscore(p); return POLARITY && asks_opposite(q) ? -s : s; }
 static void answer_ctx(Know *A) { memset(A, 0, sizeof *A); text_init(&A->t); r2_init(&A->R, &A->t, &A->wm); }
 
 /* questions without a passage: id, question, n, options..., answer */
@@ -456,7 +467,7 @@ static int run_arc(int nfile, char **files) {
             char *fld[12]; int nf = 0; for (char *p = strtok(line, "\t"); p && nf < 12; p = strtok(0, "\t")) fld[nf++] = p;
             if (nf < 4) continue; int no = atoi(fld[2]); if (no < 2 || no > 8 || nf < 4 + no) continue; int want = atoi(fld[3 + no]);
             BParts P[8]; double sc[8];
-            for (int o = 0; o < no; o++) { bg_option(&A, fld[1], fld[3 + o], &P[o]); sc[o] = bscore(&P[o]); A.t.ntok = 0; }
+            for (int o = 0; o < no; o++) { bg_option(&A, fld[1], fld[3 + o], &P[o]); sc[o] = qscore(fld[1], &P[o]); A.t.ntok = 0; }
             /* ties share the credit */
             double best = -1e9; int nb = 0; for (int o = 0; o < no; o++) if (sc[o] > best + 1e-9) { best = sc[o]; nb = 1; } else if (sc[o] > best - 1e-9) nb++;
             if (sc[want] > best - 1e-9) ok += 1.0 / nb;
@@ -488,7 +499,7 @@ static int run_serve(void) {
         char *fld[10]; int nf = 0; for (char *p = strtok(line, "\t"); p && nf < 10; p = strtok(0, "\t")) fld[nf++] = p;
         if (nf < 3) { printf("{\"error\":\"need a question and at least two options\"}\n"); fflush(stdout); continue; }
         double t0 = now(); int no = nf - 1, best = 0; BParts P[9]; double sc[9];
-        for (int o = 0; o < no; o++) { bg_option(&A, fld[0], fld[1 + o], &P[o]); sc[o] = bscore(&P[o]); A.t.ntok = 0; if (sc[o] > sc[best] + 1e-9) best = o; }
+        for (int o = 0; o < no; o++) { bg_option(&A, fld[0], fld[1 + o], &P[o]); sc[o] = qscore(fld[0], &P[o]); A.t.ntok = 0; if (sc[o] > sc[best] + 1e-9) best = o; }
         printf("{\"pick\":%d,\"ms\":%.0f,\"options\":[", best, 1000 * (now() - t0));
         for (int o = 0; o < no; o++) { char s[1024] = ""; uint64_t ptr = P[o].optr;
             if (ptr != ~0ull) { int fid = (int)(ptr >> FID_SHIFT); FILE *f = fid < NSHELF ? fopen(SHELF[fid], "rb") : NULL;
@@ -567,6 +578,8 @@ int main(int argc, char **argv) {
     if (meaning_load(&m, getenv("MEANING") ? getenv("MEANING") : MEANING_PATH) <= 0) { fprintf(stderr, "no meanings\n"); return 1; }
     meaning_norms(&m); MM = &m; RV = 2;
     if (getenv("BW")) sscanf(getenv("BW"), "%lf %lf %lf %lf %lf", &BW[0], &BW[1], &BW[2], &BW[3], &BW[4]);
+    if (getenv("POLARITY")) POLARITY = atoi(getenv("POLARITY"));
+    if (getenv("NOPEN")) NOPEN = atoi(getenv("NOPEN"));
     if (getenv("CHAINV")) CHAINV = atoi(getenv("CHAINV")); if (getenv("LINKIDF")) LINKIDF = atof(getenv("LINKIDF"));
     if (!strcmp(argv[1], "read") && argc >= 5) return run_read(argv[2], atof(argv[3]), argc - 4, argv + 4);
     STRENGTH = getenv("STRENGTH") ? atoi(getenv("STRENGTH")) : 0;

@@ -46,4 +46,17 @@ Owner (2026-10-13): "okay let's try to get Mimir to Laya level".
 
 ## Results
 
-(each stage below as it is run)
+### Stages 1 and 2 (dev, 2026-10-13)
+
+Dev, all three dev sets together (1,369 questions); `sandbox/neurons/laya_stage_dev.py`
+on the dumps `results/laya1_dev_open*.txt`:
+
+| re-read behind | without polarity | with polarity |
+|---|---|---|
+| 3 facts (as before) | 30.12% | 30.74% |
+| 10 | 30.08% | 30.56% |
+| **20** | 30.63% | **31.18%** |
+| 40 | 30.63% | 30.81% |
+
+Chosen: **20 facts and polarity on** (+1.1 points on dev, ARC-Challenge dev 19.0 → 21.2).
+Frozen with `tools/mimir_arc.env`; test below, once, in Colab.
