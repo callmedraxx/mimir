@@ -90,3 +90,16 @@ facts practice leans on were already kept.
 
 Results: `sandbox/neurons/results/keep_read_E.txt`, `keep_E.txt`, `keep_read_F.txt`,
 `keep_F.txt`.
+
+### The new base (2026-10-13)
+
+Owner: "let's make E the new base". `data/shelf/base.brain` is now brain E (167 MB,
+4.72M facts: the 3.08M it started with and 240 more learned for good, the rest still
+fading). `mimir.brain` is kept unchanged so the earlier experiments still reproduce.
+Later experiments start from `base.brain`.
+
+Caution for the next read from it: with `KEEP=1`, all 4.72M facts would be kept for
+good, leaving 1.28M of the 6M room for new reading, and the read after that would
+have almost none. The neuron design (NEURON.md §7: "never refuse to learn") and
+`grow.c` (committed events at most ¼ of what is stored, oldest commitment goes first)
+both cap what is kept for good; that cap has to come before reading on from here.
