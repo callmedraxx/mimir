@@ -66,7 +66,7 @@ static float qqsim(const QW *a, const QW *b) {
 #define KA 3
 typedef struct { uint32_t verb, head[KA], mod[KA], prep[KA], count; uint8_t role[KA], narg, flags; uint64_t ptr[2]; float s; uint32_t L; uint16_t round; uint8_t uses, perm, room; } KF;
 /* strength (docs/STRENGTH_COMPARE.md): s and the time last met L; the clock moves one step a sentence read or a question practised */
-typedef struct { double fact, joint, open, mean, chain; uint32_t used[16]; int nused; uint32_t cq, co, cw; uint64_t optr; } BParts;
+typedef struct { double fact, joint, open, mean, chain, open2, open3, spec, olen; uint32_t used[16]; int nused; uint32_t cq, co, cw; uint64_t optr; } BParts;
 static int STRENGTH; static uint64_t CLK; static const double H0 = 1e6;
 /* rooms (docs/TOPIC_COMPARE.md): room 0 the subject, room 1 general reading; each forgets on its own and has its own clock */
 static int NROOM = 1, CUR; static uint64_t CLK1; static uint32_t RROOM[2], nroom[2];
@@ -75,7 +75,10 @@ static int NROOM = 1, CUR; static uint64_t CLK1; static uint32_t RROOM[2], nroom
 static int ROUND;
 static double eff(const KF *f) { if (!STRENGTH) return f->count; if (f->perm) return f->s; double age = (double)(CLOCK(f->room) - f->L); return f->s * exp2(-age / (H0 * f->s)); }
 static KF *kf; static uint32_t nkf, capkf, *kslot, kmask; static uint64_t forgotten; static int forget_th;
-static uint32_t ROOM = 6000000;
+static uint32_t ROOM = 6000000;     /* 0 = no limit: keep every fact; only low memory makes it forget (SCHOOL_BRAIN.md) */
+static uint64_t mem_free_mb(void) { FILE *f = fopen("/proc/meminfo", "r"); char k[64]; unsigned long long v; uint64_t r = ~0ull;
+    if (!f) return r; while (fscanf(f, "%63s %llu kB", k, &v) == 2) if (!strcmp(k, "MemAvailable:")) { r = v / 1024; break; } fclose(f); return r; }
+static uint64_t nmemforget;
 
 static uint64_t kf_hash(const KF *f) {
     uint64_t h = 1469598103934665603ull;
@@ -122,9 +125,10 @@ static void kf_add(const KF *f, uint64_t ptr) {
     if (!kslot) { capkf = 1 << 20; kf = malloc((size_t)capkf * sizeof *kf); kf_rehash(1u << 21); }
     uint32_t h = (uint32_t)kf_hash(f) & kmask;
     for (; kslot[h]; h = (h + 1) & kmask) { KF *e = &kf[kslot[h] - 1]; if (kf_same(e, f)) { if (e->count < 0xffffffffu) e->count++; if (e->count == 2) e->ptr[1] = ptr; if (STRENGTH) { e->s = (float)(eff(e) + 1); e->L = (uint32_t)CLOCK(e->room); } return; } }
-#define FULL (NROOM > 1 ? nroom[CUR] >= RROOM[CUR] : nkf >= ROOM)
+#define FULL (NROOM > 1 ? nroom[CUR] >= RROOM[CUR] : ROOM ? nkf >= ROOM : 0)
+    if (!ROOM && NROOM == 1 && (nkf & 0xfffff) == 0 && nkf && mem_free_mb() < 1536) { ROOM = nkf; nmemforget++; fprintf(stderr, "  low memory at %u facts: forgetting the weakest quarter\n", nkf); forget(); ROOM = 0; }
     if (FULL) { forget(); if (FULL) return; kf_add(f, ptr); return; }   /* a room full of facts learned for good: the new one is not kept */
-    if (nkf == capkf) { capkf = capkf * 2 > ROOM ? ROOM : capkf * 2; kf = realloc(kf, (size_t)capkf * sizeof *kf); }
+    if (nkf == capkf) { capkf = ROOM && capkf * 2 > ROOM ? ROOM : capkf * 2; kf = realloc(kf, (size_t)capkf * sizeof *kf); }
     if ((nkf + 1) * 2 > kmask) { kf[nkf] = *f; kf_rehash((kmask + 1) * 2); h = (uint32_t)kf_hash(f) & kmask; while (kslot[h]) h = (h + 1) & kmask; }
     KF *e = &kf[nkf]; *e = *f; e->count = 1; e->ptr[0] = ptr; e->ptr[1] = ~0ull; e->s = 1; e->L = (uint32_t)CLOCK(CUR); e->round = 0; e->uses = 0; e->perm = 0; e->room = (uint8_t)CUR; nroom[CUR]++; kslot[h] = ++nkf;
 }
@@ -235,7 +239,11 @@ static int run_read(const char *brain, double seconds, int nfile, char **files) 
         fprintf(stderr, "practice: %d questions in %d slices, one after each %sshelf file, each reviewed three files later\n", NPQ, nslice, NROOM > 1 ? "subject " : ""); }
     int si = 0;                       /* subject files read so far: practice follows them */
     double t0 = now(), next = t0 + 60; uint64_t bytes = 0; const size_t B = 1 << 22; char *buf = malloc(B + 1); int stop = 0;
+    int saveeach = getenv("SAVEEACH") ? atoi(getenv("SAVEEACH")) : 0;
     for (int fi = 0; fi < nfile && !stop; fi++) {
+        { int done = 0; for (int s = 0; s < NSHELF; s++) done |= !strcmp(SHELF[s], files[fi]);       /* read already (continuing from a checkpoint) */
+          if (done) { fprintf(stderr, "  %s: read already, skipped\n", files[fi]); if (!is_general(files[fi])) si++; continue; } }
+        if (NSHELF >= 64) { fprintf(stderr, "too many shelf files (64)\n"); return 1; }
         SHELF[NSHELF++] = files[fi]; CUR = is_general(files[fi]);
         FILE *f = fopen(files[fi], "rb"); if (!f) { perror(files[fi]); return 1; }
         uint64_t off = 0; size_t have = 0; long blk = 0;
@@ -256,11 +264,13 @@ static int run_read(const char *brain, double seconds, int nfile, char **files) 
             snprintf(w, sizeof w, "slice %d (new)", si); practise(&A, si * per, (si + 1) * per, w);
             if (si >= 3) { snprintf(w, sizeof w, "slice %d (review)", si - 3); practise(&A, (si - 3) * per, (si - 2) * per, w); } }
         if (!CUR) si++;
+        if (saveeach) { fflush(stdout); brain_save(brain, now() - t0, bytes); fprintf(stderr, "  checkpoint saved after %s (%u facts)\n", files[fi], nkf); }
     }
     double secs = now() - t0;
     if (npractised) fprintf(stderr, "practised %llu questions in all, %.1f%% right before being shown the answer; %llu facts learned for good\n", (unsigned long long)npractised, 100 * practice_ok / npractised, (unsigned long long)nperm);
     fprintf(stderr, "read %.0f MB in %.0f s (%.2f MB/s): %llu sentences, %llu facts read; %u kept, %llu forgotten%s\n", bytes / 1e6, secs, bytes / 1e6 / secs,
         (unsigned long long)nsent_read, (unsigned long long)nfacts_read, nkf, (unsigned long long)forgotten, stop ? " (time up)" : " (shelf finished)");
+    if (nmemforget) fprintf(stderr, "low memory made it forget %llu times\n", (unsigned long long)nmemforget);
     if (NROOM > 1) fprintf(stderr, "rooms: subject %u facts (clock %llu), general %u facts (clock %llu)\n", nroom[0], (unsigned long long)CLK, nroom[1], (unsigned long long)CLK1);
     return brain_save(brain, secs, bytes);
 }
@@ -272,7 +282,8 @@ static int run_read(const char *brain, double seconds, int nfile, char **files) 
 static int vput64(uint8_t *b, uint64_t v) { int n = 0; while (v >= 128) { b[n++] = (uint8_t)(v | 128); v >>= 7; } b[n++] = (uint8_t)v; return n; }
 static uint64_t vget64(FILE *f) { uint64_t v = 0; int sh = 0, c; while ((c = fgetc(f)) >= 0) { v |= (uint64_t)(c & 127) << sh; if (c < 128) break; sh += 7; } return v; }
 static int brain_save(const char *path, double secs, uint64_t bytes) {
-    FILE *f = fopen(path, "wb"); if (!f) { perror(path); return 1; }
+    char tmp[4096]; snprintf(tmp, sizeof tmp, "%s.part", path);   /* written whole, then renamed: a save cut off never spoils the last good one */
+    FILE *f = fopen(tmp, "wb"); if (!f) { perror(tmp); return 1; }
     fwrite(NROOM > 1 ? "MIMB5" : "MIMB4", 1, 5, f); fwrite(&CLK, 8, 1, f); if (NROOM > 1) fwrite(&CLK1, 8, 1, f); fwrite(&NSHELF, 4, 1, f);
     for (int i = 0; i < NSHELF; i++) { uint16_t l = strlen(SHELF[i]); fwrite(&l, 2, 1, f); fwrite(SHELF[i], 1, l, f); }
     fwrite(&LX.n, 4, 1, f); for (uint32_t i = 0; i < LX.n; i++) { uint8_t l = strlen(LX.s[i]) > 255 ? 255 : strlen(LX.s[i]); fwrite(&l, 1, 1, f); fwrite(LX.s[i], 1, l, f); }
@@ -282,7 +293,8 @@ static int brain_save(const char *path, double secs, uint64_t bytes) {
         for (int j = 0; j < e->narg; j++) { b[n++] = e->role[j]; n += vput(b + n, e->prep[j] + 1); n += vput(b + n, e->head[j] + 1); n += vput(b + n, e->mod[j] + 1); }
         n += vput(b + n, e->count); n += vput64(b + n, e->ptr[0] + 1); n += vput64(b + n, e->count > 1 ? e->ptr[1] + 1 : 0);
         memcpy(b + n, &e->s, 4); n += 4; n += vput(b + n, e->L); b[n++] = e->perm; if (NROOM > 1) b[n++] = e->room; fwrite(b, 1, n, f); }
-    long sz = ftell(f); fclose(f);
+    long sz = ftell(f); if (fflush(f) || fsync(fileno(f))) { perror(tmp); fclose(f); return 1; } fclose(f);
+    if (rename(tmp, path)) { perror(path); return 1; }
     printf("RESULT bgread brain=%s bytes=%ld facts=%u words=%u forgotten=%llu read_bytes=%llu seconds=%.0f mb_s=%.2f\n", path, sz, nkf, LX.n,
         (unsigned long long)forgotten, (unsigned long long)bytes, secs, bytes / 1e6 / secs);
     return 0;
@@ -413,6 +425,7 @@ static void bg_option(Know *A, const char *q, const char *opt, BParts *P) {
     memset(P, 0, sizeof *P); P->optr = ~0ull;
     /* (d) how close in meaning the option's own words are to the question's */
     P->mean = no && nq ? qcover(O, no, Q, nq) : 0;
+    P->olen = no; { double s = 0; int k = 0; for (int i = 0; i < no; i++) if (O[i].g != NONE) { s += gidf(O[i].g); k++; } P->spec = k ? s / k : 0; }
     if (!nkf || !no) return;
     /* candidate facts: those holding one of the option's own words, ranked first by the question's words they also hold (exactly) */
     if (nmark < LX.n) { mark = realloc(mark, LX.n * sizeof *mark); memset(mark + nmark, 0, (LX.n - nmark) * sizeof *mark); nmark = LX.n; }
@@ -437,9 +450,12 @@ static void bg_option(Know *A, const char *q, const char *opt, BParts *P) {
         for (int r = 0; r < K; r++) if (j > tv[r]) { for (int x = K - 1; x > r; x--) { tv[x] = tv[x - 1]; top[x] = top[x - 1]; } tv[r] = j; top[r] = cand[c]; break; } }
     for (int r = 0; r < 3; r++) if (top[r] >= 0 && P->nused < 16) { int dup = 0; for (int x = 0; x < P->nused; x++) dup |= P->used[x] == (uint32_t)top[r]; if (!dup) P->used[P->nused++] = top[r]; }
     /* (c) open book: those facts' pointers lead back to the shelf; the sentences re-read */
+    uint64_t seen[2 * TOPMAX]; int nseen = 0;
     for (int r = 0; r < K; r++) { if (top[r] < 0) continue;
-        for (int p = 0; p < 2; p++) { QW S[256]; int ns = reread(A, kf[top[r]].ptr[p], S, 256); if (!ns) continue;
-            double j = qcover(Q, nq, S, ns) + qcover(O, no, S, ns); if (j > P->open) { P->open = j; P->optr = kf[top[r]].ptr[p]; } } }
+        for (int p = 0; p < 2; p++) { uint64_t pt = kf[top[r]].ptr[p]; int dup = 0; for (int x = 0; x < nseen; x++) dup |= seen[x] == pt; if (dup || pt == ~0ull) continue; seen[nseen++] = pt;
+            QW S[256]; int ns = reread(A, pt, S, 256); if (!ns) continue;
+            double j = qcover(Q, nq, S, ns) + qcover(O, no, S, ns);
+            if (j > P->open) { P->open3 = P->open2; P->open2 = P->open; P->open = j; P->optr = pt; } else if (j > P->open2) { P->open3 = P->open2; P->open2 = j; } else if (j > P->open3) P->open3 = j; } }
 }
 
 static double bscore(const BParts *p) { return BW[0] * p->fact + BW[1] * p->joint + BW[2] * p->open + BW[3] * p->mean + BW[4] * p->chain; }
@@ -473,7 +489,7 @@ static int run_arc(int nfile, char **files) {
             if (sc[want] > best - 1e-9) ok += 1.0 / nb;
             for (int c = 0; c < 4; c++) { double b = -1e9; int k = 0; for (int o = 0; o < no; o++) { double v = c == 0 ? P[o].fact : c == 1 ? P[o].joint : c == 2 ? P[o].open : P[o].mean; if (v > b + 1e-9) { b = v; k = 1; } else if (v > b - 1e-9) k++; }
                 double v = c == 0 ? P[want].fact : c == 1 ? P[want].joint : c == 2 ? P[want].open : P[want].mean; if (v > b - 1e-9) okp[c] += 1.0 / k; }
-            if (dump) { const char *bn = strrchr(files[fi], '/'); fprintf(dump, "%s\t%d\t%d", bn ? bn + 1 : files[fi], want, no); for (int o = 0; o < no; o++) fprintf(dump, "\t%.5f %.5f %.5f %.5f %.5f", P[o].fact, P[o].joint, P[o].open, P[o].mean, P[o].chain); fprintf(dump, "\n"); }
+            if (dump) { const char *bn = strrchr(files[fi], '/'); fprintf(dump, "%s\t%d\t%d", bn ? bn + 1 : files[fi], want, no); for (int o = 0; o < no; o++) fprintf(dump, "\t%.5f %.5f %.5f %.5f %.5f %.5f %.5f %.3f %.0f", P[o].fact, P[o].joint, P[o].open, P[o].mean, P[o].chain, P[o].open2, P[o].open3, P[o].spec, P[o].olen); fprintf(dump, "\n"); }
             if (getenv("CHAINSHOW")) { printf("Q %s  [want %d]\n", fld[1], want); for (int o = 0; o < no; o++) { printf("  %c %-28.28s chain %.3f  total %.3f", o == want ? '*' : ' ', fld[3 + o], P[o].chain, sc[o]);
                 if (P[o].chain > 0) { uint32_t w[8]; int n; printf("  via %s: (", LX.s[P[o].cw]); n = kf_words(&kf[P[o].cq], w); for (int j = 0; j < n; j++) printf(" %s", w[j] < LX.n ? LX.s[w[j]] : "?"); printf(" ) + ("); n = kf_words(&kf[P[o].co], w); for (int j = 0; j < n; j++) printf(" %s", w[j] < LX.n ? LX.s[w[j]] : "?"); printf(" )"); }
                 printf("\n"); } }
