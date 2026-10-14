@@ -10,6 +10,8 @@
  *   bg read BRAIN SECONDS FILE...   read the shelf files in order for at most SECONDS, save BRAIN
  *   bg arc BRAIN FILE.tsv...        questions without a passage: id, question, n, options..., answer
  *   bg serve BRAIN                  one question a line on stdin, JSON answers on stdout (tools/versus/)
+ *   bg passages BRAIN FILE...       passages and their questions (MCTest layout), each passage read as the episode
+ *                                   (docs/EPISODE.md: EPMODE 0-3, EPW) and put back after its questions
  *   bg words BRAIN FILE...          the cortex on word-pair files (Spearman against people's ratings)
  *   bg near BRAIN WORD...           the words the cortex puts nearest
  * Env: ROOM (facts, default 0 = no limit), FROM=brain (read on from it), PART=n (read only every n-th block: a
@@ -70,14 +72,18 @@ static void cx_norms(void) {
 static int wmid(const char *s) { uint32_t g = lx_id(s, 0); return cx_has(g) ? (int)g : -1; }
 static int gmid(uint32_t g) { return g < LX.n && cx_has(g) ? (int)g : -1; }
 static float mcos(int x, int y) { return x < 0 || y < 0 ? 0 : cx_dot(CXU((uint32_t)x), CXU((uint32_t)y)) * cxinv[x] * cxinv[y]; }
+static uint8_t *claimed; static uint32_t nclaimed;    /* words of the question and of every option (episode inhibition, docs/EPISODE.md) */
+static int INHIB;                                     /* scoring the episode with inhibition on */
 /* a word asked about: its id in the brain (NONE if never read) and its meaning */
 typedef struct { uint32_t g; int mid; } QW;
 static float qsim(const QW *a, uint32_t g) {
     if (g == NONE) return 0; if (a->g == g) return 1;
+    if (INHIB && g < nclaimed && claimed[g]) return 0;    /* inhibition: a word the question or an option says exactly is not matched nearly */
     float c = mcos(a->mid, gmid(g)), th = (float)CXTH; return c >= 1 ? 1 : c > th ? (c - th) / (1 - th) : 0;
 }
 static float qqsim(const QW *a, const QW *b) {
     if (a->g != NONE && a->g == b->g) return 1; if (a->mid >= 0 && a->mid == b->mid) return 1;
+    if (INHIB && b->g != NONE && b->g < nclaimed && claimed[b->g]) return 0;
     float c = mcos(a->mid, b->mid), th = (float)CXTH; return c >= 1 ? 1 : c > th ? (c - th) / (1 - th) : 0;
 }
 
@@ -88,7 +94,7 @@ static float qqsim(const QW *a, const QW *b) {
 #define KA 3
 typedef struct { uint32_t verb, head[KA], mod[KA], prep[KA], count; uint8_t role[KA], narg, flags; uint64_t ptr[2]; float s; uint32_t L; } KF;
 /* strength (docs/past/STRENGTH_COMPARE.md): s and the time last met L; the clock moves one step a sentence read */
-typedef struct { double fact, joint, open, mean, fit; uint64_t optr; } BParts;
+typedef struct { double fact, joint, open, mean, fit, sfact, sjoint, sopen, efact, ejoint, eopen; uint64_t optr, eptr; } BParts;
 static uint64_t CLK; static const double H0 = 1e6;
 static double eff(const KF *f) { double age = (double)(CLK - f->L); return f->s * exp2(-age / (H0 * f->s)); }
 static KF *kf; static uint32_t nkf, capkf, *kslot, kmask; static uint64_t forgotten; static int forget_th;
@@ -136,6 +142,44 @@ static void kf_add(const KF *f, uint64_t ptr) {
 }
 
 /* ------------------------------------------------------------------ */
+/* the episode (docs/EPISODE.md): the text being read now, apart from the shelf's facts      */
+/* ------------------------------------------------------------------ */
+
+/* EPMODE: -1 none (arc, serve); 0 its facts in the one pool, as if stored with the shelf's; 1 kept apart, active, its best
+   fit weighted EPW over the shelf's; 2 and near meanings inhibited inside it; 3 and its facts at full confidence (recency) */
+static int EPMODE = -1, EPREAD; static double EPW = 1;
+enum { EPFID = 63 };                                  /* pointers into the episode's own text (in memory) */
+static KF *ep; static uint32_t nep, capep; static char *epbuf; static size_t neb, capeb;
+static uint8_t *epword; static uint32_t nepword;     /* words the episode holds */
+static void ep_add(const KF *f, uint64_t ptr) {
+    for (uint32_t i = 0; i < nep; i++) if (kf_same(&ep[i], f)) { ep[i].count++; ep[i].s += 1; if (ep[i].count == 2) ep[i].ptr[1] = ptr; return; }
+    if (nep == capep) { capep = capep ? capep * 2 : 256; ep = realloc(ep, capep * sizeof *ep); }
+    KF *e = &ep[nep++]; *e = *f; e->count = 1; e->s = 1; e->L = (uint32_t)CLK; e->ptr[0] = ptr; e->ptr[1] = ~0ull;
+}
+static int is_ep(const KF *f) { return f >= ep && f < ep + nep; }
+
+/* the cortex while a passage is read: it learns as always, and what it changed is put back after the passage, so one
+   passage cannot help the next (for measuring) */
+static uint32_t *cxring;                              /* (below: words met lately) */
+static int cxj; static uint64_t cxj_tot, cxj_nring;
+typedef struct { uint32_t g; uint8_t which; float *row; } CxRow;
+static CxRow *cxjr; static uint32_t ncxjr, capcxjr; static uint32_t *cxjn_g, *cxjn_v, ncxjn, capcxjn; static uint64_t *cxjring_i; static uint32_t *cxjring_v, ncxjring, capcxjring;
+static void cxj_row(uint32_t g, int which) {
+    for (uint32_t i = 0; i < ncxjr; i++) if (cxjr[i].g == g && cxjr[i].which == which) return;
+    if (ncxjr == capcxjr) { capcxjr = capcxjr ? capcxjr * 2 : 1024; cxjr = realloc(cxjr, capcxjr * sizeof *cxjr); }
+    float *r = malloc(CXD * 4); memcpy(r, which ? CXC(g) : CXU(g), CXD * 4); cxjr[ncxjr++] = (CxRow){ g, (uint8_t)which, r };
+}
+static void cxj_count(uint32_t g) {
+    for (uint32_t i = 0; i < ncxjn; i++) if (cxjn_g[i] == g) return;
+    if (ncxjn == capcxjn) { capcxjn = capcxjn ? capcxjn * 2 : 1024; cxjn_g = realloc(cxjn_g, capcxjn * 4); cxjn_v = realloc(cxjn_v, capcxjn * 4); }
+    cxjn_g[ncxjn] = g; cxjn_v[ncxjn++] = CXN(g);
+}
+static void cxj_ring(uint64_t i) {
+    if (ncxjring == capcxjring) { capcxjring = capcxjring ? capcxjring * 2 : 1024; cxjring_i = realloc(cxjring_i, capcxjring * 8); cxjring_v = realloc(cxjring_v, capcxjring * 4); }
+    cxjring_i[ncxjring] = i; cxjring_v[ncxjring++] = cxring[i];
+}
+
+/* ------------------------------------------------------------------ */
 /* the cortex learning while Mimir reads                                */
 /* ------------------------------------------------------------------ */
 
@@ -153,19 +197,20 @@ static double CXETA = 0.025, CXSUB = 1e-4, CXFLOOR = 0.05, CXT = 10000;
 static float cx_sig(float x) { return x > 8 ? 1 : x < -8 ? 0 : 1 / (1 + expf(-x)); }
 static void cx_learn(const uint32_t *w, int n, uint64_t *st, float *neu) {
     uint32_t k[16]; int m = 0;
-    for (int i = 0; i < n; i++) { uint32_t g = w[i]; CXN(g)++; cxtot++;
+    for (int i = 0; i < n; i++) { uint32_t g = w[i]; if (cxj) cxj_count(g); CXN(g)++; cxtot++;
         double f = (double)CXN(g) / cxtot, keep = (sqrt(f / CXSUB) + 1) * CXSUB / f;
         if (keep < 1 && (cx_rnd(st) >> 11) * (1.0 / 9007199254740992.0) > keep) continue;
         int dup = 0; for (int j = 0; j < m; j++) dup |= k[j] == g; if (dup) continue;
-        k[m++] = g; cxring[cxnring++ & (CXR - 1)] = g; }
+        k[m++] = g; if (cxj) cxj_ring(cxnring & (CXR - 1)); cxring[cxnring++ & (CXR - 1)] = g; }
     if (m < 2 || cxnring < 10000) return;
     uint64_t nr = cxnring < CXR ? cxnring : CXR;
-    for (int a = 0; a < m; a++) { uint32_t t = k[a]; float *u = CXU(t);
+    for (int a = 0; a < m; a++) { uint32_t t = k[a]; float *u = CXU(t); if (cxj) cxj_row(t, 0);
         double r = 1 / sqrt(1 + CXN(t) / CXT);
         float eta = (float)(CXETA * (r > CXFLOOR ? r : CXFLOOR));
         for (int b = 0; b < m; b++) { if (b == a) continue; memset(neu, 0, CXD * 4);
             for (int x = 0; x <= CXNEG; x++) { uint32_t o; float label;
                 if (!x) { o = k[b]; label = 1; } else { o = cxring[(cx_rnd(st) >> 11) % nr]; if (o == k[b]) continue; label = 0; }
+                if (cxj) cxj_row(o, 1);
                 float *v = CXC(o), g = eta * (label - cx_sig(cx_dot(u, v)));   /* reward (label 1) or penalty (0), times the surprise */
                 for (int i = 0; i < CXD; i++) { neu[i] += g * v[i]; v[i] += g * u[i]; } }
             for (int i = 0; i < CXD; i++) u[i] += neu[i];
@@ -189,6 +234,13 @@ static void cx_fact(const KF *f) {                      /* the reader's side: a 
     uint64_t h = cxqh; cxq[h & (CXQ - 1)] = (uint32_t)n;
     for (int i = 0; i < n; i++) cxq[(h + 1 + i) & (CXQ - 1)] = w[i];
     __atomic_store_n(&cxqh, h + 1 + n, __ATOMIC_RELEASE);
+}
+static uint64_t cx_epst; static float *cx_epneu;
+static void cx_fact_now(const KF *f) {                  /* the episode's side: learn from the fact now, in this thread */
+    uint32_t w[8]; int n = kf_words(f, w); if (n < 2) return;
+    for (int i = 0; i < n; i++) while ((w[i] >> CXB) >= (uint32_t)cxnb) { if (cxnb >= CXMAXB) return; cx_block(); }
+    if (!cx_epneu) cx_epneu = malloc(CXD * 4);
+    cx_learn(w, n, &cx_epst, cx_epneu);
 }
 static void cx_start(void) {
     cxq = malloc((size_t)CXQ * 4); if (!cxring) cxring = malloc((size_t)CXR * 4);
@@ -273,7 +325,7 @@ static void read_block(Know *k, const char *b, size_t n, int fid, uint64_t off) 
         if (i - a > 120) { a = i + 1; continue; }                 /* not a sentence (a list, a table) */
         uint64_t ptr = ((uint64_t)fid << FID_SHIFT) | (off + t->tok[a].src);
         k->R.question = 0; int nf = read_span(&k->R, t->tok, a, i + 1, fr, 512, 0); nsent_read++; CLK++;
-        for (int j = 0; j < nf; j++) { KF f; if (to_kf(k, &fr[j], &f)) { kf_add(&f, ptr); nfacts_read++; cx_fact(&f); } }
+        for (int j = 0; j < nf; j++) { KF f; if (to_kf(k, &fr[j], &f)) { if (!EPREAD) kf_add(&f, ptr); nfacts_read++; if (EPREAD) { ep_add(&f, ptr); cx_fact_now(&f); } else cx_fact(&f); } }
         a = i + 1;
     }
     t->ntok = 0; t->src_len = 0;
@@ -346,19 +398,20 @@ static int brain_save(const char *path, double secs, uint64_t bytes) {
 }
 static char *SHELFP[64];
 static uint32_t *cue_off, *cue;              /* word → facts that hold it, strongest first */
+static uint32_t ncuew;                       /* words when the cue lists were built (words met since have none) */
 static float *EF;
 static int cmp_strong(const void *a, const void *b) { float x = EF[*(const uint32_t *)a], y = EF[*(const uint32_t *)b]; return x < y ? 1 : x > y ? -1 : 0; }
 static int kf_words(const KF *f, uint32_t *w) { int n = 0; if (f->verb != NONE) w[n++] = f->verb; for (int i = 0; i < f->narg; i++) { w[n++] = f->head[i]; if (f->mod[i] != NONE) w[n++] = f->mod[i]; } return n; }
 static void build_cues(void) {
     free(cue_off); free(cue); free(EF); EF = malloc(((size_t)nkf + 1) * sizeof *EF); for (uint32_t i = 0; i < nkf; i++) EF[i] = (float)eff(&kf[i]);
-    cue_off = calloc(LX.n + 2, 4);
+    cue_off = calloc(LX.n + 2, 4); ncuew = LX.n;
     for (uint32_t i = 0; i < nkf; i++) { uint32_t w[8]; int n = kf_words(&kf[i], w); for (int j = 0; j < n; j++) { int dup = 0; for (int x = 0; x < j; x++) dup |= w[x] == w[j]; if (!dup && w[j] < LX.n) cue_off[w[j] + 2]++; } }
     for (uint32_t g = 0; g < LX.n; g++) cue_off[g + 2] += cue_off[g + 1];
     cue = malloc(((size_t)cue_off[LX.n + 1] + 1) * 4);
     for (uint32_t i = 0; i < nkf; i++) { uint32_t w[8]; int n = kf_words(&kf[i], w); for (int j = 0; j < n; j++) { int dup = 0; for (int x = 0; x < j; x++) dup |= w[x] == w[j]; if (!dup && w[j] < LX.n) cue[cue_off[w[j] + 1]++] = i; } }
     for (uint32_t g = 0; g < LX.n; g++) qsort(cue + cue_off[g], cue_off[g + 1] - cue_off[g], 4, cmp_strong);
 }
-static uint32_t df_of(uint32_t g) { return g < LX.n && cue_off ? cue_off[g + 1] - cue_off[g] : 0; }
+static uint32_t df_of(uint32_t g) { return g < ncuew && cue_off ? cue_off[g + 1] - cue_off[g] : 0; }
 static double gidf(uint32_t g) { return log((nkf + 1.0) / (df_of(g) + 0.5)); }
 static int brain_load(const char *path) {
     if (!strcmp(path, "-")) { build_cues(); return 0; }                  /* the empty brain: nothing read yet */
@@ -412,14 +465,18 @@ static float kfact_sim(Know *A, const Frame *h, const KF *f) {
     double s = num / den; if ((h->flags & F_NEG) != (f->flags & F_NEG) && s > 0.5) s *= 0.3;
     return (float)s;
 }
-static double conf(const KF *f) { double e = EF ? EF[f - kf] : eff(f); return 1.0 - 0.5 / (e > 1 ? e : 1); }
+static double conf(const KF *f) {
+    if (is_ep(f)) return EPMODE >= 3 ? 1.0 : 1.0 - 0.5 / (f->s > 1 ? f->s : 1);    /* recency (P3): just read, fully there */
+    double e = EF ? EF[f - kf] : eff(f); return 1.0 - 0.5 / (e > 1 ? e : 1); }
 
 /* re-read one sentence from the shelf through a pointer */
 static int reread(Know *A, uint64_t ptr, QW *out, int max) {
     if (ptr == ~0ull) return 0;
-    int fid = (int)(ptr >> FID_SHIFT); uint64_t off = ptr & ((1ull << FID_SHIFT) - 1); if (fid >= NSHELF) return 0;
-    static FILE *fp[64]; if (!fp[fid]) fp[fid] = fopen(SHELF[fid], "rb"); if (!fp[fid]) return 0;
-    char s[1024]; fseeko(fp[fid], (off_t)off, SEEK_SET); size_t n = fread(s, 1, sizeof s - 1, fp[fid]); s[n] = 0;
+    int fid = (int)(ptr >> FID_SHIFT); uint64_t off = ptr & ((1ull << FID_SHIFT) - 1); char s[1024]; size_t n;
+    if (fid == EPFID) { if (off >= neb) return 0; n = neb - off < sizeof s - 1 ? neb - off : sizeof s - 1; memcpy(s, epbuf + off, n); s[n] = 0; }
+    else { if (fid >= NSHELF) return 0;
+        static FILE *fp[64]; if (!fp[fid]) fp[fid] = fopen(SHELF[fid], "rb"); if (!fp[fid]) return 0;
+        fseeko(fp[fid], (off_t)off, SEEK_SET); n = fread(s, 1, sizeof s - 1, fp[fid]); s[n] = 0; }
     char *e = strchr(s, '\n'); if (e) *e = 0;
     for (char *p = s; *p; p++) if ((*p == '.' || *p == '!' || *p == '?') && (p[1] == ' ' || !p[1])) { p[1] = 0; break; }
     Frame fr[64]; uint32_t w[256]; int nw; read_statement(A, s, fr, 64, w, &nw, 256); if (nw > max) nw = max;
@@ -429,6 +486,27 @@ static int reread(Know *A, uint64_t ptr, QW *out, int max) {
 static float *mark; static uint32_t nmark;
 static double BW[5] = { 1, 0.5, 2, 4, 1 };   /* fact, joint, open, mean (chosen on ARC train + dev with a dev brain, 5% of the shelf); fit (chosen on dev, CORTEX_LINK) */
 static int NOPEN = 20;  /* facts whose shelf sentences are re-read when answering (docs/past/LAYA_LEVEL.md stage 1, chosen on dev) */
+/* candidate facts: shelf facts by index, episode facts with the top bit set */
+static const KF *kf_at(uint32_t i) { return i & 0x80000000u ? &ep[i & 0x7fffffffu] : &kf[i]; }
+/* (a) fact agreement, (b) one known fact covering the question and the option, (c) open book, over some candidates */
+static void score_cands(Know *A, Frame *hf, int nh, int focus, const QW *Q, int nq, const QW *O, int no, const uint32_t *cand, int nc,
+                        double *fact, double *joint, double *open, uint64_t *optr) {
+    *fact = *joint = *open = 0; *optr = ~0ull;
+    double fs = 0; int nfs = 0;
+    for (int i = 0; i < nh; i++) { if (focus && !hf[i].tc) continue; double b = 0; for (int c = 0; c < nc; c++) { double s = kfact_sim(A, &hf[i], kf_at(cand[c])) * conf(kf_at(cand[c])); if (s > b) b = s; } fs += b; nfs++; }
+    *fact = nfs ? fs / nfs : 0;
+    enum { TOPMAX = 64 }; int64_t top[TOPMAX]; double tv[TOPMAX]; int K = NOPEN < 3 ? 3 : NOPEN > TOPMAX ? TOPMAX : NOPEN; for (int r = 0; r < K; r++) { top[r] = -1; tv[r] = -1; }
+    for (int c = 0; c < nc; c++) { uint32_t w[8]; int n = kf_words(kf_at(cand[c]), w); double j = conf(kf_at(cand[c])) * (kcover(Q, nq, w, n) + kcover(O, no, w, n));
+        if (j > *joint) *joint = j;
+        for (int r = 0; r < K; r++) if (j > tv[r]) { for (int x = K - 1; x > r; x--) { tv[x] = tv[x - 1]; top[x] = top[x - 1]; } tv[r] = j; top[r] = cand[c]; break; } }
+    /* (c) open book: those facts' pointers lead back to the shelf (or the episode's text); the sentences re-read */
+    uint64_t seen[2 * TOPMAX]; int nseen = 0;
+    for (int r = 0; r < K; r++) { if (top[r] < 0) continue;
+        for (int p = 0; p < 2; p++) { uint64_t pt = kf_at((uint32_t)top[r])->ptr[p]; int dup = 0; for (int x = 0; x < nseen; x++) dup |= seen[x] == pt; if (dup || pt == ~0ull) continue; seen[nseen++] = pt;
+            QW S[256]; int ns = reread(A, pt, S, 256); if (!ns) continue;
+            double j = qcover(Q, nq, S, ns) + qcover(O, no, S, ns);
+            if (j > *open) { *open = j; *optr = pt; } } }
+}
 static void bg_option(Know *A, const char *q, const char *opt, BParts *P) {
     char st[4096]; statement(q, opt, st, sizeof st);
     static Frame hf[64], qf[64], of[64]; uint32_t sw[256], qwl[256], owl[128]; int nsw, nq, now_;
@@ -443,34 +521,35 @@ static void bg_option(Know *A, const char *q, const char *opt, BParts *P) {
     { double s = 0; int k = 0; for (int i = 0; i < no; i++) { if (O[i].mid < 0) continue;
         for (int j = 0; j < nq; j++) if (Q[j].mid >= 0 && Q[j].g != O[i].g) { s += cx_dot(CXU((uint32_t)O[i].mid), CXC((uint32_t)Q[j].mid)); k++; } }
       P->fit = k ? s / k : 0; }
-    if (!nkf || !no) return;
+    if (!no || (!nkf && !nep)) return;
     /* candidate facts: those holding one of the option's own words, ranked first by the question's words they also hold (exactly) */
     if (nmark < LX.n) { mark = realloc(mark, LX.n * sizeof *mark); memset(mark + nmark, 0, (LX.n - nmark) * sizeof *mark); nmark = LX.n; }
     for (int i = 0; i < nq; i++) if (Q[i].g != NONE) mark[Q[i].g] = (float)gidf(Q[i].g);
     enum { NC = 200 }; static uint32_t cand[NC]; static float cs[NC]; int nc = 0;   /* docs/past/RANKING_COMPARE.md: more candidates were worse */
-    for (int i = 0; i < no; i++) { if (O[i].g == NONE) continue;
+#define CAND_ADD(fi) do { uint32_t w_[8]; int n_ = kf_words(kf_at(fi), w_); float s_ = 0; for (int j_ = 0; j_ < n_; j_++) s_ += mark[w_[j_]]; \
+        s_ = (float)(s_ * conf(kf_at(fi))) + 1e-3f * (float)conf(kf_at(fi)); int m_ = nc; \
+        if (nc == NC) { m_ = 0; for (int j_ = 1; j_ < NC; j_++) if (cs[j_] < cs[m_]) m_ = j_; if (!(s_ > cs[m_])) break; } \
+        cand[m_] = (fi); cs[m_] = s_; if (m_ == nc) nc++; } while (0)
+    for (int i = 0; i < no; i++) { if (O[i].g == NONE || O[i].g >= ncuew) continue;
         uint32_t a = cue_off[O[i].g], b = cue_off[O[i].g + 1]; if (b - a > 200000) b = a + 200000;
-        for (uint32_t x = a; x < b; x++) { uint32_t fi = cue[x], w[8]; int n = kf_words(&kf[fi], w); float s = 0; for (int j = 0; j < n; j++) s += mark[w[j]];
-            s = (float)(s * conf(&kf[fi])) + 1e-3f * (float)conf(&kf[fi]); int m = nc;
-            if (nc == NC) { m = 0; for (int j = 1; j < NC; j++) if (cs[j] < cs[m]) m = j; if (!(s > cs[m])) continue; }
-            cand[m] = fi; cs[m] = s; if (m == nc) nc++; } }
+        for (uint32_t x = a; x < b; x++) CAND_ADD(cue[x]); }
+    if (EPMODE == 0) for (uint32_t e = 0; e < nep; e++) {      /* P0: the episode's facts in the one pool, competing as shelf facts do */
+        uint32_t w[8]; int n = kf_words(&ep[e], w), has = 0; for (int j = 0; j < n; j++) for (int i = 0; i < no; i++) has |= w[j] == O[i].g;
+        if (has) CAND_ADD(e | 0x80000000u); }
+#undef CAND_ADD
     for (int i = 0; i < nq; i++) if (Q[i].g != NONE) mark[Q[i].g] = 0;
-    /* (a) fact agreement, (b) one known fact covering the question and the option */
     int focus = 0; for (int i = 0; i < nh; i++) { uint32_t w[24]; int m; fact_words(&hf[i], w, &m); int has = 0; for (int j = 0; j < m; j++) for (int x = 0; x < now_; x++) has |= w[j] == owl[x]; hf[i].tc = has; focus += has; }
-    double fs = 0; int nfs = 0;
-    for (int i = 0; i < nh; i++) { if (focus && !hf[i].tc) continue; double b = 0; for (int c = 0; c < nc; c++) { double s = kfact_sim(A, &hf[i], &kf[cand[c]]) * conf(&kf[cand[c]]); if (s > b) b = s; } fs += b; nfs++; }
-    P->fact = nfs ? fs / nfs : 0;
-    enum { TOPMAX = 64 }; int top[TOPMAX]; double tv[TOPMAX]; int K = NOPEN < 3 ? 3 : NOPEN > TOPMAX ? TOPMAX : NOPEN; for (int r = 0; r < K; r++) { top[r] = -1; tv[r] = -1; }
-    for (int c = 0; c < nc; c++) { uint32_t w[8]; int n = kf_words(&kf[cand[c]], w); double j = conf(&kf[cand[c]]) * (kcover(Q, nq, w, n) + kcover(O, no, w, n));
-        if (j > P->joint) P->joint = j;
-        for (int r = 0; r < K; r++) if (j > tv[r]) { for (int x = K - 1; x > r; x--) { tv[x] = tv[x - 1]; top[x] = top[x - 1]; } tv[r] = j; top[r] = cand[c]; break; } }
-    /* (c) open book: those facts' pointers lead back to the shelf; the sentences re-read */
-    uint64_t seen[2 * TOPMAX]; int nseen = 0;
-    for (int r = 0; r < K; r++) { if (top[r] < 0) continue;
-        for (int p = 0; p < 2; p++) { uint64_t pt = kf[top[r]].ptr[p]; int dup = 0; for (int x = 0; x < nseen; x++) dup |= seen[x] == pt; if (dup || pt == ~0ull) continue; seen[nseen++] = pt;
-            QW S[256]; int ns = reread(A, pt, S, 256); if (!ns) continue;
-            double j = qcover(Q, nq, S, ns) + qcover(O, no, S, ns);
-            if (j > P->open) { P->open = j; P->optr = pt; } } }
+    score_cands(A, hf, nh, focus, Q, nq, O, no, cand, nc, &P->fact, &P->joint, &P->open, &P->optr);
+    P->sfact = P->fact; P->sjoint = P->joint; P->sopen = P->open;
+    /* P1-P3: the episode kept apart; when the question or the option speaks of it, its facts answer first, weighted EPW */
+    if (EPMODE >= 1 && nep) {
+        int active = 0; for (int i = 0; i < nq; i++) active |= Q[i].g != NONE && Q[i].g < nepword && epword[Q[i].g];
+        for (int i = 0; i < no; i++) active |= O[i].g != NONE && O[i].g < nepword && epword[O[i].g];
+        if (active) { static uint32_t *ec; static uint32_t cap; if (cap < nep) { cap = nep; ec = realloc(ec, cap * 4); } for (uint32_t e = 0; e < nep; e++) ec[e] = e | 0x80000000u;
+            INHIB = EPMODE >= 2; score_cands(A, hf, nh, focus, Q, nq, O, no, ec, (int)nep, &P->efact, &P->ejoint, &P->eopen, &P->eptr); INHIB = 0;
+            if (EPW * P->efact > P->fact) P->fact = EPW * P->efact;
+            if (EPW * P->ejoint > P->joint) P->joint = EPW * P->ejoint;
+            if (EPW * P->eopen > P->open) { P->open = EPW * P->eopen; P->optr = P->eptr; } } }
 }
 
 static double bscore(const BParts *p) { return BW[0] * p->fact + BW[1] * p->joint + BW[2] * p->open + BW[3] * p->mean + BW[4] * p->fit; }
@@ -541,6 +620,73 @@ static int run_serve(void) {
     return 0;
 }
 
+/* passages (docs/EPISODE.md): MCTest layout (S id / T text / Q type question 4 options letter). Each passage is read as
+   the episode (the cortex learning from it), its questions answered, then everything it changed is put back. */
+static uint32_t ep_lxn; static uint64_t ep_clk;
+static void ep_begin(void) { cxj = 1; cxj_tot = cxtot; cxj_nring = cxnring; ep_lxn = LX.n; ep_clk = CLK; }
+static void ep_end(void) {                                /* the passage is over: drop it, put the cortex back */
+    for (uint32_t i = ncxjr; i-- > 0;) { memcpy(cxjr[i].which ? CXC(cxjr[i].g) : CXU(cxjr[i].g), cxjr[i].row, CXD * 4); free(cxjr[i].row); }
+    for (uint32_t i = 0; i < ncxjr; i++) if (!cxjr[i].which) { uint32_t g = cxjr[i].g; float n = cx_dot(CXU(g), CXU(g)); cxinv[g] = n > 0 ? 1 / sqrtf(n) : 0; }
+    for (uint32_t i = ncxjn; i-- > 0;) CXN(cxjn_g[i]) = cxjn_v[i];
+    for (uint32_t i = ncxjring; i-- > 0;) cxring[cxjring_i[i]] = cxjring_v[i];
+    cxtot = cxj_tot; cxnring = cxj_nring; ncxjr = ncxjn = ncxjring = 0; cxj = 0;
+    for (uint32_t e = 0; e < nep; e++) { uint32_t w[8]; int n = kf_words(&ep[e], w); for (int j = 0; j < n; j++) if (w[j] < nepword) epword[w[j]] = 0; }
+    nep = 0; neb = 0; CLK = ep_clk;
+    for (uint32_t g = LX.n; g-- > ep_lxn;) {            /* words first met in the passage are let go (newest first, so the table is as before) */
+        uint32_t h = shash(LX.s[g]) & LX.mask; while (LX.slot[h] != g + 1) h = (h + 1) & LX.mask;
+        LX.slot[h] = 0; free(LX.s[g]); }
+    LX.n = ep_lxn;
+    for (uint32_t i = 0; i < nl2g; i++) if (l2g[i] != NONE - 1 && l2g[i] >= ep_lxn) l2g[i] = NONE - 1;   /* the reader's word map, the same */
+}
+static void ep_read(Know *k, const char *text) {
+    size_t L = strlen(text); if (neb + L + 2 > capeb) { capeb = (neb + L + 2) * 2; epbuf = realloc(epbuf, capeb); }
+    memcpy(epbuf + neb, text, L); epbuf[neb + L] = '\n'; size_t off = neb; neb += L + 1; epbuf[neb] = 0;
+    memset(&k->R.refs, 0, sizeof k->R.refs); EPREAD = 1; read_block(k, epbuf + off, L + 1, EPFID, off); EPREAD = 0;
+    for (uint32_t i = 0; i < ncxjr; i++) if (!cxjr[i].which) { uint32_t g = cxjr[i].g; float n = cx_dot(CXU(g), CXU(g)); cxinv[g] = n > 0 ? 1 / sqrtf(n) : 0; }
+    if (nepword < LX.n) { epword = realloc(epword, LX.n); memset(epword + nepword, 0, LX.n - nepword); nepword = LX.n; }
+    for (uint32_t e = 0; e < nep; e++) { uint32_t w[8]; int n = kf_words(&ep[e], w); for (int j = 0; j < n; j++) if (w[j] < nepword) epword[w[j]] = 1; }
+}
+static void claim(const char *s, int on) {                 /* the words of a question or an option, as the brain knows them */
+    if (nclaimed < LX.n) { claimed = realloc(claimed, LX.n); memset(claimed + nclaimed, 0, LX.n - nclaimed); nclaimed = LX.n; }
+    char w[64]; int n = 0;
+    for (;; s++) { if (isalpha((unsigned char)*s) || *s == '\'') { if (n < 63) w[n++] = (char)tolower((unsigned char)*s); continue; }
+        if (n) { w[n] = 0; uint32_t g = lx_id(w, 0); if (g != NONE && g < nclaimed) claimed[g] = (uint8_t)on; n = 0; } if (!*s) break; }
+}
+static int run_passages(int nfile, char **files) {
+    Know A; answer_ctx(&A); Know k; memset(&k, 0, sizeof k); text_init(&k.t); r2_init(&k.R, &k.t, &k.wm);
+    cx_epst = 0x2545F4914F6CDD1Dull;
+    static FILE *dump; if (!dump && getenv("DUMP")) dump = fopen(getenv("DUMP"), "a");
+    for (int fi = 0; fi < nfile; fi++) {
+        FILE *f = fopen(files[fi], "r"); if (!f) { perror(files[fi]); return 1; }
+        static char line[1 << 18]; double ok = 0; int n = 0, open = 0; double t0 = now();
+        const char *bn = strrchr(files[fi], '/'); bn = bn ? bn + 1 : files[fi];
+        while (fgets(line, sizeof line, f)) {
+            size_t L = strlen(line); while (L && (line[L - 1] == '\n' || line[L - 1] == '\r')) line[--L] = 0;
+            if (line[0] == 'S') { if (open) ep_end(); ep_begin(); open = 1; cx_epst = 0x2545F4914F6CDD1Dull; continue; }
+            if (line[0] == 'T') { ep_read(&k, line + 2); continue; }
+            if (line[0] != 'Q') continue;
+            char *fld[9]; int nf = 0; for (char *p = strtok(line, "\t"); p && nf < 9; p = strtok(0, "\t")) fld[nf++] = p;
+            if (nf < 8) continue;
+            const char *q = fld[2]; int want = fld[7][0] - 'A'; BParts P[4]; double sc[4];
+            claim(q, 1); for (int o = 0; o < 4; o++) claim(fld[3 + o], 1);
+            for (int o = 0; o < 4; o++) { bg_option(&A, q, fld[3 + o], &P[o]); A.t.ntok = 0; }
+            claim(q, 0); for (int o = 0; o < 4; o++) claim(fld[3 + o], 0);
+            scores(q, P, 4, sc);
+            double best = -1e9; int nb = 0; for (int o = 0; o < 4; o++) if (sc[o] > best + 1e-9) { best = sc[o]; nb = 1; } else if (sc[o] > best - 1e-9) nb++;
+            if (want >= 0 && want < 4 && sc[want] > best - 1e-9) ok += 1.0 / nb;
+            if (dump) { fprintf(dump, "%s\t%d\t4\t%d", bn, want, asks_opposite(q));
+                for (int o = 0; o < 4; o++) fprintf(dump, "\t%.5f %.5f %.5f %.5f %.5f %.5f %.5f %.5f", P[o].sfact, P[o].sjoint, P[o].sopen, P[o].mean, P[o].fit, P[o].efact, P[o].ejoint, P[o].eopen);
+                fprintf(dump, "\n"); }
+            if (getenv("SHOW")) { int pick = 0; for (int o = 1; o < 4; o++) if (sc[o] > sc[pick] + 1e-9) pick = o; printf("  %s\t%s\tpick=%s\tright=%s\t%s\n", fld[1], q, fld[3 + pick], fld[3 + want], pick == want ? "OK" : "WRONG"); }
+            n++; }
+        if (open) ep_end();
+        fclose(f); if (dump) fflush(dump);
+        printf("%-22s %5d q   %6.2f%%   (episode facts: mode %d, EPW %.2f)  %.1f ms/q\n", bn, n, 100 * ok / (n ? n : 1), EPMODE, EPW, 1000 * (now() - t0) / (n ? n : 1));
+        printf("RESULT bgpass file=%s n=%d acc=%.2f mode=%d epw=%.2f\n", bn, n, 100 * ok / (n ? n : 1), EPMODE, EPW);
+    }
+    return 0;
+}
+
 /* the cortex on word tests: Spearman between its cosines and people's ratings (a word it has not met scores 0) */
 static void cx_ranks(const double *a, int n, double *r) {
     int *ix = malloc(n * sizeof *ix); for (int i = 0; i < n; i++) ix[i] = i;
@@ -589,6 +735,7 @@ int main(int argc, char **argv) {
     fprintf(stderr, "brain %s: %u facts, %u words (loaded in %.1f s)\n", argv[2], nkf, LX.n, now() - t0);
     cx_norms();
     if (!strcmp(argv[1], "words")) return run_words(argc - 3, argv + 3);
+    if (!strcmp(argv[1], "passages")) { EPMODE = getenv("EPMODE") ? atoi(getenv("EPMODE")) : 3; if (getenv("EPW")) EPW = atof(getenv("EPW")); return run_passages(argc - 3, argv + 3); }
     if (!strcmp(argv[1], "near")) return run_near(argc - 3, argv + 3);
     if (!strcmp(argv[1], "arc")) return run_arc(argc - 3, argv + 3);
     if (!strcmp(argv[1], "serve")) return run_serve();

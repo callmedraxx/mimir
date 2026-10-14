@@ -65,3 +65,21 @@ dev than the step before it (as LAYA_LEVEL did).
   Mimir's facts with pointers, open book: 63.75, 52.83, 41.09.
 * All runs in Colab, from the shared browser. Reported as they come; the journal updated;
   the losing cells' code deleted.
+
+## How it was built (before any dev result)
+
+* `bg passages BRAIN FILE...` reads each passage as the episode and answers its questions;
+  dumps each option's shelf parts and episode parts, so `EPW` (1, 2, 4) is chosen offline
+  from one run per cell (`tools/episode_colab.py`; the offline score reproduces `bg`'s).
+* P0 "one pool": the passage's facts compete with the shelf's as candidates, ranked and
+  scored the same way (they are not merged into the shelf's facts).
+* Inhibition (P2), as competition: inside the episode, a word that the question or one of
+  the options says exactly can only be matched exactly (so "cat" gets nothing from "Pell is
+  an owl" when "owl" is itself an option).
+* Each passage leaves nothing behind: the cortex's changed cells, its counts and its recent
+  words are put back, words first met in the passage are let go, the reading clock is set
+  back. Checked on the droplet: a passage set gives the same answers alone or after 70 others.
+  With no episode the answers are unchanged (droplet check).
+* A pipeline smoke run on the droplet's 3 MB test brain (Alice + War and Peace) went once
+  through the new test stories and printed a score; nothing is chosen from it, and the
+  tests run on the school brain.
