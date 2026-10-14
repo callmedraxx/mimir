@@ -90,6 +90,36 @@ before the owner moved them to Colab; kept here because they shaped the grid:
   random (owl → badly, uranium, lynch), fill-the-blank under 1%. One weaker anchor (0.25)
   is in the grid; K2 needs a better design (more capacity than one N×N layer), likely v1.
 
-## Results
+## Dev grid (Colab, school shelf, first 50M replayed words each; dev sets only)
+
+| cell | settings | WS-353 | SimVerb | fill-the-blank | mean |
+|---|---|---|---|---|---|
+| K0 | random | −0.050 | 0.035 | 0.1% | |
+| K1a | N 2048, K 40, WIN 2 | 0.319 (cos 0.408) | 0.068 (cos 0.076) | 5.5% | 0.180 |
+| **K1b** | N 2048, K 40, WIN 5 | 0.417 (**cos 0.546**) | 0.051 (cos 0.050) | 4.8% | **0.215** |
+| K1c | N 4096, K 80, WIN 2 | 0.294 (cos 0.409) | 0.072 (cos 0.074) | 5.2% | 0.179 |
+| K1d | N 4096, K 80, WIN 5 | 0.456 (cos 0.532) | 0.065 (cos 0.059) | 4.1% | 0.211 |
+| K2a | N 1024, K 20, IDW 0.25 | 0.017 | 0.005 | 0.6% | |
+| B | word2vec, WIN 2 | 0.431 | 0.157 | 7.2% | 0.220 |
+| B5 | word2vec, WIN 5 | 0.456 | 0.172 | 4.8% | **0.225** |
+
+(cos: the same models scored with cosine similarity of the meanings instead of pattern
+overlap, `SIM=1`; fill-the-blank does not depend on it.) Results:
+`results/cortex_dev.txt`.
+
+* **K2 failed again** (nothing learned; 46 min to train). It is out of v0.
+* **K1 learns association, not likeness**: its nearest words are what appears *with* a
+  word (france → its départements; owl → hooting; king → queen, throne, crowned), while
+  word2vec's are words of the same kind (france → italy, spain; owl → crow, hawk). That is
+  why K1 beats word2vec on WordSim-353 (which rates relatedness) and loses on SimVerb (which
+  rates likeness). SimLex-999, a test set, also rates likeness: expect K1 to be weak there.
+
+**How the choice is made** (the scorecard did not say how to combine the three dev numbers;
+fixed here before any test): the mean of WS-353, SimVerb and fill-the-blank (as a fraction),
+best similarity per cell. K1b (cosine) is chosen among the cortex cells, B5 among the
+yardsticks. **Frozen** in `tools/cortex_final.txt`: K0, K1b (`SIM=1`), B5, each over the whole
+school shelf, then the tests once.
+
+## Results (tests, once)
 
 (to be filled in)
