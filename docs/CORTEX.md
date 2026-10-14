@@ -120,6 +120,29 @@ best similarity per cell. K1b (cosine) is chosen among the cortex cells, B5 amon
 yardsticks. **Frozen** in `tools/cortex_final.txt`: K0, K1b (`SIM=1`), B5, each over the whole
 school shelf, then the tests once.
 
-## Results (tests, once)
+## Results (tests, once; Colab, whole school shelf: 196M replayed words, 9 min for K1b)
 
-(to be filled in)
+| test | K0 (random) | **K1b (cortex, local rules)** | B5 (word2vec, backprop) |
+|---|---|---|---|
+| SimLex-999 (alike) | 0.028 | **0.185** | 0.398 |
+| MEN-3000 (related) | 0.017 | **0.624** | 0.717 |
+| fill the blank, 2,000 unseen sentences (hit@10) | 0.00% | **4.00%** | 6.60% |
+| stories, 12 blanks (hit@10) | 0 | **0** | 1 (market, rank 6) |
+
+**Against the bar set before the run:** K1b beats K0 on SimLex-999 by 0.157 and on MEN by
+0.607 (bar 0.10, passed), but on fill-the-blank by 4.0 points (bar 5, **not passed**).
+**v0 does not fully pass.**
+
+* On the whole shelf word2vec is ahead on everything; on the dev runs (50M words) the
+  cortex had been ahead on WordSim-353. word2vec gained more from 4× the text.
+* What the cortex learned is association: owl → hoot, hooting, screech, horned; blue → red,
+  yellow, purple, violet, pigment, tint; water → boiling, bucket, distilled, evaporate;
+  king → crowned, courtiers, Uther, Lear. word2vec learned kinds: owl → crow, raven, hawk,
+  sparrow; king → prince, emperor, tsar, monarch; france → belgium, italy, spain.
+* Neither remembers a story (it is not what v0 does); both put story words a few hundred
+  places up (lantern, caterpillars), from the sentence alone.
+* What K1b lacks is exactly what word2vec has: **prediction with competition**. word2vec's
+  words are pushed apart from the ones that did *not* fit a context; K1b only adds up what
+  was seen together. The K2 cells tried to add that with local rules and did not learn.
+
+Results: `results/cortex_test.txt`, `results/cortex_dev.txt`.

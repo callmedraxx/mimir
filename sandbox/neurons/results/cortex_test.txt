@@ -1,0 +1,71 @@
+=== K0 K0 N=2048 K=40
+RESULT train cell=K0 words=0 skipped=0 seconds=0 N=2048 K=40 WIN=2 ETA=0.05 ETA2=0.01 BETA=2 SUB=0.0001 IDW=0.5
+cell K0  N=2048 K=40 WIN=2 V=50000  similarity=overlap
+T1 EN-SIMLEX-999.txt         999 pairs ( 994 known)  spearman 0.028
+T1 EN-MEN-TR-3k.txt         3000 pairs (2991 known)  spearman 0.017
+T2 fill the blank          2000 items  hit@10 0.00%
+T3 Tavi is a ___ who lives on Oruna.             fisherman    rank 4660
+T3 The Moth has a green ___.                     sail         rank 39538
+T3 Sefa held up a jar of ___.                    fireflies    rank 10377
+T3 Tavi hangs a ___ on the mast every night.     lantern      rank 24361
+T3 Mr. Halloran grew ___ in a glass house.       tomatoes     rank 28580
+T3 The leaves of Big Ruth were eaten by green ___. caterpillars rank 839
+T3 He brought in six ___ to eat the insects. answer ladybirds    not a known word
+T3 The children sold the tomatoes at the ___.    market       rank 23491
+T3 Anouk drove the mail ___ over the pass.       truck        rank 19236
+T3 In winter the pass is often closed by ___.    snow         rank 10378
+T3 Bruno is a big grey ___.                      dog          rank 37828
+T3 Anouk walked beside the sled on ___.          skis         rank 23071
+T3 stories (test)               12 items  hit@10 0.00%
+owl: promotion(0.17) record(0.15) penguins(0.15) leyden(0.15) ama(0.15) pillage(0.15) hunt(0.12) device(0.12) maker(0.12) blazing(0.12)
+king: fricative(0.17) eruptions(0.15) fes(0.15) held(0.12) device(0.12) classroom(0.12) tank(0.12) advised(0.12) varieties(0.12) solomon(0.12)
+water: international(0.15) separate(0.15) disagreement(0.15) alum(0.15) functionary(0.15) down(0.12) meaning(0.12) jr(0.12) hint(0.12) checking(0.12)
+france: metropolitan(0.15) spectacles(0.15) extrude(0.15) corliss(0.15) oftenest(0.15) ghazni(0.15) bookmark(0.15) under(0.12) finally(0.12) actions(0.12)
+blue: cloaks(0.15) imperious(0.15) enactment(0.15) fractal(0.15) stringing(0.15) oak(0.12) domain(0.12) broadcasting(0.12) sacrifice(0.12) artificial(0.12)
+=== K1b K1 N=2048 K=40 WIN=5 SIM=1
+RESULT train cell=K1 words=196103651 skipped=182001000 seconds=531 N=2048 K=40 WIN=5 ETA=0.05 ETA2=0.01 BETA=2 SUB=0.0001 IDW=0.5
+cell K1  N=2048 K=40 WIN=5 V=50000  similarity=cosine
+T1 EN-SIMLEX-999.txt         999 pairs ( 994 known)  spearman 0.185
+T1 EN-MEN-TR-3k.txt         3000 pairs (2991 known)  spearman 0.624
+T2 fill the blank          2000 items  hit@10 4.00%
+T3 Tavi is a ___ who lives on Oruna.             fisherman    rank 2177
+T3 The Moth has a green ___.                     sail         rank 12727
+T3 Sefa held up a jar of ___.                    fireflies    rank 3335
+T3 Tavi hangs a ___ on the mast every night.     lantern      rank 781
+T3 Mr. Halloran grew ___ in a glass house.       tomatoes     rank 14614
+T3 The leaves of Big Ruth were eaten by green ___. caterpillars rank 403
+T3 He brought in six ___ to eat the insects. answer ladybirds    not a known word
+T3 The children sold the tomatoes at the ___.    market       rank 16439
+T3 Anouk drove the mail ___ over the pass.       truck        rank 7389
+T3 In winter the pass is often closed by ___.    snow         rank 10929
+T3 Bruno is a big grey ___.                      dog          rank 3444
+T3 Anouk walked beside the sled on ___.          skis         rank 16160
+T3 stories (test)               12 items  hit@10 0.00%
+owl: hooty(0.90) hoot(0.90) hooting(0.90) hooted(0.88) hoots(0.88) screech(0.85) horned(0.78) eared(0.35) moping(0.30) avenant(0.17)
+king: crowned(0.72) courtiers(0.72) uther(0.72) lear(0.70) minos(0.70) geus(0.70) polydectes(0.70) midas(0.68) dethroned(0.68) nome(0.65)
+water: shallow(0.82) boiling(0.82) bucket(0.82) splashing(0.82) splashed(0.82) buckets(0.82) soak(0.82) distilled(0.82) bottled(0.82) evaporate(0.82)
+france: pmg(0.97) aveyron(0.88) vienne(0.85) cantal(0.80) gers(0.78) charente(0.75) landes(0.75) tarn(0.72) commissary(0.72) rhin(0.70)
+blue: red(0.72) yellow(0.60) purple(0.60) violet(0.57) green(0.53) colours(0.53) pigment(0.53) tint(0.50) pink(0.45) streaks(0.45)
+=== B5 B DIM=300 WIN=5
+cell B  word2vec CBOW dim=300 WIN=5, 50000 words known
+T1 EN-SIMLEX-999.txt         999 pairs ( 994 known)  spearman 0.398
+T1 EN-MEN-TR-3k.txt         3000 pairs (2991 known)  spearman 0.717
+T2 fill the blank          2000 items  hit@10 6.60%
+T3 Tavi is a ___ who lives on Oruna.             fisherman    rank 11690
+T3 The Moth has a green ___.                     sail         rank 40208
+T3 Sefa held up a jar of ___.                    fireflies    rank 17135
+T3 Tavi hangs a ___ on the mast every night.     lantern      rank 518
+T3 Mr. Halloran grew ___ in a glass house.       tomatoes     rank 41548
+T3 The leaves of Big Ruth were eaten by green ___. caterpillars rank 472
+T3 He brought in six ___ to eat the insects.     ladybirds    not a known word
+T3 The children sold the tomatoes at the ___.    market       rank 6  (top 10)
+T3 Anouk drove the mail ___ over the pass.       truck        rank 144
+T3 In winter the pass is often closed by ___.    snow         rank 28802
+T3 Bruno is a big grey ___.                      dog          rank 32
+T3 Anouk walked beside the sled on ___.          skis         rank 169
+T3 stories (test)               12 items  hit@10 8.33%
+owl: crow(0.79) owls(0.74) squirrel(0.74) weasel(0.73) raven(0.73) sparrow(0.71) woodpecker(0.71) hawk(0.71) magpie(0.70) heron(0.70)
+king: prince(0.78) emperor(0.75) tsar(0.73) sultan(0.70) ruler(0.69) throne(0.68) monarch(0.68) herod(0.67) queen(0.66) kings(0.65)
+water: liquid(0.70) seawater(0.69) moisture(0.67) sediment(0.66) pools(0.65) waters(0.64) brine(0.64) shallow(0.64) streams(0.64) groundwater(0.63)
+france: belgium(0.77) italy(0.76) spain(0.76) netherlands(0.73) germany(0.69) paris(0.68) flanders(0.68) alsace(0.68) brittany(0.67) normandy(0.67)
+blue: yellow(0.74) pink(0.73) purple(0.73) green(0.71) red(0.67) greenish(0.66) crimson(0.66) azure(0.66) gray(0.65) scarlet(0.65)
