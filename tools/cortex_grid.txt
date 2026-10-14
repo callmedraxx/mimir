@@ -1,0 +1,9 @@
+# docs/CORTEX.md dev grid: name, cell, settings (env). Each replays the first MAXTOK words of the school shelf (held-out lines skipped).
+K0      K0  N=2048 K=40
+K1a     K1  N=2048 K=40 WIN=2
+K1b     K1  N=2048 K=40 WIN=5
+K1c     K1  N=4096 K=80 WIN=2
+K1d     K1  N=4096 K=80 WIN=5
+K2a     K2  N=1024 K=20 WIN=2 ETA2=0.05 IDW=0.25
+B       B   DIM=300 WIN=2
+B5      B   DIM=300 WIN=5

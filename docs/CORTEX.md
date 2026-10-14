@@ -65,11 +65,30 @@ Same vocabulary for all: the 50,000 most frequent words of the training text (lo
   sentence is hidden (seed 12345); first 1,000 = dev, next 2,000 = test. Score: the hidden
   word among the 10 best of the 50,000 (hit@10).
 * T3: the story is given as context, then a sentence with a blank; hit@10.
-* Text: development on `data/shelf/enwiki_00.txt` (on the droplet); the final run on the
-  school shelf (2.2 GB) in Colab, all four cells on the same text.
+* Text: the school shelf (2.2 GB), rebuilt in Colab. **Everything runs in Colab** (owner,
+  2026-10-14: "you're supposed to use Google colab"): the dev grid (`tools/cortex_grid.txt`,
+  first 50M replayed words each) and, once frozen (`tools/cortex_final.txt`), the whole shelf
+  and the tests (`tools/cortex_colab.py`, `tools/cortex.ipynb`). The T2 items come from the
+  school shelf's held-out lines.
 
 **v0 works if** the chosen cell (K1 or K2, by dev) beats K0 on SimLex-999 and MEN by more
 than 0.10 and on T2 by more than 5 points. B's numbers are given beside it as they come out.
+
+## Development notes
+
+First tries were run on the droplet (on `enwiki_00`, 10M replayed words, dev sets only)
+before the owner moved them to Colab; kept here because they shaped the grid:
+
+* K0 (random): WordSim −0.03, fill-the-blank 0%, as a floor should be.
+* K1 (Hebbian): WordSim 0.40 (cosine), fill-the-blank 8.3%, in 31 s. Neighbours it found by
+  itself: france → netherlands, switzerland, poland, italy; owl → owls, eagle (aquila),
+  stork; blue → yellow, bright, ochre.
+* K2 (predictive) as first written **collapsed**: every word's pattern became the same,
+  homeostasis did not stop it. Its fill-the-blank looked like 97% because ties were counted
+  as hits; the scorer now counts ties against the cortex (K2 then: 0%). With each word
+  anchored to its own identity (IDW 0.5 and 1) the identity won instead: patterns stayed
+  random (owl → badly, uranium, lynch), fill-the-blank under 1%. One weaker anchor (0.25)
+  is in the grid; K2 needs a better design (more capacity than one N×N layer), likely v1.
 
 ## Results
 
