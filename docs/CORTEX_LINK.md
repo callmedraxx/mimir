@@ -85,3 +85,12 @@ Everything else as in the school tests: `NOPEN=20 POLARITY=1 STRENGTH=1`, NCAND 
 * Story test: each story read into a copy of the brain (the cortex reading on, a new name
   getting cells as it is first met), its questions asked before and after, with M0 and with
   the choice. If M0 stays, only SimLex-999 and MEN are run (they measure the cortex itself).
+
+## Note during dev (2026-10-14, before any answering result)
+
+The whole shelf, read with the cortex on (L2 chosen: WordSim 0.560 / SimVerb 0.208 against
+L1's 0.448 / 0.202), gave **32,488,986 facts, not the release's 32,489,775** (789 fewer,
+0.002%). The read is the same code file by file, so the shelf rebuilt today differs slightly
+from the one the release read (Gutenberg mirror and Wikipedia lists change). So M0's test
+numbers are **not** taken from the school tests: at test time M0 and the choice are both run
+once on this same brain.

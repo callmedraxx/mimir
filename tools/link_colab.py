@@ -95,7 +95,7 @@ else:
     choice = open("tools/link_choice.env").read().strip(); open(out, "a").write("=== choice: %s\n" % choice)
     words(BRAIN, ("EN-SIMLEX-999.txt", "EN-MEN-TR-3k.txt"), out)
     if choice != M0:
-        sh("%s ./bg arc %s %s" % (choice, BRAIN, TEST), out)
+        for env in (M0, choice): open(out, "a").write("=== %s\n" % env); sh("%s ./bg arc %s %s" % (env, BRAIN, TEST), out)
         for s in ("harbor", "garden", "snow"):
             b = "/content/%s.brain" % s
             if not os.path.exists(b): sh("CX=1 FROM=%s ./bg read %s 1000000000 data/story/%s.txt" % (BRAIN, b, s), out)
