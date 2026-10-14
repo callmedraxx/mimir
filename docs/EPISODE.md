@@ -103,3 +103,30 @@ Clock story (shown, not counted): P0 5/10, **P1 EPW 4: 8/10** ("Pell is an owl" 
 misses: "What does Pell eat?" → mice, the shelf's owls, not the story's beetles; the mayor).
 General dev sets with no episode: exactly CORTEX_LINK's numbers (47.81, 20.01, 25.25,
 29.32, 31.55), as required.
+
+## Test results (2026-10-14, Colab, once, frozen 2deffed; `results/episode_test.txt`)
+
+| test | **P0** one pool | **P1** episode, EPW 4 | change |
+|---|---|---|---|
+| MCTest MC160 test (240) | 25.31 | **50.00** | +24.7 better |
+| MCTest MC500 test (600) | 28.18 | **49.19** | +21.0 better |
+| RACE-Middle test (1,436) | 26.31 | **39.12** | +12.8 better |
+| new stories: salt, train, kite (30) | 23.33 | **76.67** (23/30) | +53 better |
+| harbor, garden, snow (30) | 46.67 | **90.00** (27/30) | +43 better |
+| general tests, no episode | — | MMLU-HS 27.41, CSQA 31.37, ARC-E 46.61, ARC-C 21.22, OBQA 24.40 | **unchanged**, as required |
+
+**Count: better 5, worse 0. Adopted.** Before the cortex (M0) the harbor/garden/snow stories
+were 19/30; with the cortex and no episode 14/30; now 27/30.
+
+Yardsticks (measured before the school brain, docs/past/KNOW_COMPARE.md): the MCTest paper's
+sliding window MC160 67.08, MC500 57.83, RACE-M 45.33; Mimir's own passage-only reader,
+open book, 63.75 / 52.83 / 41.09. **P1 is still below both**: the passage now wins over the
+shelf, but answering a passage question is still done by the same association parts
+(the "meaning" and "fit" parts weigh 4 and 1 and never look at the passage).
+
+Misses in the new stories: "What is Firebird?" → a bird (the shelf), where the kite landed,
+"Was Mrs. Vanek angry?" → "she cried" (negation: "She was not angry"), what she gave
+(jam: "with a jar of plum jam" not read as given).
+
+Losers deleted: P0 (one pool), P2 (inhibition), P3 (recency). `bg passages` keeps the
+episode apart with EPW 4.

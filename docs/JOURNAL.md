@@ -38,7 +38,8 @@ anti-Hebbian, reward and penalty); answers use both.
 |---|---|---|
 | the brain | `sandbox/brain/bg.c` | `bg read` (shelf → facts with pointers), `bg arc` (answer a test file), `bg serve` (one question at a time), `bg words` / `bg near` (the cortex) |
 | **the cortex** | `sandbox/brain/bg.c` | learns from each fact in its own thread while reading (K3b's reward/penalty rule; each word's rate falls as it is met more often); saved as `BRAIN.cx`; compares words when answering (a link from cosine 0.40) and scores how well an option fits the question (weight 1) |
-| sending a brain from Colab | `tools/send_brain.py` | gzipped parts + SHA-256 manifest |
+| **the episode** | `sandbox/brain/bg.c`, `bg passages` | the text being read kept apart from the shelf's facts, active while asked about; its facts answer first, weighted 4 (EPISODE); after each passage everything is put back |
+| passage tests | `data/understand/mctest` (`tools/understand_fetch.py`), `data/understand/race` (`tools/race_fetch.py`) | MCTest MC160/MC500, RACE-Middle |
 | reading sentences into facts | `sandbox/brain/facts.c` | word classes, chunks, frames (verb, who, what, is-what, place/time, negation) |
 | tokens, word meanings, word reader | `src/text.c`, `src/meaning.c`, `src/reader.c` | shared with the app |
 | the school brain | GitHub release `brain-school` | 32.5M facts from 2.2 GB, baby to high school (docs/past/SCHOOL_BRAIN.md) |
@@ -47,7 +48,7 @@ anti-Hebbian, reward and penalty); answers use both.
 | glue words | `data/meaning/meaning.mng` | only its list of the most common words (the, of, …), which the reader skips; its word meanings are no longer used |
 | dev sets | `data/dev_sets/` (`tools/general_tests.py`) | ARC-Easy, ARC-Challenge, OpenBookQA dev; MMLU-HS validation; CommonsenseQA 1,000 from train |
 | tests | `data/arc_tests/` | MMLU-HS test, CommonsenseQA dev, ARC-Easy, ARC-Challenge, OpenBookQA test |
-| stories | `data/story/` | clock (dev, 10 questions); harbor, garden, snow (test, 30 questions, never run yet) |
+| stories | `data/story/` | clock (dev, 10 questions); harbor, garden, snow (30, tested in CORTEX_LINK and EPISODE); salt, train, kite (30, tested in EPISODE) |
 | word tests | `data/cortex/wordsim/` | WordSim-353, SimVerb-3500 (dev); SimLex-999, MEN-3000 (test) |
 | results | `results/` | every run's output |
 
@@ -70,8 +71,13 @@ uses them; say if they should go too.
 | Laya (421M) | 33.2 | 44.7 | 50.1 | 30.5 | 40.0 |
 | chance | 25 | 20 | 25 | 25 | 25 |
 
-Stories (30 questions, harbor/garden/snow), right after reading: 14/30 with the cortex,
-19/30 without; before reading 9/30. Clock story: 8/10 without the cortex, 3/10 with it.
+Reading a passage and answering about it (`bg passages`, with the episode):
+
+| | MC160 | MC500 | RACE-Middle | new stories (30) | harbor/garden/snow (30) |
+|---|---|---|---|---|---|
+| **Mimir, school brain + cortex + episode** | 50.0 | 49.2 | 39.1 | 23/30 | 27/30 |
+| sliding window (MCTest paper) | 67.1 | 57.8 | 45.3 | | |
+| Mimir's passage-only reader (10-12) | 63.8 | 52.8 | 41.1 | | |
 Word tests (cortex learned from facts): SimLex-999 0.381, MEN 0.738 (word2vec 0.398 / 0.717).
 
 ## Tried
@@ -104,12 +110,15 @@ Lessons that keep coming back:
 * More candidate facts add noise, not answers: the problem is telling a fact that fits by
   chance from one that answers the question.
 * General knowledge drowns out what was just read (passage questions with background, 10-12;
-  stories with the cortex, 10-14). The text being read needs its own place (EPISODE).
+  stories with the cortex, 10-14). Fixed by giving the text being read its own place (EPISODE).
+* Sending big files (100 MB and up) from Colab through the shared browser fails: a brain lives
+  only in its Colab session; rebuilding the school brain with its cortex takes about 1.5 hours.
 
 ## Open
 
-* **Now: EPISODE** (docs/EPISODE.md): what it is reading now kept apart from what it knows
-  (stories fell 19 → 14 of 30 with the cortex on); scorecard written, code next.
+* **Next: answering about a passage by understanding it**, not by association: the meaning and
+  fit parts never look at the passage (passage tests still below Mimir's own passage-only reader
+  and the sliding window); negation ("She was not angry"); "X gave Y with Z".
 * Then: sentences, not just words: pronouns ("He" = Dumi), "an owl named Pell", negation,
   relations (cause, kind of, part of).
 * Later: the cortex small enough for the phone (8-bit, ~30 MB for 50k words); a cap on what
@@ -118,6 +127,7 @@ Lessons that keep coming back:
 ## Log
 
 **2026-10-14**
+* EPISODE tested: adopted (MC160 25 → 50, MC500 28 → 49, RACE-M 26 → 39; new stories 23/30, harbor/garden/snow 27/30; general tests unchanged). Losers deleted.
 * CORTEX_LINK tested: adopted (general tests mean 28.2 → 30.2; CommonsenseQA +5.9, OpenBookQA +3.7), stories worse (19 → 14 of 30). Losing settings deleted; the cortex is always on. EPISODE scorecard written (3 new stories, 30 questions).
 * Deleted from the droplet (owner: "yes delete it"): `data/shelf/` (22 GB, brain E's reading), `data/school_brain/` (1.5 GB copy of the release), `data/pack/` (0.75 GB); brain E and the school brain stay on their GitHub releases. Disk 90% → 70% full.
 * Cleanup (owner: "any code we are not using please delete them … let's have a journal").

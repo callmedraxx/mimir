@@ -11,7 +11,7 @@
  *   bg arc BRAIN FILE.tsv...        questions without a passage: id, question, n, options..., answer
  *   bg serve BRAIN                  one question a line on stdin, JSON answers on stdout (tools/versus/)
  *   bg passages BRAIN FILE...       passages and their questions (MCTest layout), each passage read as the episode
- *                                   (docs/EPISODE.md: EPMODE 0-3, EPW) and put back after its questions
+ *                                   (docs/EPISODE.md; EPW its weight over the shelf) and put back after its questions
  *   bg words BRAIN FILE...          the cortex on word-pair files (Spearman against people's ratings)
  *   bg near BRAIN WORD...           the words the cortex puts nearest
  * Env: ROOM (facts, default 0 = no limit), FROM=brain (read on from it), PART=n (read only every n-th block: a
@@ -72,18 +72,14 @@ static void cx_norms(void) {
 static int wmid(const char *s) { uint32_t g = lx_id(s, 0); return cx_has(g) ? (int)g : -1; }
 static int gmid(uint32_t g) { return g < LX.n && cx_has(g) ? (int)g : -1; }
 static float mcos(int x, int y) { return x < 0 || y < 0 ? 0 : cx_dot(CXU((uint32_t)x), CXU((uint32_t)y)) * cxinv[x] * cxinv[y]; }
-static uint8_t *claimed; static uint32_t nclaimed;    /* words of the question and of every option (episode inhibition, docs/EPISODE.md) */
-static int INHIB;                                     /* scoring the episode with inhibition on */
 /* a word asked about: its id in the brain (NONE if never read) and its meaning */
 typedef struct { uint32_t g; int mid; } QW;
 static float qsim(const QW *a, uint32_t g) {
     if (g == NONE) return 0; if (a->g == g) return 1;
-    if (INHIB && g < nclaimed && claimed[g]) return 0;    /* inhibition: a word the question or an option says exactly is not matched nearly */
     float c = mcos(a->mid, gmid(g)), th = (float)CXTH; return c >= 1 ? 1 : c > th ? (c - th) / (1 - th) : 0;
 }
 static float qqsim(const QW *a, const QW *b) {
     if (a->g != NONE && a->g == b->g) return 1; if (a->mid >= 0 && a->mid == b->mid) return 1;
-    if (INHIB && b->g != NONE && b->g < nclaimed && claimed[b->g]) return 0;
     float c = mcos(a->mid, b->mid), th = (float)CXTH; return c >= 1 ? 1 : c > th ? (c - th) / (1 - th) : 0;
 }
 
@@ -145,9 +141,9 @@ static void kf_add(const KF *f, uint64_t ptr) {
 /* the episode (docs/EPISODE.md): the text being read now, apart from the shelf's facts      */
 /* ------------------------------------------------------------------ */
 
-/* EPMODE: -1 none (arc, serve); 0 its facts in the one pool, as if stored with the shelf's; 1 kept apart, active, its best
-   fit weighted EPW over the shelf's; 2 and near meanings inhibited inside it; 3 and its facts at full confidence (recency) */
-static int EPMODE = -1, EPREAD; static double EPW = 1;
+/* The text being read is kept apart from the shelf's facts and is active while it is asked about: when the question or an
+   option speaks of it, its facts answer first, its fit weighted EPW (4, chosen on dev) over the shelf's. */
+static int EPREAD; static double EPW = 4;
 enum { EPFID = 63 };                                  /* pointers into the episode's own text (in memory) */
 static KF *ep; static uint32_t nep, capep; static char *epbuf; static size_t neb, capeb;
 static uint8_t *epword; static uint32_t nepword;     /* words the episode holds */
@@ -466,7 +462,7 @@ static float kfact_sim(Know *A, const Frame *h, const KF *f) {
     return (float)s;
 }
 static double conf(const KF *f) {
-    if (is_ep(f)) return EPMODE >= 3 ? 1.0 : 1.0 - 0.5 / (f->s > 1 ? f->s : 1);    /* recency (P3): just read, fully there */
+    if (is_ep(f)) return 1.0 - 0.5 / (f->s > 1 ? f->s : 1);
     double e = EF ? EF[f - kf] : eff(f); return 1.0 - 0.5 / (e > 1 ? e : 1); }
 
 /* re-read one sentence from the shelf through a pointer */
@@ -533,20 +529,17 @@ static void bg_option(Know *A, const char *q, const char *opt, BParts *P) {
     for (int i = 0; i < no; i++) { if (O[i].g == NONE || O[i].g >= ncuew) continue;
         uint32_t a = cue_off[O[i].g], b = cue_off[O[i].g + 1]; if (b - a > 200000) b = a + 200000;
         for (uint32_t x = a; x < b; x++) CAND_ADD(cue[x]); }
-    if (EPMODE == 0) for (uint32_t e = 0; e < nep; e++) {      /* P0: the episode's facts in the one pool, competing as shelf facts do */
-        uint32_t w[8]; int n = kf_words(&ep[e], w), has = 0; for (int j = 0; j < n; j++) for (int i = 0; i < no; i++) has |= w[j] == O[i].g;
-        if (has) CAND_ADD(e | 0x80000000u); }
 #undef CAND_ADD
     for (int i = 0; i < nq; i++) if (Q[i].g != NONE) mark[Q[i].g] = 0;
     int focus = 0; for (int i = 0; i < nh; i++) { uint32_t w[24]; int m; fact_words(&hf[i], w, &m); int has = 0; for (int j = 0; j < m; j++) for (int x = 0; x < now_; x++) has |= w[j] == owl[x]; hf[i].tc = has; focus += has; }
     score_cands(A, hf, nh, focus, Q, nq, O, no, cand, nc, &P->fact, &P->joint, &P->open, &P->optr);
     P->sfact = P->fact; P->sjoint = P->joint; P->sopen = P->open;
-    /* P1-P3: the episode kept apart; when the question or the option speaks of it, its facts answer first, weighted EPW */
-    if (EPMODE >= 1 && nep) {
+    /* the episode: when the question or the option speaks of it, its facts answer first, weighted EPW */
+    if (nep) {
         int active = 0; for (int i = 0; i < nq; i++) active |= Q[i].g != NONE && Q[i].g < nepword && epword[Q[i].g];
         for (int i = 0; i < no; i++) active |= O[i].g != NONE && O[i].g < nepword && epword[O[i].g];
         if (active) { static uint32_t *ec; static uint32_t cap; if (cap < nep) { cap = nep; ec = realloc(ec, cap * 4); } for (uint32_t e = 0; e < nep; e++) ec[e] = e | 0x80000000u;
-            INHIB = EPMODE >= 2; score_cands(A, hf, nh, focus, Q, nq, O, no, ec, (int)nep, &P->efact, &P->ejoint, &P->eopen, &P->eptr); INHIB = 0;
+            score_cands(A, hf, nh, focus, Q, nq, O, no, ec, (int)nep, &P->efact, &P->ejoint, &P->eopen, &P->eptr);
             if (EPW * P->efact > P->fact) P->fact = EPW * P->efact;
             if (EPW * P->ejoint > P->joint) P->joint = EPW * P->ejoint;
             if (EPW * P->eopen > P->open) { P->open = EPW * P->eopen; P->optr = P->eptr; } } }
@@ -646,12 +639,6 @@ static void ep_read(Know *k, const char *text) {
     if (nepword < LX.n) { epword = realloc(epword, LX.n); memset(epword + nepword, 0, LX.n - nepword); nepword = LX.n; }
     for (uint32_t e = 0; e < nep; e++) { uint32_t w[8]; int n = kf_words(&ep[e], w); for (int j = 0; j < n; j++) if (w[j] < nepword) epword[w[j]] = 1; }
 }
-static void claim(const char *s, int on) {                 /* the words of a question or an option, as the brain knows them */
-    if (nclaimed < LX.n) { claimed = realloc(claimed, LX.n); memset(claimed + nclaimed, 0, LX.n - nclaimed); nclaimed = LX.n; }
-    char w[64]; int n = 0;
-    for (;; s++) { if (isalpha((unsigned char)*s) || *s == '\'') { if (n < 63) w[n++] = (char)tolower((unsigned char)*s); continue; }
-        if (n) { w[n] = 0; uint32_t g = lx_id(w, 0); if (g != NONE && g < nclaimed) claimed[g] = (uint8_t)on; n = 0; } if (!*s) break; }
-}
 static int run_passages(int nfile, char **files) {
     Know A; answer_ctx(&A); Know k; memset(&k, 0, sizeof k); text_init(&k.t); r2_init(&k.R, &k.t, &k.wm);
     cx_epst = 0x2545F4914F6CDD1Dull;
@@ -668,9 +655,7 @@ static int run_passages(int nfile, char **files) {
             char *fld[9]; int nf = 0; for (char *p = strtok(line, "\t"); p && nf < 9; p = strtok(0, "\t")) fld[nf++] = p;
             if (nf < 8) continue;
             const char *q = fld[2]; int want = fld[7][0] - 'A'; BParts P[4]; double sc[4];
-            claim(q, 1); for (int o = 0; o < 4; o++) claim(fld[3 + o], 1);
             for (int o = 0; o < 4; o++) { bg_option(&A, q, fld[3 + o], &P[o]); A.t.ntok = 0; }
-            claim(q, 0); for (int o = 0; o < 4; o++) claim(fld[3 + o], 0);
             scores(q, P, 4, sc);
             double best = -1e9; int nb = 0; for (int o = 0; o < 4; o++) if (sc[o] > best + 1e-9) { best = sc[o]; nb = 1; } else if (sc[o] > best - 1e-9) nb++;
             if (want >= 0 && want < 4 && sc[want] > best - 1e-9) ok += 1.0 / nb;
@@ -681,8 +666,8 @@ static int run_passages(int nfile, char **files) {
             n++; }
         if (open) ep_end();
         fclose(f); if (dump) fflush(dump);
-        printf("%-22s %5d q   %6.2f%%   (episode facts: mode %d, EPW %.2f)  %.1f ms/q\n", bn, n, 100 * ok / (n ? n : 1), EPMODE, EPW, 1000 * (now() - t0) / (n ? n : 1));
-        printf("RESULT bgpass file=%s n=%d acc=%.2f mode=%d epw=%.2f\n", bn, n, 100 * ok / (n ? n : 1), EPMODE, EPW);
+        printf("%-22s %5d q   %6.2f%%   (episode weight %.2f)  %.1f ms/q\n", bn, n, 100 * ok / (n ? n : 1), EPW, 1000 * (now() - t0) / (n ? n : 1));
+        printf("RESULT bgpass file=%s n=%d acc=%.2f epw=%.2f\n", bn, n, 100 * ok / (n ? n : 1), EPW);
     }
     return 0;
 }
@@ -735,7 +720,7 @@ int main(int argc, char **argv) {
     fprintf(stderr, "brain %s: %u facts, %u words (loaded in %.1f s)\n", argv[2], nkf, LX.n, now() - t0);
     cx_norms();
     if (!strcmp(argv[1], "words")) return run_words(argc - 3, argv + 3);
-    if (!strcmp(argv[1], "passages")) { EPMODE = getenv("EPMODE") ? atoi(getenv("EPMODE")) : 3; if (getenv("EPW")) EPW = atof(getenv("EPW")); return run_passages(argc - 3, argv + 3); }
+    if (!strcmp(argv[1], "passages")) { if (getenv("EPW")) EPW = atof(getenv("EPW")); return run_passages(argc - 3, argv + 3); }
     if (!strcmp(argv[1], "near")) return run_near(argc - 3, argv + 3);
     if (!strcmp(argv[1], "arc")) return run_arc(argc - 3, argv + 3);
     if (!strcmp(argv[1], "serve")) return run_serve();

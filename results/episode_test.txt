@@ -1,0 +1,164 @@
+=== choice: EPMODE=1 EPW=4
+=== EPMODE=0
+cortex /content/cx.brain.cx: 725317 words, 170762026 met in facts
+brain /content/cx.brain: 32488986 facts, 725317 words (loaded in 40.5 s)
+mc160.test.txt           240 q    25.31%   (episode facts: mode 0, EPW 1.00)  221.1 ms/q
+RESULT bgpass file=mc160.test.txt n=240 acc=25.31 mode=0 epw=1.00
+mc500.test.txt           600 q    28.18%   (episode facts: mode 0, EPW 1.00)  192.1 ms/q
+RESULT bgpass file=mc500.test.txt n=600 acc=28.18 mode=0 epw=1.00
+test_middle.txt         1436 q    26.31%   (episode facts: mode 0, EPW 1.00)  340.7 ms/q
+RESULT bgpass file=test_middle.txt n=1436 acc=26.31 mode=0 epw=1.00
+cortex /content/cx.brain.cx: 725317 words, 170762026 met in facts
+brain /content/cx.brain: 32488986 facts, 725317 words (loaded in 36.5 s)
+  single	What does Mira keep?	pick=sheep	right=bees	WRONG
+  single	What is Queen Agnes?	pick=a beehive	right=a beehive	OK
+  single	What colour is Queen Agnes?	pick=blue	right=blue	OK
+  single	What is Lenno's job?	pick=beekeeper	right=potter	WRONG
+  single	Which is true about Lenno?	pick=he owns a goat	right=he does not like bees	WRONG
+  single	What does Mira trade her honey for?	pick=bread	right=salt	WRONG
+  single	Why were the traders late?	pick=it snowed	right=a goat ate the sign	WRONG
+  single	What was the new sign made of?	pick=paper	right=clay	WRONG
+  single	When did the traders arrive?	pick=the same day	right=two days later	WRONG
+  single	How many bags of salt did the traders pay?	pick=five	right=nine	WRONG
+  single	When does the train leave Vell?	pick=at noon	right=at ten o'clock at night	WRONG
+  single	Who drives the train?	pick=a young man	right=Hester Brann	WRONG
+  single	What is the Grey Heron?	pick=a bird	right=a train	WRONG
+  single	Where does the train go?	pick=to the mountains	right=to the sea	WRONG
+  single	What did Kofi not have?	pick=a coat	right=a ticket	WRONG
+  single	Why did Kofi get on the train?	pick=to run away from school	right=to see his father	WRONG
+  single	Where does Kofi's father work?	pick=in a bakery	right=at the lighthouse	WRONG
+  single	What did Hester let Kofi do?	pick=sell tickets	right=blow the whistle	WRONG
+  single	Who was waiting on the platform?	pick=a policeman	right=Kofi's father	WRONG
+  single	How did Kofi's father pay for the ticket?	pick=with three silver coins	right=with three silver coins	OK
+  single	Who built the kite with Tomas?	pick=his sister Ilse	right=his sister Ilse	OK
+  single	What was the kite made of?	pick=red paper and bamboo	right=red paper and bamboo	OK
+  single	What is Firebird?	pick=a dragon	right=a kite	WRONG
+  single	When did they fly the kite?	pick=at night	right=on Saturday	WRONG
+  single	What broke?	pick=the string	right=the string	OK
+  single	What did the kite fly over?	pick=the sea	right=the river	WRONG
+  single	Where did the kite land?	pick=in the river	right=in the garden of Mrs. Vanek	WRONG
+  single	What does Mrs. Vanek grow?	pick=sunflowers	right=sunflowers	OK
+  single	Was Mrs. Vanek angry?	pick=she cried	right=no, she was not angry	WRONG
+  single	What did Mrs. Vanek give the children with the kite?	pick=a new string	right=a jar of plum jam	WRONG
+stories_test.txt          30 q    23.33%   (episode facts: mode 0, EPW 1.00)  183.5 ms/q
+RESULT bgpass file=stories_test.txt n=30 acc=23.33 mode=0 epw=1.00
+  single	Who does Sefa live with?	pick=her aunt	right=her grandfather	WRONG
+  single	What is the Moth?	pick=an insect	right=a boat	WRONG
+  single	What colour is the sail of the Moth?	pick=white	right=green	WRONG
+  single	What is Tavi's job?	pick=farmer	right=fisherman	WRONG
+  single	Why does Tavi hang a lantern on the mast?	pick=to read at night	right=so other boats can see the Moth	WRONG
+  single	Where did the storm come from?	pick=the west	right=the west	OK
+  single	What did the wind tear?	pick=the roof	right=the sail	WRONG
+  single	What did Sefa carry to the cliff?	pick=a rope	right=a jar of fireflies	WRONG
+  single	Where did Tavi steer the Moth?	pick=into the harbor	right=into the harbor	OK
+  single	What did the people of Oruna call Sefa?	pick=the Firefly Girl	right=the Firefly Girl	OK
+  single	What did Mr. Halloran grow?	pick=roses	right=tomatoes	WRONG
+  single	Where was the glass house?	pick=on the roof	right=behind the school	WRONG
+  single	What is Big Ruth?	pick=a cow	right=a tomato plant	WRONG
+  single	What was eating the leaves of Big Ruth?	pick=caterpillars	right=caterpillars	OK
+  single	What did Mr. Halloran bring in to help?	pick=a cat	right=ladybirds	WRONG
+  single	What do ladybirds eat?	pick=small insects	right=small insects	OK
+  single	Where did he carry the caterpillars?	pick=to the meadow	right=to the meadow	OK
+  single	What did the glass house do for the plants?	pick=kept them warm	right=kept them warm	OK
+  single	Where did the children sell the tomatoes?	pick=at the market	right=at the market	OK
+  single	What did the children buy for the teachers?	pick=a chair	right=a kettle	WRONG
+  single	What did Anouk drive?	pick=a tractor	right=the mail truck	WRONG
+  single	When did Anouk drive over Kessel Pass?	pick=every Tuesday	right=every Tuesday	OK
+  single	What often closes the pass in winter?	pick=snow	right=snow	OK
+  single	What kind of animal is Bruno?	pick=a dog	right=a dog	OK
+  single	What colour is Bruno?	pick=brown	right=grey	WRONG
+  single	What did Anouk put the letters in?	pick=a sled	right=a sled	OK
+  single	How long did Bruno pull the sled?	pick=three hours	right=three hours	OK
+  single	What was Anouk on when she walked beside Bruno?	pick=skis	right=skis	OK
+  single	What did the baker give Bruno?	pick=bread	right=a sausage	WRONG
+  single	Why were the letters dry?	pick=it did not snow	right=she had wrapped them in her wool coat	WRONG
+stories_link.txt          30 q    46.67%   (episode facts: mode 0, EPW 1.00)  141.3 ms/q
+RESULT bgpass file=stories_link.txt n=30 acc=46.67 mode=0 epw=1.00
+=== EPMODE=1 EPW=4
+cortex /content/cx.brain.cx: 725317 words, 170762026 met in facts
+brain /content/cx.brain: 32488986 facts, 725317 words (loaded in 34.6 s)
+mc160.test.txt           240 q    50.00%   (episode facts: mode 1, EPW 4.00)  214.5 ms/q
+RESULT bgpass file=mc160.test.txt n=240 acc=50.00 mode=1 epw=4.00
+mc500.test.txt           600 q    49.19%   (episode facts: mode 1, EPW 4.00)  187.0 ms/q
+RESULT bgpass file=mc500.test.txt n=600 acc=49.19 mode=1 epw=4.00
+test_middle.txt         1436 q    39.12%   (episode facts: mode 1, EPW 4.00)  331.4 ms/q
+RESULT bgpass file=test_middle.txt n=1436 acc=39.12 mode=1 epw=4.00
+cortex /content/cx.brain.cx: 725317 words, 170762026 met in facts
+brain /content/cx.brain: 32488986 facts, 725317 words (loaded in 42.3 s)
+  single	What does Mira keep?	pick=bees	right=bees	OK
+  single	What is Queen Agnes?	pick=a beehive	right=a beehive	OK
+  single	What colour is Queen Agnes?	pick=blue	right=blue	OK
+  single	What is Lenno's job?	pick=potter	right=potter	OK
+  single	Which is true about Lenno?	pick=he keeps bees	right=he does not like bees	WRONG
+  single	What does Mira trade her honey for?	pick=salt	right=salt	OK
+  single	Why were the traders late?	pick=a goat ate the sign	right=a goat ate the sign	OK
+  single	What was the new sign made of?	pick=clay	right=clay	OK
+  single	When did the traders arrive?	pick=two days later	right=two days later	OK
+  single	How many bags of salt did the traders pay?	pick=nine	right=nine	OK
+  single	When does the train leave Vell?	pick=at ten o'clock at night	right=at ten o'clock at night	OK
+  single	Who drives the train?	pick=Hester Brann	right=Hester Brann	OK
+  single	What is the Grey Heron?	pick=a bird	right=a train	WRONG
+  single	Where does the train go?	pick=to the sea	right=to the sea	OK
+  single	What did Kofi not have?	pick=a coat	right=a ticket	WRONG
+  single	Why did Kofi get on the train?	pick=to see his father	right=to see his father	OK
+  single	Where does Kofi's father work?	pick=at the lighthouse	right=at the lighthouse	OK
+  single	What did Hester let Kofi do?	pick=blow the whistle	right=blow the whistle	OK
+  single	Who was waiting on the platform?	pick=his teacher	right=Kofi's father	WRONG
+  single	How did Kofi's father pay for the ticket?	pick=with three silver coins	right=with three silver coins	OK
+  single	Who built the kite with Tomas?	pick=his sister Ilse	right=his sister Ilse	OK
+  single	What was the kite made of?	pick=red paper and bamboo	right=red paper and bamboo	OK
+  single	What is Firebird?	pick=a kite	right=a kite	OK
+  single	When did they fly the kite?	pick=on Saturday	right=on Saturday	OK
+  single	What broke?	pick=the string	right=the string	OK
+  single	What did the kite fly over?	pick=the river	right=the river	OK
+  single	Where did the kite land?	pick=in the river	right=in the garden of Mrs. Vanek	WRONG
+  single	What does Mrs. Vanek grow?	pick=sunflowers	right=sunflowers	OK
+  single	Was Mrs. Vanek angry?	pick=she cried	right=no, she was not angry	WRONG
+  single	What did Mrs. Vanek give the children with the kite?	pick=a new string	right=a jar of plum jam	WRONG
+stories_test.txt          30 q    76.67%   (episode facts: mode 1, EPW 4.00)  178.3 ms/q
+RESULT bgpass file=stories_test.txt n=30 acc=76.67 mode=1 epw=4.00
+  single	Who does Sefa live with?	pick=her grandfather	right=her grandfather	OK
+  single	What is the Moth?	pick=an insect	right=a boat	WRONG
+  single	What colour is the sail of the Moth?	pick=green	right=green	OK
+  single	What is Tavi's job?	pick=fisherman	right=fisherman	OK
+  single	Why does Tavi hang a lantern on the mast?	pick=so other boats can see the Moth	right=so other boats can see the Moth	OK
+  single	Where did the storm come from?	pick=the west	right=the west	OK
+  single	What did the wind tear?	pick=the sail	right=the sail	OK
+  single	What did Sefa carry to the cliff?	pick=a jar of fireflies	right=a jar of fireflies	OK
+  single	Where did Tavi steer the Moth?	pick=into the harbor	right=into the harbor	OK
+  single	What did the people of Oruna call Sefa?	pick=the Firefly Girl	right=the Firefly Girl	OK
+  single	What did Mr. Halloran grow?	pick=tomatoes	right=tomatoes	OK
+  single	Where was the glass house?	pick=on the roof	right=behind the school	WRONG
+  single	What is Big Ruth?	pick=a tomato plant	right=a tomato plant	OK
+  single	What was eating the leaves of Big Ruth?	pick=caterpillars	right=caterpillars	OK
+  single	What did Mr. Halloran bring in to help?	pick=ladybirds	right=ladybirds	OK
+  single	What do ladybirds eat?	pick=small insects	right=small insects	OK
+  single	Where did he carry the caterpillars?	pick=to the meadow	right=to the meadow	OK
+  single	What did the glass house do for the plants?	pick=kept them warm	right=kept them warm	OK
+  single	Where did the children sell the tomatoes?	pick=at the market	right=at the market	OK
+  single	What did the children buy for the teachers?	pick=a kettle	right=a kettle	OK
+  single	What did Anouk drive?	pick=the mail truck	right=the mail truck	OK
+  single	When did Anouk drive over Kessel Pass?	pick=every morning	right=every Tuesday	WRONG
+  single	What often closes the pass in winter?	pick=snow	right=snow	OK
+  single	What kind of animal is Bruno?	pick=a dog	right=a dog	OK
+  single	What colour is Bruno?	pick=grey	right=grey	OK
+  single	What did Anouk put the letters in?	pick=a sled	right=a sled	OK
+  single	How long did Bruno pull the sled?	pick=three hours	right=three hours	OK
+  single	What was Anouk on when she walked beside Bruno?	pick=skis	right=skis	OK
+  single	What did the baker give Bruno?	pick=a sausage	right=a sausage	OK
+  single	Why were the letters dry?	pick=she had wrapped them in her wool coat	right=she had wrapped them in her wool coat	OK
+stories_link.txt          30 q    90.00%   (episode facts: mode 1, EPW 4.00)  139.5 ms/q
+RESULT bgpass file=stories_link.txt n=30 acc=90.00 mode=1 epw=4.00
+=== general tests, no episode (CORTEX_LINK's test: 27.41 31.37 46.61 21.22 24.40)
+cortex /content/cx.brain.cx: 725317 words, 170762026 met in facts
+brain /content/cx.brain: 32488986 facts, 725317 words (loaded in 37.6 s)
+mmlu_hs_test.tsv        3420 q    27.41%   (alone: fact 26.09  joint 24.58  open 28.23  meaning 25.90)  324.8 ms/q
+RESULT bgarc file=mmlu_hs_test.tsv n=3420 acc=27.41 facts=32488986
+csqa_dev.tsv            1221 q    31.37%   (alone: fact 24.07  joint 21.42  open 26.62  meaning 28.19)  212.9 ms/q
+RESULT bgarc file=csqa_dev.tsv n=1221 acc=31.37 facts=32488986
+easy_test.tsv           2376 q    46.61%   (alone: fact 31.57  joint 32.37  open 45.97  meaning 34.93)  189.3 ms/q
+RESULT bgarc file=easy_test.tsv n=2376 acc=46.61 facts=32488986
+challenge_test.tsv      1172 q    21.22%   (alone: fact 26.07  joint 17.95  open 20.36  meaning 21.43)  233.0 ms/q
+RESULT bgarc file=challenge_test.tsv n=1172 acc=21.22 facts=32488986
+obqa_test.tsv            500 q    24.40%   (alone: fact 26.08  joint 17.47  open 21.33  meaning 29.72)  178.1 ms/q
+RESULT bgarc file=obqa_test.tsv n=500 acc=24.40 facts=32488986
