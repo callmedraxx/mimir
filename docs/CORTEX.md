@@ -177,3 +177,9 @@ v0.1 numbers are therefore a second look, said here so they are read that way.
 
 **v0.1 works if** K3 beats K1b on SimLex-999 and fill-the-blank and reaches within 0.05 of
 word2vec on SimLex-999 and MEN.
+
+**Fix during the dev grid (before any test):** K3a's first dev run gave WS-353 0.562, SimVerb
+0.268, but fill-the-blank 0.4%: the blank was scored by how well a word fits its neighbours
+(log P(u|w)/P(u)) without how common the word is (log P(w)), so rare words won. Bayes adds
+log P(w); the scorer now does, and the grid was started again (shelf kept).
+

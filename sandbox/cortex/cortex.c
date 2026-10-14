@@ -301,7 +301,9 @@ static void fill(const int *ctx, int nc, const int *ex, int ne, float *score) {
     if (CELL == 3) {   /* how well each word's meaning cells fit the context cells of the words around the blank */
         static float *q; if (!q) q = malloc(D * 4); memset(q, 0, D * 4);
         for (int c = 0; c < nc + ne; c++) { int w = c < nc ? ctx[c] : ex[c - nc]; float a = c < nc ? 1.0f : (float)(STORYW / ne); const float *v = MC + (size_t)w * D; for (int i = 0; i < D; i++) q[i] += a * v[i]; }
-        for (int w = 0; w < V; w++) { const float *u = MU + (size_t)w * D; double s = 0; for (int i = 0; i < D; i++) s += u[i] * q[i]; score[w] = (float)s; }
+        /* the cells hold how much likelier a neighbour is next to a word than anywhere (log P(u|w)/P(u)); for the word in a
+           blank, Bayes adds how common the word is itself: log P(w) */
+        for (int w = 0; w < V; w++) { const float *u = MU + (size_t)w * D; double s = 0; for (int i = 0; i < D; i++) s += u[i] * q[i]; score[w] = (float)(s + log((double)vcnt[w] / vtot)); }
         for (int c = 0; c < nc; c++) score[ctx[c]] = -1e9f; return; }
     static float *in; if (!in) in = malloc(N * 4); memset(in, 0, N * 4);
     for (int c = 0; c < nc + ne; c++) { int w = c < nc ? ctx[c] : ex[c - nc]; float a = c < nc ? 1.0f : (float)(STORYW / ne);
