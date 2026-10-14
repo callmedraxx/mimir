@@ -1,0 +1,183 @@
+cortex /content/L1.brain.cx: 225669 words, 22383903 met in facts
+brain /content/L1.brain: 5030213 facts, 225669 words (loaded in 6.8 s)
+EN-WS-353-ALL.txt          353 pairs (  350 known)  spearman 0.448
+RESULT words file=EN-WS-353-ALL.txt n=353 known=350 spearman=0.4478
+EN-SimVerb-3500.txt       3500 pairs ( 3488 known)  spearman 0.202
+RESULT words file=EN-SimVerb-3500.txt n=3500 known=3488 spearman=0.2017
+=== L1 mean 0.3247
+cortex /content/L1.brain.cx: 225669 words, 22383903 met in facts
+brain /content/L1.brain: 5030213 facts, 225669 words (loaded in 6.3 s)
+owl (met 1269): squirrel(0.93) cock(0.92) sparrow(0.91) crow(0.91) birch(0.91) rustling(0.90) dove(0.90) barking(0.90) screech(0.90) alligator(0.90)
+king (met 18247): prince(0.91) emperor(0.91) queen(0.90) duke(0.90) throne(0.89) edward(0.89) alexander(0.88) bishop(0.88) earl(0.88) henry(0.87)
+france (met 11336): spain(0.95) italy(0.94) poland(0.93) denmark(0.93) hungary(0.92) portugal(0.92) russia(0.92) madrid(0.91) chile(0.91) naples(0.91)
+blue (met 5388): red(0.89) stripes(0.87) yellow(0.87) gray(0.87) purple(0.84) green(0.84) grey(0.84) shining(0.83) bright(0.82) jacket(0.81)
+water (met 25231): pool(0.83) liquid(0.82) salt(0.82) nutrient(0.82) fluid(0.81) oxygen(0.80) moisture(0.80) reservoir(0.80) dioxide(0.80) fresh(0.79)
+dog (met 12612): wolf(0.92) rabbit(0.90) deer(0.90) cat(0.89) tiger(0.88) monkey(0.88) goose(0.87) crow(0.87) elephant(0.87) goat(0.87)
+read 289 MB in 254 s (1.14 MB/s): 4078955 sentences, 6079662 facts read; 5030213 kept, 0 forgotten (shelf finished)
+cortex: 22383903 words met in facts, 36681046 pairs learned, 4 blocks (0.6 GB)
+cortex saved: /content/L2.brain.cx (225669 words)
+RESULT bgread brain=/content/L2.brain bytes=161926294 facts=5030213 words=225669 forgotten=0 read_bytes=289389092 seconds=254 mb_s=1.14
+cortex /content/L2.brain.cx: 225669 words, 22383903 met in facts
+brain /content/L2.brain: 5030213 facts, 225669 words (loaded in 5.1 s)
+EN-WS-353-ALL.txt          353 pairs (  350 known)  spearman 0.560
+RESULT words file=EN-WS-353-ALL.txt n=353 known=350 spearman=0.5598
+EN-SimVerb-3500.txt       3500 pairs ( 3488 known)  spearman 0.208
+RESULT words file=EN-SimVerb-3500.txt n=3500 known=3488 spearman=0.2084
+=== L2 mean 0.3841
+cortex /content/L2.brain.cx: 225669 words, 22383903 met in facts
+brain /content/L2.brain: 5030213 facts, 225669 words (loaded in 6.4 s)
+owl (met 1269): raven(0.82) squirrel(0.82) goose(0.81) loon(0.81) badger(0.81) screech(0.81) jackal(0.80) lizard(0.79) horned(0.79) rooster(0.79)
+king (met 18247): odaenathu(0.79) vaballathu(0.77) burgundy(0.77) sigismund(0.77) lothar(0.76) palatine(0.76) hatshepsut(0.76) romanov(0.75) ashur(0.75) pope(0.75)
+france (met 11336): italy(0.76) spain(0.76) portugal(0.75) yugoslavia(0.75) netherlands(0.75) serbia(0.73) luxembourg(0.73) paris(0.73) haiti(0.73) poland(0.73)
+blue (met 5388): purple(0.73) yellow(0.73) shining(0.72) rainbow(0.72) gray(0.72) dazzling(0.72) cloudless(0.70) bright(0.70) red(0.69) starry(0.69)
+water (met 25231): rainwater(0.78) aquifer(0.76) groundwater(0.75) seawater(0.73) nutrient(0.73) moisture(0.73) saline(0.73) sewage(0.73) brine(0.73) evaporation(0.73)
+dog (met 12612): hare(0.84) feral(0.79) deer(0.79) dingoe(0.79) antelope(0.77) lynx(0.76) tame(0.76) iditarod(0.76) wolf(0.75) mink(0.75)
+=== chosen L2
+read 535 MB in 378 s (1.42 MB/s): 11846575 sentences, 10328965 facts read; 7727149 kept, 0 forgotten (shelf finished)
+cortex: 36924875 words met in facts, 51437344 pairs learned, 6 blocks (0.9 GB)
+cortex saved: /content/cx.brain.cx (350809 words)
+RESULT bgread brain=/content/cx.brain bytes=237780275 facts=7727149 words=350809 forgotten=0 read_bytes=534680746 seconds=378 mb_s=1.42
+cortex /content/cx.brain.cx: 350809 words, 36924875 met in facts
+continuing /content/cx.brain: 7727149 facts, 350809 words, clock 11846575
+read 936 MB in 886 s (1.06 MB/s): 11962945 sentences, 22625791 facts read; 23113606 kept, 0 forgotten (shelf finished)
+cortex: 116000751 words met in facts, 161350920 pairs learned, 7 blocks (1.1 GB)
+cortex saved: /content/cx.brain.cx (450064 words)
+RESULT bgread brain=/content/cx.brain bytes=742677324 facts=23113606 words=450064 forgotten=0 read_bytes=936071185 seconds=886 mb_s=1.06
+cortex /content/cx.brain.cx: 450064 words, 116000751 met in facts
+continuing /content/cx.brain: 23113606 facts, 450064 words, clock 23809520
+read 5 MB in 2 s (2.54 MB/s): 45856 sentences, 91708 facts read; 23185459 kept, 0 forgotten (shelf finished)
+cortex: 116358941 words met in facts, 162070228 pairs learned, 7 blocks (1.1 GB)
+cortex saved: /content/cx.brain.cx (451372 words)
+RESULT bgread brain=/content/cx.brain bytes=745105265 facts=23185459 words=451372 forgotten=0 read_bytes=4709753 seconds=2 mb_s=2.54
+cortex /content/cx.brain.cx: 451372 words, 116358941 met in facts
+continuing /content/cx.brain: 23185459 facts, 451372 words, clock 23855376
+read 210 MB in 254 s (0.83 MB/s): 2322024 sentences, 4009679 facts read; 25245816 kept, 0 forgotten (shelf finished)
+cortex: 132994155 words met in facts, 197970942 pairs learned, 9 blocks (1.4 GB)
+cortex saved: /content/cx.brain.cx (551416 words)
+RESULT bgread brain=/content/cx.brain bytes=821701438 facts=25245816 words=551416 forgotten=0 read_bytes=210344161 seconds=254 mb_s=0.83
+cortex /content/cx.brain.cx: 551416 words, 132994155 met in facts
+continuing /content/cx.brain: 25245816 facts, 551416 words, clock 26177400
+read 24 MB in 11 s (2.15 MB/s): 229221 sentences, 437920 facts read; 25560219 kept, 0 forgotten (shelf finished)
+cortex: 134751579 words met in facts, 201877498 pairs learned, 9 blocks (1.4 GB)
+cortex saved: /content/cx.brain.cx (554734 words)
+RESULT bgread brain=/content/cx.brain bytes=832840400 facts=25560219 words=554734 forgotten=0 read_bytes=23701880 seconds=11 mb_s=2.15
+cortex /content/cx.brain.cx: 554734 words, 134751579 met in facts
+continuing /content/cx.brain: 25560219 facts, 554734 words, clock 26406621
+read 283 MB in 318 s (0.89 MB/s): 2663008 sentences, 5437069 facts read; 29564454 kept, 0 forgotten (shelf finished)
+cortex: 155959832 words met in facts, 244993942 pairs learned, 10 blocks (1.6 GB)
+cortex saved: /content/cx.brain.cx (642230 words)
+RESULT bgread brain=/content/cx.brain bytes=972817783 facts=29564454 words=642230 forgotten=0 read_bytes=283353773 seconds=318 mb_s=0.89
+cortex /content/cx.brain.cx: 642230 words, 155959832 met in facts
+continuing /content/cx.brain: 29564454 facts, 642230 words, clock 29069629
+read 207 MB in 247 s (0.84 MB/s): 1556970 sentences, 3564505 facts read; 32488986 kept, 0 forgotten (shelf finished)
+cortex: 170762026 words met in facts, 280768948 pairs learned, 12 blocks (1.9 GB)
+cortex saved: /content/cx.brain.cx (725317 words)
+RESULT bgread brain=/content/cx.brain bytes=1077370368 facts=32488986 words=725317 forgotten=0 read_bytes=206718070 seconds=247 mb_s=0.84
+cortex /content/cx.brain.cx: 725317 words, 170762026 met in facts
+brain /content/cx.brain: 32488986 facts, 725317 words (loaded in 42.0 s)
+EN-WS-353-ALL.txt          353 pairs (  353 known)  spearman 0.649
+RESULT words file=EN-WS-353-ALL.txt n=353 known=353 spearman=0.6491
+EN-SimVerb-3500.txt       3500 pairs ( 3498 known)  spearman 0.266
+RESULT words file=EN-SimVerb-3500.txt n=3500 known=3498 spearman=0.2656
+cortex /content/cx.brain.cx: 725317 words, 170762026 met in facts
+brain /content/cx.brain: 32488986 facts, 725317 words (loaded in 39.8 s)
+owl (met 10760): bird(0.72) eagle(0.70) stoat(0.70) secretarybird(0.70) corvid(0.68) ringtail(0.68) kestrel(0.68) bustard(0.67) flycatcher(0.67) hoopoe(0.67)
+king (met 170178): prince(0.77) ruler(0.74) emperor(0.72) v(0.71) hunyadi(0.71) usurper(0.71) svatopluk(0.70) gratian(0.70) sarkap(0.70) wahima(0.70)
+france (met 97468): germany(0.78) britain(0.77) spain(0.76) england(0.76) italy(0.75) belgium(0.74) paris(0.73) europe(0.73) vichy(0.72) netherlands(0.71)
+blue (met 45338): red(0.80) yellow(0.75) green(0.73) purple(0.72) pink(0.72) colour(0.71) cyan(0.71) white(0.70) gray(0.70) colors(0.68)
+water (met 172755): seawater(0.78) rainwater(0.76) percolate(0.75) meltwater(0.74) brine(0.74) aeration(0.74) aquifer(0.74) saline(0.74) saltier(0.74) groundwater(0.73)
+dog (met 88380): cat(0.79) airedale(0.74) sheepdog(0.73) piglet(0.72) collie(0.72) dingo(0.71) ringtail(0.71) colly(0.71) fido(0.70) etu(0.70)
+=== M0 CX=0
+brain /content/cx.brain: 32488986 facts, 725317 words (loaded in 31.8 s)
+easy_dev.tsv             570 q    47.54%   (alone: fact 31.65  joint 34.14  open 43.99  meaning 28.68)  175.3 ms/q
+RESULT bgarc file=easy_dev.tsv n=570 acc=47.54 facts=32488986
+challenge_dev.tsv        299 q    20.18%   (alone: fact 24.96  joint 19.68  open 21.63  meaning 24.59)  187.2 ms/q
+RESULT bgarc file=challenge_dev.tsv n=299 acc=20.18 facts=32488986
+obqa_dev.tsv             500 q    18.35%   (alone: fact 25.02  joint 16.95  open 18.82  meaning 25.15)  182.1 ms/q
+RESULT bgarc file=obqa_dev.tsv n=500 acc=18.35 facts=32488986
+mmlu_hs_dev.tsv          370 q    29.68%   (alone: fact 25.54  joint 25.99  open 30.54  meaning 25.09)  225.8 ms/q
+RESULT bgarc file=mmlu_hs_dev.tsv n=370 acc=29.68 facts=32488986
+csqa_traindev.tsv       1000 q    26.05%   (alone: fact 22.35  joint 21.03  open 26.53  meaning 21.66)  192.0 ms/q
+RESULT bgarc file=csqa_traindev.tsv n=1000 acc=26.05 facts=32488986
+=== M0 mean 28.36
+=== C1a CX=1 CXTH=0.25
+cortex /content/cx.brain.cx: 725317 words, 170762026 met in facts
+brain /content/cx.brain: 32488986 facts, 725317 words (loaded in 40.3 s)
+easy_dev.tsv             570 q    44.65%   (alone: fact 29.84  joint 31.51  open 44.14  meaning 35.83)  174.4 ms/q
+RESULT bgarc file=easy_dev.tsv n=570 acc=44.65 facts=32488986
+challenge_dev.tsv        299 q    20.01%   (alone: fact 23.90  joint 19.84  open 19.96  meaning 23.19)  204.2 ms/q
+RESULT bgarc file=challenge_dev.tsv n=299 acc=20.01 facts=32488986
+obqa_dev.tsv             500 q    22.05%   (alone: fact 23.62  joint 16.65  open 19.18  meaning 24.75)  185.8 ms/q
+RESULT bgarc file=obqa_dev.tsv n=500 acc=22.05 facts=32488986
+mmlu_hs_dev.tsv          370 q    28.99%   (alone: fact 23.38  joint 25.74  open 28.99  meaning 29.12)  295.2 ms/q
+RESULT bgarc file=mmlu_hs_dev.tsv n=370 acc=28.99 facts=32488986
+csqa_traindev.tsv       1000 q    27.65%   (alone: fact 21.25  joint 21.05  open 27.16  meaning 24.80)  198.8 ms/q
+RESULT bgarc file=csqa_traindev.tsv n=1000 acc=27.65 facts=32488986
+=== C1a mean 28.67
+=== C1b CX=1 CXTH=0.40
+cortex /content/cx.brain.cx: 725317 words, 170762026 met in facts
+brain /content/cx.brain: 32488986 facts, 725317 words (loaded in 41.9 s)
+easy_dev.tsv             570 q    44.30%   (alone: fact 31.97  joint 32.91  open 43.96  meaning 35.83)  171.6 ms/q
+RESULT bgarc file=easy_dev.tsv n=570 acc=44.30 facts=32488986
+challenge_dev.tsv        299 q    21.35%   (alone: fact 23.90  joint 19.84  open 20.29  meaning 22.85)  201.8 ms/q
+RESULT bgarc file=challenge_dev.tsv n=299 acc=21.35 facts=32488986
+obqa_dev.tsv             500 q    22.85%   (alone: fact 24.00  joint 16.45  open 21.07  meaning 24.40)  181.3 ms/q
+RESULT bgarc file=obqa_dev.tsv n=500 acc=22.85 facts=32488986
+mmlu_hs_dev.tsv          370 q    31.62%   (alone: fact 23.33  joint 26.55  open 30.41  meaning 29.39)  293.5 ms/q
+RESULT bgarc file=mmlu_hs_dev.tsv n=370 acc=31.62 facts=32488986
+csqa_traindev.tsv       1000 q    27.55%   (alone: fact 21.83  joint 20.65  open 27.58  meaning 24.90)  210.4 ms/q
+RESULT bgarc file=csqa_traindev.tsv n=1000 acc=27.55 facts=32488986
+=== C1b mean 29.53
+=== C2 from C1b fit 0.00: challenge_dev.tsv=21.35 csqa_traindev.tsv=27.55 easy_dev.tsv=44.30 mmlu_hs_dev.tsv=31.62 obqa_dev.tsv=22.85 mean 29.53
+=== C2 from C1b fit 0.25: challenge_dev.tsv=18.67 csqa_traindev.tsv=28.95 easy_dev.tsv=46.23 mmlu_hs_dev.tsv=31.49 obqa_dev.tsv=23.25 mean 29.72
+=== C2 from C1b fit 0.50: challenge_dev.tsv=18.67 csqa_traindev.tsv=29.95 easy_dev.tsv=47.63 mmlu_hs_dev.tsv=30.68 obqa_dev.tsv=23.45 mean 30.08
+=== C2 from C1b fit 1.00: challenge_dev.tsv=20.01 csqa_traindev.tsv=31.55 easy_dev.tsv=47.81 mmlu_hs_dev.tsv=29.32 obqa_dev.tsv=25.25 mean 30.79
+=== C2 from C1b fit 2.00: challenge_dev.tsv=20.51 csqa_traindev.tsv=32.05 easy_dev.tsv=46.58 mmlu_hs_dev.tsv=28.65 obqa_dev.tsv=25.35 mean 30.63
+cortex /content/cx.brain.cx: 725317 words, 170762026 met in facts
+continuing /content/cx.brain: 32488986 facts, 725317 words, clock 30626599
+read 0 MB in 0 s (0.08 MB/s): 32 sentences, 43 facts read; 32489019 kept, 0 forgotten (shelf finished)
+cortex: 170762180 words met in facts, 280769188 pairs learned, 12 blocks (1.9 GB)
+cortex saved: /content/clock.brain.cx (725321 words)
+RESULT bgread brain=/content/clock.brain bytes=1077371520 facts=32489019 words=725321 forgotten=0 read_bytes=1680 seconds=0 mb_s=0.08
+  before clock_1	Who built the clock in the tower?	pick=the baker	right=Imra Batsho	WRONG
+  before clock_2	What kind of animal is Pell?	pick=a cat	right=an owl	WRONG
+  before clock_3	What does Pell eat?	pick=bread	right=beetles	WRONG
+  before clock_4	What does Dumi oil the gears with?	pick=olive oil	right=goose fat	WRONG
+  before clock_5	Why does Imra use goose fat on the gears?	pick=it is cheap	right=it does not freeze in winter	WRONG
+  before clock_6	What stopped the clock?	pick=the bell broke	right=a walnut jammed the gear	WRONG
+  before clock_7	Who hid the walnut in the clock?	pick=the baker	right=a red squirrel	WRONG
+  before clock_8	What did the mayor want to do with the clock?	pick=pull it down	right=pull it down	OK
+  before clock_9	How many times did Dumi turn the big key?	pick=seven	right=forty	WRONG
+  before clock_10	What did Imra give Dumi?	pick=a lamp	right=her brass screwdriver	WRONG
+  after clock_1	Who built the clock in the tower?	pick=Imra Batsho	right=Imra Batsho	OK
+  after clock_2	What kind of animal is Pell?	pick=a cat	right=an owl	WRONG
+  after clock_3	What does Pell eat?	pick=beetles	right=beetles	OK
+  after clock_4	What does Dumi oil the gears with?	pick=olive oil	right=goose fat	WRONG
+  after clock_5	Why does Imra use goose fat on the gears?	pick=it does not freeze in winter	right=it does not freeze in winter	OK
+  after clock_6	What stopped the clock?	pick=a walnut jammed the gear	right=a walnut jammed the gear	OK
+  after clock_7	Who hid the walnut in the clock?	pick=a red squirrel	right=a red squirrel	OK
+  after clock_8	What did the mayor want to do with the clock?	pick=pull it down	right=pull it down	OK
+  after clock_9	How many times did Dumi turn the big key?	pick=forty	right=forty	OK
+  after clock_10	What did Imra give Dumi?	pick=her brass screwdriver	right=her brass screwdriver	OK
+STORY clock env=CX=0 before 1/10 after 8/10
+  before clock_1	Who built the clock in the tower?	pick=the baker	right=Imra Batsho	WRONG
+  before clock_2	What kind of animal is Pell?	pick=a cat	right=an owl	WRONG
+  before clock_3	What does Pell eat?	pick=bread	right=beetles	WRONG
+  before clock_4	What does Dumi oil the gears with?	pick=olive oil	right=goose fat	WRONG
+  before clock_5	Why does Imra use goose fat on the gears?	pick=it is cheap	right=it does not freeze in winter	WRONG
+  before clock_6	What stopped the clock?	pick=the bell broke	right=a walnut jammed the gear	WRONG
+  before clock_7	Who hid the walnut in the clock?	pick=the baker	right=a red squirrel	WRONG
+  before clock_8	What did the mayor want to do with the clock?	pick=sell it	right=pull it down	WRONG
+  before clock_9	How many times did Dumi turn the big key?	pick=ninety	right=forty	WRONG
+  before clock_10	What did Imra give Dumi?	pick=a lamp	right=her brass screwdriver	WRONG
+  after clock_1	Who built the clock in the tower?	pick=Dumi	right=Imra Batsho	WRONG
+  after clock_2	What kind of animal is Pell?	pick=a cat	right=an owl	WRONG
+  after clock_3	What does Pell eat?	pick=bread	right=beetles	WRONG
+  after clock_4	What does Dumi oil the gears with?	pick=olive oil	right=goose fat	WRONG
+  after clock_5	Why does Imra use goose fat on the gears?	pick=it is cheap	right=it does not freeze in winter	WRONG
+  after clock_6	What stopped the clock?	pick=a walnut jammed the gear	right=a walnut jammed the gear	OK
+  after clock_7	Who hid the walnut in the clock?	pick=a red squirrel	right=a red squirrel	OK
+  after clock_8	What did the mayor want to do with the clock?	pick=sell it	right=pull it down	WRONG
+  after clock_9	How many times did Dumi turn the big key?	pick=ninety	right=forty	WRONG
+  after clock_10	What did Imra give Dumi?	pick=her brass screwdriver	right=her brass screwdriver	OK
+STORY clock env=CX=1 CXTH=0.40 before 0/10 after 3/10

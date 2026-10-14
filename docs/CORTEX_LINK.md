@@ -94,3 +94,30 @@ L1's 0.448 / 0.202), gave **32,488,986 facts, not the release's 32,489,775** (78
 from the one the release read (Gutenberg mirror and Wikipedia lists change). So M0's test
 numbers are **not** taken from the school tests: at test time M0 and the choice are both run
 once on this same brain.
+
+## Dev results (2026-10-14, Colab; `results/link_dev.txt`)
+
+Learning: **L2** chosen (WordSim-353 0.560, SimVerb 0.208 on 1/8 of the shelf; L1 0.448 / 0.202).
+The cortex from the whole shelf's facts: WordSim-353 **0.649**, SimVerb **0.266** (K3b from text,
+on its 50M-word dev run: 0.504 / 0.251). Nearest words: owl → raven, squirrel, goose; dog →
+hare, deer, wolf; water → rainwater, aquifer, groundwater.
+
+Answering, dev sets (the new brain gives M0 exactly the ranking dev's G0 numbers):
+
+| cell | ARC-Easy | ARC-Chall. | OBQA | MMLU-HS | CSQA | **mean** |
+|---|---|---|---|---|---|---|
+| **M0** (old table) | 47.54 | 20.18 | 18.35 | 29.68 | 26.05 | **28.36** |
+| C1a (cortex, 0.25) | 44.65 | 20.01 | 22.05 | 28.99 | 27.65 | 28.67 |
+| C1b (cortex, 0.40) | 44.30 | 21.35 | 22.85 | 31.62 | 27.55 | 29.53 |
+| C2 fit 0.25 | 46.23 | 18.67 | 23.25 | 31.49 | 28.95 | 29.72 |
+| C2 fit 0.5 | 47.63 | 18.67 | 23.45 | 30.68 | 29.95 | 30.08 |
+| **C2 fit 1** | 47.81 | 20.01 | 25.25 | 29.32 | 31.55 | **30.79** |
+| C2 fit 2 | 46.58 | 20.51 | 25.35 | 28.65 | 32.05 | 30.63 |
+
+**Chosen: C2, fit 1 (`CX=1 CXTH=0.40 CXFIT=1`), +2.43 over M0** (more than 1 point: adopted).
+Frozen in `tools/link_choice.env`.
+
+**Warning from the clock story** (dev, shown, not counted): with the cortex (C1b, no fit)
+3/10 after reading, against M0's 8/10. Matching by meaning lets near words (another
+animal, another person) count as much as the story's exact words, so the story's own facts
+lose to the shelf's. The test stories will show whether this holds for the choice.
