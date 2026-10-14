@@ -21,7 +21,7 @@ jobs:
       - name: word classes
         run: mkdir -p data/understand && curl -sL https://github.com/callmedraxx/mimir/releases/download/brain-E/wordclass.tsv.gz | gunzip > data/understand/wordclass.tsv
       - name: school shelf
-        run: python3 tools/school_shelf.py && rm -rf data/school/raw && ls -l data/school/
+        run: pip install -q pyarrow && python3 tools/school_shelf.py && rm -rf data/school/raw && ls -l data/school/
       - name: read the shelf, file by file, the cortex learning from the facts
         run: |
           B=$RUNNER_TEMP/cx.brain
