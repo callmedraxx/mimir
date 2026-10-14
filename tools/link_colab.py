@@ -27,7 +27,7 @@ W = "data/cortex/wordsim/"; BRAIN = "/content/cx.brain"
 DEV = " ".join("data/dev_sets/%s.tsv" % t for t in ("easy_dev", "challenge_dev", "obqa_dev", "mmlu_hs_dev", "csqa_traindev"))
 TEST = " ".join("data/arc_tests/%s.tsv" % t for t in ("mmlu_hs_test", "csqa_dev", "easy_test", "challenge_test", "obqa_test"))
 M0 = "CX=0"
-def words(brain, which, log): return {l.split()[1].split("=")[1]: float(l.split("spearman=")[1]) for l in sh("./bg words %s %s" % (brain, " ".join(W + f for f in which)), log).splitlines() if l.startswith("RESULT words")}
+def words(brain, which, log): return {l.split()[2].split("=")[1]: float(l.split("spearman=")[1]) for l in sh("./bg words %s %s" % (brain, " ".join(W + f for f in which)), log).splitlines() if l.startswith("RESULT words")}
 def accs(text): return {l.split("file=")[1].split()[0]: float(l.split("acc=")[1].split()[0]) for l in text.splitlines() if l.startswith("RESULT bgarc")}
 
 def pick_fit(dump):
