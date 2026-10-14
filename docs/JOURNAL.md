@@ -117,7 +117,7 @@ Lessons that keep coming back:
 
 ## Open
 
-* **Next: answering about a passage by understanding it**, not by association: the meaning and
+* **Now: PASSAGE** (docs/PASSAGE.md, scorecard written): answering about a passage by understanding it, not by association: the meaning and
   fit parts never look at the passage (passage tests still below Mimir's own passage-only reader
   and the sliding window); negation ("She was not angry"); "X gave Y with Z".
 * Then: sentences, not just words: pronouns ("He" = Dumi), "an owl named Pell", negation,
