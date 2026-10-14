@@ -183,3 +183,34 @@ word2vec on SimLex-999 and MEN.
 (log P(u|w)/P(u)) without how common the word is (log P(w)), so rare words won. Bayes adds
 log P(w); the scorer now does, and the grid was started again (shelf kept).
 
+## v0.1 results
+
+Dev grid (first 50M replayed words, dev sets): K3a (D 300, WIN 5) 0.562 / 0.268 / 1.4%;
+**K3b (D 300, WIN 2) 0.504 / 0.251 / 10.0%**; K3c (D 100, WIN 5) 0.594 / 0.243 / 1.3%
+(WS-353 / SimVerb / fill-the-blank). Chosen by the fixed rule: K3b (mean 0.2850; K3c 0.2833,
+K3a 0.2813). Trained on the whole school shelf (198M replayed words, 32 min, 2 threads), tests
+once:
+
+| test | K0 | K1b (v0, Hebbian) | **K3b (v0.1, Hebbian + anti-Hebbian)** | B5 word2vec (backprop, from v0) |
+|---|---|---|---|---|
+| SimLex-999 (alike) | 0.028 | 0.185 | **0.464** | 0.398 |
+| MEN-3000 (related) | 0.017 | 0.624 | **0.739** | 0.717 |
+| fill the blank, 2,000 sentences | 0.0% | 4.0% | **10.1%** | 6.6% |
+| stories, 12 blanks | 0 | 0 | 0 (dog rank 15, lantern 67) | 1 |
+
+**v0.1 works** by the bar set before it: it beats K1b on SimLex-999 (+0.28) and fill-the-blank
+(+6.1 points), and is not within 0.05 of word2vec but above it on both SimLex-999 (+0.066) and
+MEN (+0.022). (Second look at these tests; see above.)
+
+* Reward + penalty is what was missing. Words are now grouped by kind: owl → owls, eagle,
+  magpie, woodpecker, parrot, raven, **bird**; king → emperor, ruler, queen, monarch; france
+  → belgium, italy, portugal, spain; blue → red, yellow, purple, magenta, cyan, sapphire.
+* Every change is local (the two cells it joins and a reward/penalty signal); nothing is sent
+  back through layers. With one layer this is close to word2vec's negative-sampling rule; the
+  differences that helped here are the narrow window and reading pairs (skip-gram style).
+* It still does not remember a story (not part of v0.x); story words come closer (dog 15th,
+  lantern 67th, fisherman 126th) from the sentence alone.
+* Size: 2 × 300 numbers per word, 50,000 words: 120 MB (float32), about 30 MB in 8 bits.
+
+Results: `results/cortex_k3.txt`.
+

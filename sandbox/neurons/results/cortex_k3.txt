@@ -1,0 +1,85 @@
+=== K3a K3 D=300 WIN=5 NEG=5 (dev)
+(trained already in this session)
+cell K3  N=300 K=40 WIN=5 V=50000  similarity=overlap
+T1 EN-WS-353-ALL.txt         353 pairs ( 350 known)  spearman 0.562
+T1 EN-SimVerb-3500.txt      3500 pairs (3404 known)  spearman 0.268
+T2 fill the blank          1000 items  hit@10 1.40%
+T3 Pell is a blue ___.                           owl          rank 1883
+T3 Dumi oils the gears with goose ___.           fat          rank 814
+T3 The clock was built by Imra, a ___.      answer clockmaker   not a known word
+T3 Behind the largest gear Dumi found a ___.     walnut       rank 4718
+T3 The walnut was hidden by a red ___.           squirrel     rank 2150
+T3 Dumi turned the big ___ forty times.          key          rank 3361
+T3 Imra gave Dumi her brass ___.                 screwdriver  rank 12021
+T3 The mayor of Velloran is named Orvo ___. answer kell         not a known word
+T3 stories (dev)                8 items  hit@10 0.00%
+owl: thrush(0.73) horned(0.72) owls(0.71) grasshopper(0.70) lizard(0.69) crows(0.69) wasp(0.69) tarantula(0.69) vulture(0.68) rattlesnake(0.68)
+king: prince(0.66) queen(0.65) throne(0.62) wessex(0.61) duke(0.60) tsar(0.60) northumbria(0.59) consort(0.59) penda(0.59) mercia(0.59)
+water: liquid(0.62) seawater(0.61) sewage(0.60) moisture(0.60) sieve(0.60) rainwater(0.60) silt(0.59) boiling(0.59) sand(0.58) groundwater(0.58)
+france: belgium(0.68) paris(0.65) spain(0.65) netherlands(0.65) portugal(0.64) normandy(0.64) italy(0.63) french(0.59) brittany(0.59) denmark(0.59)
+blue: yellow(0.70) pink(0.69) red(0.68) purple(0.65) green(0.64) grey(0.64) black(0.63) gray(0.63) violet(0.62) white(0.61)
+=== K3b K3 D=300 WIN=2 NEG=5 (dev)
+RESULT train cell=K3 words=50000204 seconds=402 D=300 WIN=2 NEG=5 ETA3=0.025 SUB=0.0001
+cell K3  N=300 K=40 WIN=2 V=50000  similarity=overlap
+T1 EN-WS-353-ALL.txt         353 pairs ( 350 known)  spearman 0.504
+T1 EN-SimVerb-3500.txt      3500 pairs (3404 known)  spearman 0.251
+T2 fill the blank          1000 items  hit@10 10.00%
+T3 Pell is a blue ___.                           owl          rank 1352
+T3 Dumi oils the gears with goose ___.           fat          rank 79
+T3 The clock was built by Imra, a ___.      answer clockmaker   not a known word
+T3 Behind the largest gear Dumi found a ___.     walnut       rank 10165
+T3 The walnut was hidden by a red ___.           squirrel     rank 171
+T3 Dumi turned the big ___ forty times.          key          rank 4177
+T3 Imra gave Dumi her brass ___.                 screwdriver  rank 15703
+T3 The mayor of Velloran is named Orvo ___. answer kell         not a known word
+T3 stories (dev)                8 items  hit@10 0.00%
+owl: giraffe(0.74) raccoon(0.74) lizard(0.74) horned(0.73) elf(0.73) crocodile(0.73) zebra(0.73) owls(0.73) ape(0.73) elephant(0.72)
+king: prince(0.67) emperor(0.64) queen(0.62) tsar(0.60) pharaoh(0.60) cleopatra(0.59) empress(0.59) mercia(0.58) caesar(0.58) wessex(0.57)
+water: liquid(0.64) moisture(0.62) vapor(0.62) sewage(0.61) lava(0.61) sunlight(0.61) salt(0.61) nutrients(0.61) sediment(0.60) boiling(0.60)
+france: italy(0.73) spain(0.73) belgium(0.73) netherlands(0.71) portugal(0.70) paris(0.69) denmark(0.68) poland(0.66) germany(0.66) russia(0.65)
+blue: yellow(0.73) pink(0.72) red(0.67) purple(0.66) striped(0.63) green(0.63) violet(0.61) brown(0.61) amber(0.61) gray(0.61)
+=== K3c K3 D=100 WIN=5 NEG=5 (dev)
+RESULT train cell=K3 words=50000126 seconds=346 D=100 WIN=5 NEG=5 ETA3=0.025 SUB=0.0001
+cell K3  N=100 K=40 WIN=5 V=50000  similarity=overlap
+T1 EN-WS-353-ALL.txt         353 pairs ( 350 known)  spearman 0.594
+T1 EN-SimVerb-3500.txt      3500 pairs (3404 known)  spearman 0.243
+T2 fill the blank          1000 items  hit@10 1.30%
+T3 Pell is a blue ___.                           owl          rank 2386
+T3 Dumi oils the gears with goose ___.           fat          rank 867
+T3 The clock was built by Imra, a ___.      answer clockmaker   not a known word
+T3 Behind the largest gear Dumi found a ___.     walnut       rank 4475
+T3 The walnut was hidden by a red ___.           squirrel     rank 1988
+T3 Dumi turned the big ___ forty times.          key          rank 5015
+T3 Imra gave Dumi her brass ___.                 screwdriver  rank 13051
+T3 The mayor of Velloran is named Orvo ___. answer kell         not a known word
+T3 stories (dev)                8 items  hit@10 0.00%
+owl: lizard(0.74) turtle(0.72) rooster(0.72) thrush(0.72) horned(0.72) kangaroo(0.71) hamster(0.71) weasel(0.71) crows(0.70) owls(0.70)
+king: prince(0.82) consort(0.76) queen(0.75) wessex(0.74) throne(0.73) tsar(0.73) duke(0.73) conqueror(0.72) caesar(0.72) mercia(0.71)
+water: moisture(0.74) sewage(0.74) drain(0.73) seawater(0.73) trough(0.73) sinks(0.73) liquid(0.72) boiling(0.71) cools(0.71) mud(0.70)
+france: italy(0.78) belgium(0.74) paris(0.73) normandy(0.73) portugal(0.72) netherlands(0.72) spain(0.72) hungary(0.69) denmark(0.68) brittany(0.67)
+blue: white(0.82) red(0.81) pink(0.80) black(0.78) violet(0.77) yellow(0.77) purple(0.75) green(0.75) sweater(0.73) brown(0.73)
+chosen by the mean of the three dev numbers: K3b (0.2850); others: K3a 0.2813, K3b 0.2850, K3c 0.2833
+=== K3b K3 D=300 WIN=2 NEG=5 (whole shelf, TESTS)
+RESULT train cell=K3 words=198372544 seconds=1928 D=300 WIN=2 NEG=5 ETA3=0.025 SUB=0.0001
+cell K3  N=300 K=40 WIN=2 V=50000  similarity=overlap
+T1 EN-SIMLEX-999.txt         999 pairs ( 994 known)  spearman 0.464
+T1 EN-MEN-TR-3k.txt         3000 pairs (2991 known)  spearman 0.739
+T2 fill the blank          2000 items  hit@10 10.10%
+T3 Tavi is a ___ who lives on Oruna.             fisherman    rank 126
+T3 The Moth has a green ___.                     sail         rank 1654
+T3 Sefa held up a jar of ___.                    fireflies    rank 14127
+T3 Tavi hangs a ___ on the mast every night.     lantern      rank 67
+T3 Mr. Halloran grew ___ in a glass house.       tomatoes     rank 14692
+T3 The leaves of Big Ruth were eaten by green ___. caterpillars rank 2040
+T3 He brought in six ___ to eat the insects. answer ladybirds    not a known word
+T3 The children sold the tomatoes at the ___.    market       rank 902
+T3 Anouk drove the mail ___ over the pass.       truck        rank 715
+T3 In winter the pass is often closed by ___.    snow         rank 1726
+T3 Bruno is a big grey ___.                      dog          rank 15
+T3 Anouk walked beside the sled on ___.          skis         rank 1494
+T3 stories (test)               12 items  hit@10 0.00%
+owl: owls(0.63) eagle(0.60) magpie(0.56) woodpecker(0.56) parrot(0.55) raven(0.55) kingfisher(0.55) thrush(0.54) bird(0.54) jackdaw(0.54)
+king: emperor(0.66) ruler(0.65) artaxerxes(0.64) queen(0.63) kings(0.62) monarch(0.62) chandragupta(0.62) antiochus(0.61) abdicated(0.61) confessor(0.61)
+water: groundwater(0.71) rainwater(0.69) seawater(0.68) aquifer(0.65) reservoirs(0.65) aquifers(0.65) brine(0.64) sewage(0.64) refrigerant(0.63) potable(0.63)
+france: belgium(0.72) italy(0.70) portugal(0.68) spain(0.68) luxembourg(0.68) normandy(0.65) alsace(0.65) corsica(0.65) britain(0.63) hungary(0.63)
+blue: red(0.74) yellow(0.73) purple(0.71) pink(0.70) green(0.69) magenta(0.63) cyan(0.63) turquoise(0.61) sapphire(0.60) brownish(0.60)
