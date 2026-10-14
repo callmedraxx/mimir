@@ -102,6 +102,7 @@ Word tests (cortex learned from facts): SimLex-999 0.381, MEN 0.738 (word2vec 0.
 | 10-14 | Cortex v0: random / Hebbian / predictive | Hebbian learns association, not kinds (SimLex 0.19); predictive collapsed | removed |
 | 10-14 | Cortex v0.1: Hebbian + anti-Hebbian (reward/penalty), from text | **beats word2vec**: SimLex 0.464 (w2v 0.398), MEN 0.739 (0.717), fill-the-blank 10.1% (6.6%); owl → eagle, raven, bird | its rule (K3b) goes into the brain (CORTEX_LINK); the text-trained version removed |
 | 10-14 | **CORTEX_LINK: one brain**, the cortex learning live from the facts as Mimir reads, used when answering | tests: CommonsenseQA +5.9, OpenBookQA +3.7, ARC-Easy +1.1, MMLU/ARC-C ties (mean 28.2 → 30.2); **stories worse** (19 → 14 of 30) | **in use**; rate falling with the reading clock, cosine 0.25 and the old meaning table removed |
+| 10-14 | **EPISODE**: the text being read kept apart from what it knows, active while asked about | passages: MC160 25 → 50, MC500 28 → 49, RACE-M 26 → 39; stories 7/30 → 23/30 and 14 → 27/30; general tests unchanged. Inhibition and recency added nothing | **in use** (EPW 4); one pool, inhibition, recency removed |
 
 Lessons that keep coming back:
 * Reading more helps ARC-Easy only; ARC-Challenge and OpenBookQA were built against
