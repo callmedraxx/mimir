@@ -36,7 +36,9 @@ anti-Hebbian, reward and penalty); answers use both.
 
 | part | where | what |
 |---|---|---|
-| the brain | `sandbox/brain/bg.c` | `bg read` (shelf → facts with pointers), `bg arc` (answer a test file), `bg serve` (one question at a time) |
+| the brain | `sandbox/brain/bg.c` | `bg read` (shelf → facts with pointers), `bg arc` (answer a test file), `bg serve` (one question at a time), `bg words` / `bg near` (the cortex) |
+| the cortex (being tested, CORTEX_LINK) | `sandbox/brain/bg.c`, `CX=1` | learns from each fact in its own thread while reading; saved as `BRAIN.cx`; off by default until it wins |
+| Colab runner | `tools/link_colab.py`, `tools/link.ipynb` | CORTEX_LINK dev and test |
 | reading sentences into facts | `sandbox/brain/facts.c` | word classes, chunks, frames (verb, who, what, is-what, place/time, negation) |
 | tokens, word meanings, word reader | `src/text.c`, `src/meaning.c`, `src/reader.c` | shared with the app |
 | the school brain | GitHub release `brain-school` | 32.5M facts from 2.2 GB, baby to high school (docs/past/SCHOOL_BRAIN.md) |
@@ -107,13 +109,11 @@ Lessons that keep coming back:
   relations (cause, kind of, part of).
 * Later: the cortex small enough for the phone (8-bit, ~30 MB for 50k words); a cap on what
   is kept for good; the GPT-2 vs Mimir chat page (half built).
-* Data on the droplet not used by the brain any more (not deleted, data is not in git):
-  `data/shelf/` (22 GB, brain E's reading), `data/mimir.brain`, `data/school_brain/` (1.5 GB
-  copy of the release). Say if they can go.
 
 ## Log
 
 **2026-10-14**
+* Deleted from the droplet (owner: "yes delete it"): `data/shelf/` (22 GB, brain E's reading), `data/school_brain/` (1.5 GB copy of the release), `data/pack/` (0.75 GB); brain E and the school brain stay on their GitHub releases. Disk 90% → 70% full.
 * Cleanup (owner: "any code we are not using please delete them … let's have a journal").
   Tag `before-cleanup` holds everything before. The brain is now two files,
   `sandbox/brain/bg.c` + `facts.c` (964 lines, was 3,803 across six); gone: practice,
