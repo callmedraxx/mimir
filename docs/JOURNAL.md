@@ -42,7 +42,8 @@ anti-Hebbian, reward and penalty); answers use both.
 | passage tests | `data/understand/mctest` (`tools/understand_fetch.py`), `data/understand/race` (`tools/race_fetch.py`) | MCTest MC160/MC500, RACE-Middle |
 | reading sentences into facts | `sandbox/brain/facts.c` | word classes, chunks, frames (verb, who, what, is-what, place/time, negation) |
 | tokens, word meanings, word reader | `src/text.c`, `src/meaning.c`, `src/reader.c` | shared with the app |
-| the school brain | GitHub release `brain-school` | 32.5M facts from 2.2 GB, baby to high school (docs/past/SCHOOL_BRAIN.md) |
+| **the school brain with its cortex** | GitHub release `brain-school-cx` (built by `.github/workflows/brain.yml`; Colab gets it with `tools/brain_release.py`) | 32,488,986 facts, 725k words, cortex 1.7 GB; rebuilt when `tools/brain_build.txt` changes |
+| the school brain (before the cortex) | GitHub release `brain-school` | 32.5M facts from 2.2 GB, baby to high school (docs/past/SCHOOL_BRAIN.md) |
 | its shelf | `tools/school_shelf.py` | rebuilds the 2.2 GB of books in Colab (35 min); the brain's pointers lead into it |
 | word classes | `data/understand/wordclass.tsv` (`tools/understand_fetch.py`; release `brain-E`) | |
 | glue words | `data/meaning/meaning.mng` | only its list of the most common words (the, of, …), which the reader skips; its word meanings are no longer used |
@@ -112,8 +113,9 @@ Lessons that keep coming back:
   chance from one that answers the question.
 * General knowledge drowns out what was just read (passage questions with background, 10-12;
   stories with the cortex, 10-14). Fixed by giving the text being read its own place (EPISODE).
-* Sending big files (100 MB and up) from Colab through the shared browser fails: a brain lives
-  only in its Colab session; rebuilding the school brain with its cortex takes about 1.5 hours.
+* Sending big files (100 MB and up) from Colab through the shared browser fails. The brain is
+  built by GitHub Actions instead and published as a release (no key needed: GitHub's own job
+  token); a Colab session downloads it in minutes.
 
 ## Open
 
@@ -128,6 +130,8 @@ Lessons that keep coming back:
 ## Log
 
 **2026-10-14**
+* The school brain with its cortex published as release `brain-school-cx` by GitHub Actions (owner: "you have gh access create the key you need"; GitHub does not let tools create keys, and the existing all-repos key was not put in Colab; the workflow uses GitHub's own job token). Same 32,488,986 facts as the Colab builds.
+* PASSAGE scorecard and code; dev running.
 * EPISODE tested: adopted (MC160 25 → 50, MC500 28 → 49, RACE-M 26 → 39; new stories 23/30, harbor/garden/snow 27/30; general tests unchanged). Losers deleted.
 * CORTEX_LINK tested: adopted (general tests mean 28.2 → 30.2; CommonsenseQA +5.9, OpenBookQA +3.7), stories worse (19 → 14 of 30). Losing settings deleted; the cortex is always on. EPISODE scorecard written (3 new stories, 30 questions).
 * Deleted from the droplet (owner: "yes delete it"): `data/shelf/` (22 GB, brain E's reading), `data/school_brain/` (1.5 GB copy of the release), `data/pack/` (0.75 GB); brain E and the school brain stay on their GitHub releases. Disk 90% → 70% full.
