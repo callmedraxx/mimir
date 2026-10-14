@@ -3,6 +3,7 @@
 
   data/arc_tests/mmlu_hs_test.tsv   MMLU (Hendrycks et al. 2021, MIT), test split of every high_school_* subject
   data/arc_tests/csqa_dev.tsv       CommonsenseQA (Talmor et al. 2019, MIT), validation split (its test answers are hidden)
+  data/dev_sets/mmlu_hs_dev.tsv, csqa_traindev.tsv   for developing on: MMLU validation split, 1,000 CommonsenseQA training questions
 Needs pyarrow. Run from the repo root.
 """
 import io, json, urllib.request
@@ -25,3 +26,19 @@ with open("data/arc_tests/csqa_dev.tsv", "w") as o:
     for r in t:
         L = list(r["choices"]["label"]); o.write("\t".join([r["id"], clean(r["question"]), str(len(L))] + [clean(x) for x in r["choices"]["text"]] + [str(L.index(r["answerKey"]))]) + "\n")
 print("csqa_dev:", len(t), "questions")
+
+# dev sets for developing on (RANKING_COMPARE.md); the two tests above are never developed on
+n = 0
+with open("data/dev_sets/mmlu_hs_dev.tsv", "w") as o:
+    for f in (x.replace("/test-", "/validation-") for x in subj):
+        t = pq.read_table(io.BytesIO(get("https://huggingface.co/datasets/cais/mmlu/resolve/main/" + f))).to_pylist()
+        for i, r in enumerate(t):
+            o.write("\t".join(["%s_v%d" % (f.split("/")[0], i), clean(r["question"]), str(len(r["choices"]))] + [clean(c) for c in r["choices"]] + [str(r["answer"])]) + "\n"); n += 1
+print("mmlu_hs_dev:", n, "questions")
+import random
+t = pq.read_table(io.BytesIO(get("https://huggingface.co/datasets/tau/commonsense_qa/resolve/main/data/train-00000-of-00001.parquet"))).to_pylist()
+random.Random(12345).shuffle(t)
+with open("data/dev_sets/csqa_traindev.tsv", "w") as o:
+    for r in t[:1000]:
+        L = list(r["choices"]["label"]); o.write("\t".join([r["id"], clean(r["question"]), str(len(L))] + [clean(x) for x in r["choices"]["text"]] + [str(L.index(r["answerKey"]))]) + "\n")
+print("csqa_traindev: 1000 questions from the training split")

@@ -383,6 +383,7 @@ static float *mark; static uint32_t nmark;
 static double BW[5] = { 1, 0.5, 2, 4, 0 };   /* chosen on ARC train + dev with a dev brain (5% of the shelf); the chain's on dev (CHAIN_COMPARE.md) */
 /* (e) chain: a fact about the question and a fact about the option, linked by a word in neither (not a common one) */
 static int LEARNED;     /* answer neurons from training questions are in use (LAYA_LEVEL.md stage 3) */
+static int NCAND = 200, CANDJOIN;   /* candidate facts per option, and the full join for common option words (RANKING_COMPARE.md) */
 static int NOPEN = 3;   /* facts whose shelf sentences are re-read when answering (LAYA_LEVEL.md stage 1) */
 static int CHAINV = 1; static double LINKIDF = 5;   /* chosen on dev (CHAIN_COMPARE.md): both facts must fit (product), the link word rarer than 1 fact in 150 */
 static int is_link(uint32_t g, const QW *Q, int nq, const QW *O, int no) {
@@ -431,12 +432,25 @@ static void bg_option(Know *A, const char *q, const char *opt, BParts *P) {
     /* candidate facts: those holding one of the option's own words, ranked first by the question's words they also hold (exactly) */
     if (nmark < LX.n) { mark = realloc(mark, LX.n * sizeof *mark); memset(mark + nmark, 0, (LX.n - nmark) * sizeof *mark); nmark = LX.n; }
     for (int i = 0; i < nq; i++) if (Q[i].g != NONE) mark[Q[i].g] = (float)gidf(Q[i].g);
-    enum { NC = 200 }; uint32_t cand[NC]; float cs[NC]; int nc = 0;
-    for (int i = 0; i < no; i++) { if (O[i].g == NONE) continue;
-        uint32_t a = cue_off[O[i].g], b = cue_off[O[i].g + 1]; if (b - a > 200000) b = a + 200000;
-        for (uint32_t x = a; x < b; x++) { uint32_t fi = cue[x]; uint32_t w[8]; int n = kf_words(&kf[fi], w); float s = 0; for (int j = 0; j < n; j++) s += mark[w[j]];
-            s = (float)(s * conf(&kf[fi])) + 1e-3f * (float)conf(&kf[fi]);
-            if (nc < NC) { cand[nc] = fi; cs[nc++] = s; } else { int m = 0; for (int j = 1; j < NC; j++) if (cs[j] < cs[m]) m = j; if (s > cs[m]) { cand[m] = fi; cs[m] = s; } } } }
+    enum { NCMAX = 2000 }; static uint32_t cand[NCMAX]; static float cs[NCMAX]; int nc = 0, NC = NCAND < 1 ? 1 : NCAND > NCMAX ? NCMAX : NCAND;
+#define CAND_ADD(fi, chk) do { uint32_t w_[8]; int n_ = kf_words(&kf[fi], w_); float s_ = 0; for (int j_ = 0; j_ < n_; j_++) s_ += mark[w_[j_]]; \
+        s_ = (float)(s_ * conf(&kf[fi])) + 1e-3f * (float)conf(&kf[fi]); int m_ = nc; \
+        if (nc == NC) { m_ = 0; for (int j_ = 1; j_ < NC; j_++) if (cs[j_] < cs[m_]) m_ = j_; if (!(s_ > cs[m_])) break; } \
+        if (chk) { int dup_ = 0; for (int k_ = 0; k_ < nc; k_++) dup_ |= cand[k_] == (fi); if (dup_) break; } \
+        cand[m_] = fi; cs[m_] = s_; if (m_ == nc) nc++; } while (0)
+    for (int i = 0; i < no; i++) { if (O[i].g == NONE) continue; int dupo = 0; for (int k = 0; k < i; k++) dupo |= O[k].g == O[i].g;
+        uint32_t a = cue_off[O[i].g], b = cue_off[O[i].g + 1]; int cut = b - a > 200000; if (cut) b = a + 200000;
+        for (uint32_t x = a; x < b; x++) { uint32_t fi = cue[x]; CAND_ADD(fi, 0); }
+        /* CANDJOIN (RANKING_COMPARE.md): a common option word's list is cut at its 200,000 strongest facts; the facts that also hold a
+           question word are found in full from the question word's own list when it is the shorter one, else from the rest of the option word's */
+        if (!CANDJOIN || !cut || dupo) continue;
+        for (int q = 0; q < nq; q++) { if (Q[q].g == NONE) continue; int dupq = 0; for (int k = 0; k < q; k++) dupq |= Q[k].g == Q[q].g; if (dupq) continue;
+            uint32_t qa = cue_off[Q[q].g], qb = cue_off[Q[q].g + 1], oa = a + 200000, ob = cue_off[O[i].g + 1];
+            uint32_t sa, sb, other; if (qb - qa <= ob - oa) { sa = qa; sb = qb; other = O[i].g; } else { sa = oa; sb = ob; other = Q[q].g; }
+            if (sb - sa > 4000000) sb = sa + 4000000;
+            for (uint32_t x = sa; x < sb; x++) { uint32_t fi = cue[x], w[8]; int n = kf_words(&kf[fi], w), has = 0; for (int j = 0; j < n; j++) has |= w[j] == other; if (!has) continue;
+                CAND_ADD(fi, 1); } } }
+#undef CAND_ADD
     if (BW[4] != 0 || LEARNED || getenv("DUMP")) chain_part(Q, nq, O, no, q, cand, nc, P);
     for (int i = 0; i < nq; i++) if (Q[i].g != NONE) mark[Q[i].g] = 0;
     /* (a) fact agreement, (b) one known fact covering the question and the option */
@@ -612,6 +626,7 @@ int main(int argc, char **argv) {
         while (fgets(l, sizeof l, f)) if (l[0] != '#') { char *e = l; for (int i = 0; i < 11; i++) LW[i] = strtod(e, &e); LEARNED = 1; } fclose(f); }
     if (getenv("POLARITY")) POLARITY = atoi(getenv("POLARITY"));
     if (getenv("NOPEN")) NOPEN = atoi(getenv("NOPEN"));
+    if (getenv("NCAND")) NCAND = atoi(getenv("NCAND")); if (getenv("CANDJOIN")) CANDJOIN = atoi(getenv("CANDJOIN"));
     if (getenv("CHAINV")) CHAINV = atoi(getenv("CHAINV")); if (getenv("LINKIDF")) LINKIDF = atof(getenv("LINKIDF"));
     if (!strcmp(argv[1], "read") && argc >= 5) return run_read(argv[2], atof(argv[3]), argc - 4, argv + 4);
     STRENGTH = getenv("STRENGTH") ? atoi(getenv("STRENGTH")) : 0;
