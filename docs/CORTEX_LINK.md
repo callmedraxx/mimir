@@ -121,3 +121,51 @@ Frozen in `tools/link_choice.env`.
 3/10 after reading, against M0's 8/10. Matching by meaning lets near words (another
 animal, another person) count as much as the story's exact words, so the story's own facts
 lose to the shelf's. The test stories will show whether this holds for the choice.
+
+## Test results (2026-10-14, Colab, once, frozen e440cbe; `results/link_test.txt`)
+
+The cortex learned from the facts, on word tests (against K3b from text, docs/past/CORTEX.md,
+and word2vec):
+
+| | SimLex-999 | MEN-3000 |
+|---|---|---|
+| **cortex from facts** | 0.381 | **0.738** |
+| K3b from text | 0.464 | 0.739 |
+| word2vec | 0.398 | 0.717 |
+
+Relatedness as good as from text; likeness ("same kind") lower: facts tie words by their
+roles (owl, hunt, mouse), which says more about what goes together than what is alike.
+
+The five tests, the same brain (32,488,986 facts), M0 and the choice each run once:
+
+| test | **M0** (old table) | **chosen** (cortex 0.40, fit 1) | change |
+|---|---|---|---|
+| MMLU high school (3,420) | 27.85 | 27.41 | −0.4 tie |
+| CommonsenseQA dev (1,221) | 25.50 | **31.37** | **+5.9 better** |
+| ARC-Easy (2,376) | 45.52 | **46.61** | +1.1 better |
+| ARC-Challenge (1,172) | 21.35 | 21.22 | −0.1 tie |
+| OpenBookQA (500) | 20.67 | **24.40** | **+3.7 better** |
+| mean | 28.18 | **30.20** | **+2.0** |
+
+M0 on this brain gives the released brain's school-test numbers within 0.1.
+
+Stories (CORTEX_LINK's three new ones), right after reading each:
+
+| story | M0 before → after | chosen before → after |
+|---|---|---|
+| harbor | 3 → 5 | 2 → 3 |
+| garden | 3 → 6 | 4 → 5 |
+| snow | 2 → 8 | 3 → 6 |
+| **all (30)** | 8 → **19** | 9 → **14** |
+
+**Count: better 3, tie 2, worse 0 on the general tests; the stories worse (19 → 14).**
+The cortex is adopted (the rule: dev). What it shows:
+
+* Understanding words helps most where Mimir knew least: everyday knowledge
+  (CommonsenseQA +5.9) and OpenBookQA (+3.7), both above their earlier best.
+* What it just read loses to what it knows: the stories fall, as the clock story warned.
+  Next: docs/EPISODE.md.
+
+Losers deleted: the old meaning table as word meanings (kept only for its list of glue
+words), L1 (the rate falling with the reading clock, `CXSCHED`, `CXPOS`), the 0.25 cosine.
+The cortex is now always on.

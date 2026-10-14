@@ -37,21 +37,21 @@ anti-Hebbian, reward and penalty); answers use both.
 | part | where | what |
 |---|---|---|
 | the brain | `sandbox/brain/bg.c` | `bg read` (shelf → facts with pointers), `bg arc` (answer a test file), `bg serve` (one question at a time), `bg words` / `bg near` (the cortex) |
-| the cortex (being tested, CORTEX_LINK) | `sandbox/brain/bg.c`, `CX=1` | learns from each fact in its own thread while reading; saved as `BRAIN.cx`; off by default until it wins |
-| Colab runner | `tools/link_colab.py`, `tools/link.ipynb` | CORTEX_LINK dev and test |
+| **the cortex** | `sandbox/brain/bg.c` | learns from each fact in its own thread while reading (K3b's reward/penalty rule; each word's rate falls as it is met more often); saved as `BRAIN.cx`; compares words when answering (a link from cosine 0.40) and scores how well an option fits the question (weight 1) |
+| sending a brain from Colab | `tools/send_brain.py` | gzipped parts + SHA-256 manifest |
 | reading sentences into facts | `sandbox/brain/facts.c` | word classes, chunks, frames (verb, who, what, is-what, place/time, negation) |
 | tokens, word meanings, word reader | `src/text.c`, `src/meaning.c`, `src/reader.c` | shared with the app |
 | the school brain | GitHub release `brain-school` | 32.5M facts from 2.2 GB, baby to high school (docs/past/SCHOOL_BRAIN.md) |
 | its shelf | `tools/school_shelf.py` | rebuilds the 2.2 GB of books in Colab (35 min); the brain's pointers lead into it |
 | word classes | `data/understand/wordclass.tsv` (`tools/understand_fetch.py`; release `brain-E`) | |
-| old word meanings | `data/meaning/meaning.mng` (29.7k words, fixed) | to be replaced by the cortex if CORTEX_LINK wins |
+| glue words | `data/meaning/meaning.mng` | only its list of the most common words (the, of, …), which the reader skips; its word meanings are no longer used |
 | dev sets | `data/dev_sets/` (`tools/general_tests.py`) | ARC-Easy, ARC-Challenge, OpenBookQA dev; MMLU-HS validation; CommonsenseQA 1,000 from train |
 | tests | `data/arc_tests/` | MMLU-HS test, CommonsenseQA dev, ARC-Easy, ARC-Challenge, OpenBookQA test |
 | stories | `data/story/` | clock (dev, 10 questions); harbor, garden, snow (test, 30 questions, never run yet) |
 | word tests | `data/cortex/wordsim/` | WordSim-353, SimVerb-3500 (dev); SimLex-999, MEN-3000 (test) |
 | results | `results/` | every run's output |
 
-Answering settings (now the defaults): fact 1, joint 0.5, open book 2, meaning 4; 20 facts
+Answering settings (now the defaults): fact 1, joint 0.5, open book 2, meaning 4, fit 1; 20 facts
 re-read; 200 candidate facts per option; "not / least / except" questions turn the score
 around; strength fades with time; no room limit.
 
@@ -60,17 +60,19 @@ which the Workbench Lab bench builds (`tools/wasm_instrument.py`, `tools/wiring.
 its alphabet images (`tools/fetch_*.py`, `tools/vision_diag.c`). Kept because the live bench
 uses them; say if they should go too.
 
-## Scores now (school brain)
+## Scores now (school brain + cortex, 2026-10-14)
 
 | | MMLU-HS | CommonsenseQA | ARC-Easy | ARC-Challenge | OpenBookQA |
 |---|---|---|---|---|---|
-| **Mimir, school brain** | 27.9 | 25.5 | 45.5 | 21.3 | 20.7 |
+| **Mimir, school brain + cortex** | 27.4 | **31.4** | **46.6** | 21.2 | **24.4** |
+| Mimir, school brain alone | 27.9 | 25.5 | 45.5 | 21.3 | 20.7 |
 | GPT-2 XL (1.5B) | 29.9 | 37.1 | 58.3 | 25.0 | 18.2 |
 | Laya (421M) | 33.2 | 44.7 | 50.1 | 30.5 | 40.0 |
 | chance | 25 | 20 | 25 | 25 | 25 |
 
-Story test (clock, school brain): 1/10 before reading the story, 8/10 after. Misses: "Pell
-is an owl" said as "an owl named Pell"; "He" meaning Dumi.
+Stories (30 questions, harbor/garden/snow), right after reading: 14/30 with the cortex,
+19/30 without; before reading 9/30. Clock story: 8/10 without the cortex, 3/10 with it.
+Word tests (cortex learned from facts): SimLex-999 0.381, MEN 0.738 (word2vec 0.398 / 0.717).
 
 ## Tried
 
@@ -93,6 +95,7 @@ is an owl" said as "an owl named Pell"; "He" meaning Dumi.
 | 10-14 | Candidate ranking (more candidates, full join) | no cell beat the current one; more candidates hurt | removed |
 | 10-14 | Cortex v0: random / Hebbian / predictive | Hebbian learns association, not kinds (SimLex 0.19); predictive collapsed | removed |
 | 10-14 | Cortex v0.1: Hebbian + anti-Hebbian (reward/penalty), from text | **beats word2vec**: SimLex 0.464 (w2v 0.398), MEN 0.739 (0.717), fill-the-blank 10.1% (6.6%); owl → eagle, raven, bird | its rule (K3b) goes into the brain (CORTEX_LINK); the text-trained version removed |
+| 10-14 | **CORTEX_LINK: one brain**, the cortex learning live from the facts as Mimir reads, used when answering | tests: CommonsenseQA +5.9, OpenBookQA +3.7, ARC-Easy +1.1, MMLU/ARC-C ties (mean 28.2 → 30.2); **stories worse** (19 → 14 of 30) | **in use**; rate falling with the reading clock, cosine 0.25 and the old meaning table removed |
 
 Lessons that keep coming back:
 * Reading more helps ARC-Easy only; ARC-Challenge and OpenBookQA were built against
@@ -100,13 +103,13 @@ Lessons that keep coming back:
 * What looks like a gain can be test-taking (stage 3). Count only what the brain knows.
 * More candidate facts add noise, not answers: the problem is telling a fact that fits by
   chance from one that answers the question.
+* General knowledge drowns out what was just read (passage questions with background, 10-12;
+  stories with the cortex, 10-14). The text being read needs its own place (EPISODE).
 
 ## Open
 
-* **Now: CORTEX_LINK** (docs/CORTEX_LINK.md): the cortex learns live from the facts as
-  Mimir reads, and answers use both.
-* Next: **EPISODE** (docs/EPISODE.md): what it is reading now kept apart from what it knows
-  (the clock story fell 8/10 → 3/10 with the cortex on); scorecard written.
+* **Now: EPISODE** (docs/EPISODE.md): what it is reading now kept apart from what it knows
+  (stories fell 19 → 14 of 30 with the cortex on); scorecard written, code next.
 * Then: sentences, not just words: pronouns ("He" = Dumi), "an owl named Pell", negation,
   relations (cause, kind of, part of).
 * Later: the cortex small enough for the phone (8-bit, ~30 MB for 50k words); a cap on what
@@ -115,6 +118,7 @@ Lessons that keep coming back:
 ## Log
 
 **2026-10-14**
+* CORTEX_LINK tested: adopted (general tests mean 28.2 → 30.2; CommonsenseQA +5.9, OpenBookQA +3.7), stories worse (19 → 14 of 30). Losing settings deleted; the cortex is always on. EPISODE scorecard written (3 new stories, 30 questions).
 * Deleted from the droplet (owner: "yes delete it"): `data/shelf/` (22 GB, brain E's reading), `data/school_brain/` (1.5 GB copy of the release), `data/pack/` (0.75 GB); brain E and the school brain stay on their GitHub releases. Disk 90% → 70% full.
 * Cleanup (owner: "any code we are not using please delete them … let's have a journal").
   Tag `before-cleanup` holds everything before. The brain is now two files,

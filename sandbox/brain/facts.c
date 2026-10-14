@@ -17,13 +17,6 @@
 #include "../../src/text.c"
 #undef vocab_id
 
-/* a word's meaning norm (the old meaning table, data/meaning), worked out once */
-static float *inv_norm;
-static void meaning_norms(const Meaning *m) {
-    inv_norm = malloc((size_t)m->n * sizeof *inv_norm);
-    for (int i = 0; i < m->n; i++) { const int8_t *v = m->vec + (size_t)i * m->dims; float n = 0;
-        for (int d = 0; d < m->dims; d++) n += (float)v[d] * v[d]; inv_norm[i] = 1.0f / (sqrtf(n) + 1e-9f); }
-}
 static double now(void) { struct timespec t; clock_gettime(CLOCK_MONOTONIC, &t); return t.tv_sec + t.tv_nsec * 1e-9; }
 static inline int vput(uint8_t *p, uint32_t v) { int n = 0; while (v >= 128) { p[n++] = (v & 127) | 128; v >>= 7; } p[n++] = v; return n; }
 
