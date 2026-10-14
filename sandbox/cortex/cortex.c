@@ -16,6 +16,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 
 static int V = 50000, N = 2048, K = 40, WIN = 2, M = 128;
 static double ETA = 0.05, ETA2 = 0.01, BETA = 2.0, SUB = 1e-4, IDW = 0.5;
@@ -189,15 +192,75 @@ static void train_line(char *line, int held) {
         if (MAXTOK > 0 && ntok >= MAXTOK) { MAXTOK = -1; return; } }
 }
 
+
+/* ---- K3 (v0.1, docs/CORTEX.md): Hebbian + anti-Hebbian. Each word has D meaning cells (MU) and D context cells (MC).
+   A word t next to a neighbour c: reward, the links between t's meaning cells and c's context cells grow by how much the
+   pair was not yet expected (1 - sigma(agreement)); penalty, for NEG words drawn at random (by how common they are) the
+   links shrink by how much they were expected (sigma(agreement)). Each change uses only the two cells it joins and the
+   reward/penalty signal. Two threads share the cells (Hogwild). */
+static int D = 300, NEG = 5; static float *MU, *MC; static int *UT; static const long UTN = 10000000; static double ETA3 = 0.025, TOTAL; static long k3done;
+static float sigm(float x) { return x > 8 ? 1.0f : x < -8 ? 0.0f : 1.0f / (1.0f + expf(-x)); }
+static uint64_t xr(uint64_t *s) { *s ^= *s << 13; *s ^= *s >> 7; *s ^= *s << 17; return *s; }
+static void k3_init(void) {
+    MU = malloc((size_t)V * D * 4); MC = calloc((size_t)V * D, 4); uint64_t st = SEED * 2654435761u + 7;
+    for (size_t i = 0; i < (size_t)V * D; i++) MU[i] = (float)(((xr(&st) >> 11) * (1.0 / 9007199254740992.0)) - 0.5) / D;
+    UT = malloc(UTN * sizeof *UT); double z = 0; for (int w = 0; w < V; w++) z += pow((double)vcnt[w], 0.75);
+    int w = 0; double c = pow((double)vcnt[0], 0.75) / z;
+    for (long i = 0; i < UTN; i++) { UT[i] = w; if ((double)(i + 1) / UTN > c && w < V - 1) { w++; c += pow((double)vcnt[w], 0.75) / z; } }
+    if (MAXTOK > 0) TOTAL = (double)MAXTOK;
+    else { for (int x = 0; x < V; x++) { double f = (double)vcnt[x] / vtot, keep = SUB > 0 ? (sqrt(f / SUB) + 1) * SUB / f : 1; TOTAL += vcnt[x] * (keep < 1 ? keep : 1); } }
+}
+static void k3_line(const char *line, uint64_t *st, float *neu) {
+    static __thread char (*w)[32]; static __thread int *seq; if (!w) { w = malloc(4096 * 32); seq = malloc(4096 * sizeof *seq); }
+    int n = words(line, w, 4096), ns = 0;
+    for (int i = 0; i < n; i++) { int id = wid(w[i]); if (id < 0) continue;
+        if (SUB > 0) { double f = (double)vcnt[id] / vtot, keep = (sqrt(f / SUB) + 1) * SUB / f; if (keep < 1 && (xr(st) >> 11) * (1.0 / 9007199254740992.0) > keep) continue; }
+        seq[ns++] = id; }
+    for (int i = 0; i < ns; i++) {
+        double prog = (double)k3done / (TOTAL > 1 ? TOTAL : 1); float eta = (float)(ETA3 * (prog < 0.9999 ? 1 - prog : 0.0001));
+        int t = seq[i], b = 1 + (int)(xr(st) % (uint64_t)WIN); float *u = MU + (size_t)t * D;
+        for (int d = -b; d <= b; d++) { int j = i + d; if (!d || j < 0 || j >= ns) continue;
+            memset(neu, 0, D * 4);
+            for (int k = 0; k <= NEG; k++) { int o; float label;
+                if (k == 0) { o = seq[j]; label = 1; } else { o = UT[xr(st) % (uint64_t)UTN]; if (o == seq[j]) continue; label = 0; }
+                float *v = MC + (size_t)o * D, dot = 0; for (int x = 0; x < D; x++) dot += u[x] * v[x];
+                float g = eta * (label - sigm(dot));          /* reward (label 1) or penalty (label 0), times the surprise */
+                for (int x = 0; x < D; x++) { neu[x] += g * v[x]; v[x] += g * u[x]; } }
+            for (int x = 0; x < D; x++) u[x] += neu[x]; }
+        long dn = __atomic_add_fetch(&k3done, 1, __ATOMIC_RELAXED);
+        if (dn % 5000000 == 0) fprintf(stderr, "  %ld M words replayed, %.0f words/s\n", dn / 1000000, dn / (now() - tstart));
+    }
+}
+static void k3_train(int nf, char **files) {
+    enum { B = 20000 }; static char *L[B]; int nl = 0; static char buf[1 << 20];
+    for (int fi = 0; fi < nf && (MAXTOK <= 0 || k3done < MAXTOK); fi++) { FILE *f = fopen(files[fi], "r"); if (!f) { perror(files[fi]); exit(1); }
+        for (int more = 1; more && (MAXTOK <= 0 || k3done < MAXTOK);) {
+            nl = 0; while (nl < B && (more = fgets(buf, sizeof buf, f) != NULL)) { int held = lineno++ % 200 == 0; if (!held) L[nl++] = strdup(buf); }
+            #pragma omp parallel
+            { uint64_t st = SEED * 0x9E3779B97F4A7C15ull + (uint64_t)lineno * 31 + 1; float *neu = malloc(D * 4);
+              #ifdef _OPENMP
+              st += 1000003ull * (uint64_t)omp_get_thread_num();
+              #endif
+              #pragma omp for schedule(dynamic, 64)
+              for (int i = 0; i < nl; i++) if (MAXTOK <= 0 || k3done < MAXTOK) k3_line(L[i], &st, neu);
+              free(neu); }
+            for (int i = 0; i < nl; i++) free(L[i]); }
+        fclose(f); }
+    ntok = k3done;
+}
+
 /* ---- model file */
 static void save(const char *p) {
-    FILE *f = fopen(p, "wb"); fwrite("CTX0", 1, 4, f); int h[6] = { CELL, V, N, K, M, WIN }; fwrite(h, 4, 6, f); fwrite(&SEED, 8, 1, f);
+    FILE *f = fopen(p, "wb"); fwrite("CTX0", 1, 4, f); int h[6] = { CELL, V, CELL == 3 ? D : N, K, M, WIN }; fwrite(h, 4, 6, f); fwrite(&SEED, 8, 1, f);
+    if (CELL == 3) { fwrite(MU, 4, (size_t)V * D, f); fwrite(MC, 4, (size_t)V * D, f); fclose(f); return; }
     fwrite(mn, 1, V, f); fwrite(mi, 2, (size_t)V * M, f); fwrite(mv, 4, (size_t)V * M, f); fwrite(duty, 4, N, f);
     if (CELL == 2) fwrite(WT, 4, (size_t)N * N, f); fclose(f);
 }
 static int load(const char *p) {
     FILE *f = fopen(p, "rb"); char mg[4]; int h[6]; if (!f || fread(mg, 1, 4, f) != 4 || memcmp(mg, "CTX0", 4) || fread(h, 4, 6, f) != 6) { fprintf(stderr, "bad model %s\n", p); return 1; }
     CELL = h[0]; V = h[1]; N = h[2]; K = h[3]; M = h[4]; WIN = h[5]; if (fread(&SEED, 8, 1, f) != 1) return 1;
+    if (CELL == 3) { D = N; MU = malloc((size_t)V * D * 4); MC = malloc((size_t)V * D * 4);
+        if (fread(MU, 4, (size_t)V * D, f) != (size_t)V * D || fread(MC, 4, (size_t)V * D, f) != (size_t)V * D) return 1; fclose(f); return 0; }
     R = malloc((size_t)V * K * 2); for (int w = 0; w < V; w++) rpat(w, R + (size_t)w * K);
     mn = malloc(V); mi = malloc((size_t)V * M * 2); mv = malloc((size_t)V * M * 4); duty = malloc(N * 4);
     if (fread(mn, 1, V, f) != (size_t)V || fread(mi, 2, (size_t)V * M, f) != (size_t)V * M || fread(mv, 4, (size_t)V * M, f) != (size_t)V * M || fread(duty, 4, N, f) != (size_t)N) return 1;
@@ -205,7 +268,9 @@ static int load(const char *p) {
     fclose(f); codes_all(); boost_refresh(); return 0;
 }
 static int run_train(const char *cell, const char *model, int nf, char **files) {
-    CELL = cell[1] - '0'; if (cell[0] != 'K' || CELL < 0 || CELL > 2) { fprintf(stderr, "cell is K0, K1 or K2\n"); return 1; }
+    CELL = cell[1] - '0'; if (cell[0] != 'K' || CELL < 0 || CELL > 3) { fprintf(stderr, "cell is K0, K1, K2 or K3\n"); return 1; }
+    if (CELL == 3) { k3_init(); tstart = now(); k3_train(nf, files); save(model);
+        fprintf(stderr, "RESULT train cell=%s words=%ld seconds=%.0f D=%d WIN=%d NEG=%d ETA3=%g SUB=%g\n", cell, ntok, now() - tstart, D, WIN, NEG, ETA3, SUB); return 0; }
     init_cells(); P = malloc(N * 4); Y = malloc(256 * 2); Yh = malloc(256 * 2); rs ^= SEED;
     tstart = now(); if (CELL) each_line(nf, files, train_line);
     if (CELL == 1) {   /* meaning = the context patterns met, less what every word meets (the mean), kept as its M strongest units */
@@ -223,6 +288,7 @@ static int run_train(const char *cell, const char *model, int nf, char **files) 
 /* ---- using it */
 static int SIMCOS;
 static double sim(int a, int b) {
+    if (CELL == 3) { const float *x = MU + (size_t)a * D, *y = MU + (size_t)b * D; double d = 0, na = 0, nb = 0; for (int i = 0; i < D; i++) { d += x[i] * y[i]; na += x[i] * x[i]; nb += y[i] * y[i]; } return na > 0 && nb > 0 ? d / sqrt(na * nb) : 0; }
     if (SIMCOS) { double d = 0, na = 0, nb = 0; uint16_t *Ia = mi + (size_t)a * M, *Ib = mi + (size_t)b * M; float *Va = mv + (size_t)a * M, *Vb = mv + (size_t)b * M;
         for (int i = 0; i < mn[a]; i++) { na += Va[i] * Va[i]; for (int j = 0; j < mn[b]; j++) if (Ia[i] == Ib[j]) d += Va[i] * Vb[j]; }
         for (int j = 0; j < mn[b]; j++) nb += Vb[j] * Vb[j]; return na > 0 && nb > 0 ? d / sqrt(na * nb) : 0; }
@@ -232,6 +298,11 @@ static double sim(int a, int b) {
 /* score of every word as the filler for a context */
 static double STORYW = 1;   /* T3: the story's words, all together, weigh as much as STORYW words next to the blank */
 static void fill(const int *ctx, int nc, const int *ex, int ne, float *score) {
+    if (CELL == 3) {   /* how well each word's meaning cells fit the context cells of the words around the blank */
+        static float *q; if (!q) q = malloc(D * 4); memset(q, 0, D * 4);
+        for (int c = 0; c < nc + ne; c++) { int w = c < nc ? ctx[c] : ex[c - nc]; float a = c < nc ? 1.0f : (float)(STORYW / ne); const float *v = MC + (size_t)w * D; for (int i = 0; i < D; i++) q[i] += a * v[i]; }
+        for (int w = 0; w < V; w++) { const float *u = MU + (size_t)w * D; double s = 0; for (int i = 0; i < D; i++) s += u[i] * q[i]; score[w] = (float)s; }
+        for (int c = 0; c < nc; c++) score[ctx[c]] = -1e9f; return; }
     static float *in; if (!in) in = malloc(N * 4); memset(in, 0, N * 4);
     for (int c = 0; c < nc + ne; c++) { int w = c < nc ? ctx[c] : ex[c - nc]; float a = c < nc ? 1.0f : (float)(STORYW / ne);
         if (CELL == 1) { const uint16_t *r = R + (size_t)w * K; for (int k = 0; k < K; k++) in[r[k]] += a; }
@@ -300,7 +371,7 @@ static int run_near(int nw, char **ws) {
 
 int main(int argc, char **argv) {
     V = envi("V", V); N = envi("N", N); K = envi("K", K); WIN = envi("WIN", WIN); M = envi("M", M);
-    ETA = envd("ETA", ETA); IDW = envd("IDW", IDW); ETA2 = envd("ETA2", ETA2); BETA = envd("BETA", BETA); SUB = envd("SUB", SUB);
+    ETA = envd("ETA", ETA); D = envi("D", D); NEG = envi("NEG", NEG); ETA3 = envd("ETA3", ETA3); IDW = envd("IDW", IDW); ETA2 = envd("ETA2", ETA2); BETA = envd("BETA", BETA); SUB = envd("SUB", SUB);
     MAXTOK = getenv("MAXTOK") ? atol(getenv("MAXTOK")) : 0; SEED = getenv("SEED") ? strtoull(getenv("SEED"), 0, 10) : SEED; SIMCOS = envi("SIM", 0); STORYW = envd("STORYW", STORYW);
     if (K > 255 || M > 255 || N > 65535 || K > M) { fprintf(stderr, "K, M up to 255, K <= M, N up to 65535\n"); return 1; }
     if (argc >= 4 && !strcmp(argv[1], "vocab")) return run_vocab(argv[2], argc - 3, argv + 3);

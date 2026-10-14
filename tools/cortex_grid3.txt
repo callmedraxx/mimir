@@ -1,0 +1,4 @@
+# docs/CORTEX.md v0.1 dev grid (K3, Hebbian + anti-Hebbian): name, cell, settings. First 50M replayed words each.
+K3a     K3  D=300 WIN=5 NEG=5
+K3b     K3  D=300 WIN=2 NEG=5
+K3c     K3  D=100 WIN=5 NEG=5
