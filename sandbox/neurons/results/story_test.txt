@@ -1,0 +1,24 @@
+=== before reading (brain /content/school.brain: 32489775 facts, 725326 words (loaded in 31.5 s))
+clock_1	Who built the clock in the tower?	pick=the baker	right=Imra Batsho	WRONG	scores=0.375,0.000,0.298,0.749	from= | 
+clock_2	What kind of animal is Pell?	pick=a goat	right=an owl	WRONG	scores=0.825,0.717,0.714,0.856	from= | 
+clock_3	What does Pell eat?	pick=bread	right=beetles	WRONG	scores=1.051,1.051,0.610,1.122	from= | 
+clock_4	What does Dumi oil the gears with?	pick=olive oil	right=goose fat	WRONG	scores=0.605,0.317,0.494,0.381	from= | 
+clock_5	Why does Imra use goose fat on the gears?	pick=it is cheap	right=it does not freeze in winter	WRONG	scores=0.571,0.952,0.863,0.824	from= | 
+clock_6	What stopped the clock?	pick=snow in the gears	right=a walnut jammed the gear	WRONG	scores=0.924,0.440,0.487,0.902	from= | 
+clock_7	Who hid the walnut in the clock?	pick=the baker	right=a red squirrel	WRONG	scores=0.742,0.727,0.579,0.748	from= | 
+clock_8	What did the mayor want to do with the clock?	pick=pull it down	right=pull it down	OK	scores=1.012,0.999,1.008,0.731	from= | 
+clock_9	How many times did Dumi turn the big key?	pick=seven	right=forty	WRONG	scores=0.898,0.740,0.700,0.000	from= | 
+clock_10	What did Imra give Dumi?	pick=a lamp	right=her brass screwdriver	WRONG	scores=0.813,0.596,0.440,0.527	from= | 
+RESULT before reading 1/10
+=== after reading (brain /content/story.brain: 32489808 facts, 725330 words (loaded in 30.2 s))
+clock_1	Who built the clock in the tower?	pick=Imra Batsho	right=Imra Batsho	OK	scores=3.127,3.830,2.425,0.749	from=clock.txt | The clock was built by a clockmaker named Imra Batsho.
+clock_2	What kind of animal is Pell?	pick=a goat	right=an owl	WRONG	scores=0.825,0.717,0.714,0.856	from= | 
+clock_3	What does Pell eat?	pick=beetles	right=beetles	OK	scores=3.970,3.970,0.610,1.122	from=clock.txt | Pell eats beetles, not mice.
+clock_4	What does Dumi oil the gears with?	pick=olive oil	right=goose fat	WRONG	scores=0.606,0.318,0.494,0.381	from= | 
+clock_5	Why does Imra use goose fat on the gears?	pick=it does not freeze in winter	right=it does not freeze in winter	OK	scores=0.574,0.952,4.863,0.824	from=clock.txt | He oils the gears with goose fat, because Imra says that goose fat does not freeze in winter.
+clock_6	What stopped the clock?	pick=a walnut jammed the gear	right=a walnut jammed the gear	OK	scores=0.924,4.584,0.487,0.902	from=clock.txt | The walnut had jammed the gear and stopped the clock.
+clock_7	Who hid the walnut in the clock?	pick=a red squirrel	right=a red squirrel	OK	scores=0.742,4.160,0.579,0.749	from=clock.txt | A red squirrel had hidden the walnut in the clock for the winter.
+clock_8	What did the mayor want to do with the clock?	pick=pull it down	right=pull it down	OK	scores=1.012,0.999,1.008,0.731	from= | 
+clock_9	How many times did Dumi turn the big key?	pick=forty	right=forty	OK	scores=0.899,0.740,3.687,0.000	from=clock.txt | Then he turned the big key forty times, and the clock began to tick again.
+clock_10	What did Imra give Dumi?	pick=her brass screwdriver	right=her brass screwdriver	OK	scores=0.817,3.499,4.671,3.357	from=clock.txt | Imra gave Dumi her own brass screwdriver, which her father had given to her when she was a girl.
+RESULT after reading 8/10
