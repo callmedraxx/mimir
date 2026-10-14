@@ -1,0 +1,21 @@
+# split	story (stories/NAME.txt is the context)	sentence with ___	answer
+dev	clock	Pell is a blue ___.	owl
+dev	clock	Dumi oils the gears with goose ___.	fat
+dev	clock	The clock was built by Imra, a ___.	clockmaker
+dev	clock	Behind the largest gear Dumi found a ___.	walnut
+dev	clock	The walnut was hidden by a red ___.	squirrel
+dev	clock	Dumi turned the big ___ forty times.	key
+dev	clock	Imra gave Dumi her brass ___.	screwdriver
+dev	clock	The mayor of Velloran is named Orvo ___.	kell
+test	harbor	Tavi is a ___ who lives on Oruna.	fisherman
+test	harbor	The Moth has a green ___.	sail
+test	harbor	Sefa held up a jar of ___.	fireflies
+test	harbor	Tavi hangs a ___ on the mast every night.	lantern
+test	garden	Mr. Halloran grew ___ in a glass house.	tomatoes
+test	garden	The leaves of Big Ruth were eaten by green ___.	caterpillars
+test	garden	He brought in six ___ to eat the insects.	ladybirds
+test	garden	The children sold the tomatoes at the ___.	market
+test	snow	Anouk drove the mail ___ over the pass.	truck
+test	snow	In winter the pass is often closed by ___.	snow
+test	snow	Bruno is a big grey ___.	dog
+test	snow	Anouk walked beside the sled on ___.	skis
