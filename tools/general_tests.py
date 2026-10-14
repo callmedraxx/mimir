@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The general-knowledge tests of docs/SCHOOL_BRAIN.md, in bg.c's question layout (id, question, n, options..., answer index):
+"""The general-knowledge tests of docs/past/SCHOOL_BRAIN.md, in bg.c's question layout (id, question, n, options..., answer index):
 
   data/arc_tests/mmlu_hs_test.tsv   MMLU (Hendrycks et al. 2021, MIT), test split of every high_school_* subject
   data/arc_tests/csqa_dev.tsv       CommonsenseQA (Talmor et al. 2019, MIT), validation split (its test answers are hidden)

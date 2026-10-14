@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The school shelf (docs/SCHOOL_BRAIN.md): what a child reads and hears from baby to high school, as plain text,
+"""The school shelf (docs/past/SCHOOL_BRAIN.md): what a child reads and hears from baby to high school, as plain text,
 one paragraph a line, a blank line between documents, in reading order:
 
   data/school/01_babylm.txt       BabyLM 100M: speech to and around children (CHILDES), children's stories, BNC spoken, subtitles, TED
@@ -54,7 +54,7 @@ def keep_para(p, minw=3):
     p = " ".join(p.split())
     return p if len(p.split()) >= minw and p[-1] in ENDS and not p.isupper() else ""
 
-# ---- wikitext, as tools/shelf_fetch.py
+# ---- wikitext (as the old shelf_fetch.py, in git history)
 def strip_nested(s, a, b):
     out, depth, i = [], 0, 0
     while i < len(s):

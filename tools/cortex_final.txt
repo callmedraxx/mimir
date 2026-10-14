@@ -1,4 +1,0 @@
-# docs/CORTEX.md, frozen 2026-10-14 from the dev grid: each run over the whole school shelf (held-out lines skipped), then the tests once.
-K0      K0  N=2048 K=40
-K1b     K1  N=2048 K=40 WIN=5 SIM=1
-B5      B   DIM=300 WIN=5

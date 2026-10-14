@@ -1,4 +1,4 @@
-Tests for docs/CORTEX.md (fixed before any cortex code was written).
+Tests for docs/past/CORTEX.md (fixed before any cortex code was written).
 
 | file | what | source |
 |---|---|---|
