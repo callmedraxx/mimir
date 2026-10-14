@@ -48,8 +48,12 @@ exactly when answering (their cells have not learned enough).
 | L2 | each word's own: falls as that word is met more often, 1/√(1 + n/10,000), not below 5% (a new word learns fast, a known one slowly) |
 
 Choice: the higher mean of WordSim-353 and SimVerb-3500 (Spearman). Then the whole shelf is
-read once with it, giving the school brain with its cortex. The facts must come out the same
-as the released school brain (32.5M); the cortex does not change what is stored.
+read once with it, file by file as the released school brain was (each file reading on from
+the last; the cortex's reading clock carried across, `CXPOS`), giving the school brain with
+its cortex. The facts must come out the same as the released school brain (32,489,775); the
+cortex does not change what is stored (checked on the droplet with a small shelf: the brain
+file is byte-identical with the cortex on or off). So M0's test numbers are the school tests
+already run (`results/school_tests.txt`).
 
 **Answering (the full brain, the five dev sets of docs/past/RANKING_COMPARE.md).**
 
@@ -76,4 +80,8 @@ Everything else as in the school tests: `NOPEN=20 POLARITY=1 STRENGTH=1`, NCAND 
   stories; asked before and after reading each story); SimLex-999 and MEN-3000 for the
   cortex learned from facts (against K3b learned from text: 0.464 / 0.739, and word2vec:
   0.398 / 0.717).
-* All runs in Colab (`tools/link_colab.py`), from the shared browser. Reported as they come.
+* All runs in Colab (`tools/link_colab.py`, `tools/link.ipynb`), from the shared browser, dev and
+  test in one session (the brain with its cortex stays in the session). Reported as they come.
+* Story test: each story read into a copy of the brain (the cortex reading on, a new name
+  getting cells as it is first met), its questions asked before and after, with M0 and with
+  the choice. If M0 stays, only SimLex-999 and MEN are run (they measure the cortex itself).

@@ -10,11 +10,18 @@
  *   bg read BRAIN SECONDS FILE...   read the shelf files in order for at most SECONDS, save BRAIN
  *   bg arc BRAIN FILE.tsv...        questions without a passage: id, question, n, options..., answer
  *   bg serve BRAIN                  one question a line on stdin, JSON answers on stdout (tools/versus/)
+ *   bg words BRAIN FILE...          the cortex on word-pair files (Spearman against people's ratings)
+ *   bg near BRAIN WORD...           the words the cortex puts nearest
  * Env: ROOM (facts, default 0 = no limit), FROM=brain (read on from it), PART=n (read only every n-th block: a
  *      dev brain), DUMP=file (each option's parts).
+ *      CX=1: the cortex (docs/CORTEX_LINK.md) learns from the facts while reading (BRAIN.cx beside the brain) and
+ *      compares words when answering; CXSCHED=1|2 its rate, CXTH the cosine a link counts from, CXFIT the fit weight;
+ *      CXPOS="before total": bytes of the shelf read before this call and in all (its reading clock, file by file).
  * Run from the repo root.
  */
 #include "facts.c"
+#include <pthread.h>
+#include <unistd.h>
 
 /* ------------------------------------------------------------------ */
 /* the brain's words: one table for everything it ever read              */
@@ -33,9 +40,40 @@ static uint32_t lx_id(const char *s, int add) {
     if (LX.n == LX.cap) { LX.cap = LX.cap ? LX.cap * 2 : 1 << 16; LX.s = realloc(LX.s, LX.cap * sizeof *LX.s); LX.mid = realloc(LX.mid, LX.cap * 4); }
     LX.s[LX.n] = strdup(s); LX.mid[LX.n] = -2; LX.slot[h] = ++LX.n; return LX.n - 1;
 }
-static int gmid(uint32_t g) { if (g >= LX.n) return -1; if (LX.mid[g] == -2) LX.mid[g] = meaning_id(MM, LX.s[g]); return LX.mid[g]; }
+
+/* ------------------------------------------------------------------ */
+/* the cortex (docs/CORTEX_LINK.md): each word has D meaning cells and D context cells, learned from the facts as   */
+/* they are read, with K3b's rule (docs/past/CORTEX.md v0.1). Words come in blocks of 65,536, made when first met.  */
+/* ------------------------------------------------------------------ */
+
+enum { CXD = 300, CXNEG = 5, CXB = 16, CXBLK = 1 << CXB, CXMAXB = 256 };
+static int CX;                                    /* 1: the cortex learns while reading, and compares words when answering */
+static float *cxu[CXMAXB], *cxc[CXMAXB]; static uint32_t *cxn[CXMAXB]; static int cxnb;   /* meaning cells, context cells, times met */
+static float *cxinv;                              /* 1 / |meaning cells|, for answering */
+static double CXTH = 0.25; static int CXMIN = 5;  /* a link counts from this cosine; a word met fewer times is matched only exactly */
+#define CXU(g) (cxu[(g) >> CXB] + (size_t)((g) & (CXBLK - 1)) * CXD)
+#define CXC(g) (cxc[(g) >> CXB] + (size_t)((g) & (CXBLK - 1)) * CXD)
+#define CXN(g) (cxn[(g) >> CXB][(g) & (CXBLK - 1)])
+static uint64_t cx_rnd(uint64_t *st) { *st ^= *st << 13; *st ^= *st >> 7; *st ^= *st << 17; return *st; }
+static void cx_block(void) {                      /* room for 65,536 more words: meaning cells small and random, context cells zero */
+    int b = cxnb; uint64_t st = 0x9E3779B97F4A7C15ull * (uint64_t)(b + 1);
+    cxu[b] = malloc((size_t)CXBLK * CXD * 4); cxc[b] = calloc((size_t)CXBLK * CXD, 4); cxn[b] = calloc(CXBLK, 4);
+    for (size_t i = 0; i < (size_t)CXBLK * CXD; i++) cxu[b][i] = (float)(((cx_rnd(&st) >> 11) * (1.0 / 9007199254740992.0)) - 0.5) / CXD;
+    __atomic_store_n(&cxnb, b + 1, __ATOMIC_RELEASE);
+}
+static int cx_has(uint32_t g) { return g != NONE && (g >> CXB) < (uint32_t)cxnb && CXN(g) >= (uint32_t)CXMIN; }
+static float cx_dot(const float *x, const float *y) { float d = 0; for (int i = 0; i < CXD; i++) d += x[i] * y[i]; return d; }
+static void cx_norms(void) {
+    free(cxinv); cxinv = calloc((size_t)cxnb * CXBLK, sizeof *cxinv);
+    for (uint32_t g = 0; g < (uint32_t)cxnb * CXBLK; g++) { float n = cx_dot(CXU(g), CXU(g)); cxinv[g] = n > 0 ? 1 / sqrtf(n) : 0; }
+}
+
+/* a word's meaning: with the cortex, the brain's own word (if met often enough); else the old fixed table */
+static int wmid(const char *s) { if (!CX) return meaning_id(MM, s); uint32_t g = lx_id(s, 0); return cx_has(g) ? (int)g : -1; }
+static int gmid(uint32_t g) { if (g >= LX.n) return -1; if (CX) return cx_has(g) ? (int)g : -1; if (LX.mid[g] == -2) LX.mid[g] = meaning_id(MM, LX.s[g]); return LX.mid[g]; }
 static float mcos(int x, int y) {
     if (x < 0 || y < 0) return 0;
+    if (CX) return cx_dot(CXU((uint32_t)x), CXU((uint32_t)y)) * cxinv[x] * cxinv[y];
     const int8_t *u = MM->vec + (size_t)x * MM->dims, *v = MM->vec + (size_t)y * MM->dims; int d = 0;
     for (int i = 0; i < MM->dims; i++) d += u[i] * v[i];
     return d * inv_norm[x] * inv_norm[y];
@@ -44,11 +82,11 @@ static float mcos(int x, int y) {
 typedef struct { uint32_t g; int mid; } QW;
 static float qsim(const QW *a, uint32_t g) {
     if (g == NONE) return 0; if (a->g == g) return 1;
-    float c = mcos(a->mid, gmid(g)); return c >= 1 ? 1 : c > 0.25f ? (c - 0.25f) / 0.75f : 0;
+    float c = mcos(a->mid, gmid(g)), th = CX ? (float)CXTH : 0.25f; return c >= 1 ? 1 : c > th ? (c - th) / (1 - th) : 0;
 }
 static float qqsim(const QW *a, const QW *b) {
     if (a->g != NONE && a->g == b->g) return 1; if (a->mid >= 0 && a->mid == b->mid) return 1;
-    float c = mcos(a->mid, b->mid); return c >= 1 ? 1 : c > 0.25f ? (c - 0.25f) / 0.75f : 0;
+    float c = mcos(a->mid, b->mid), th = CX ? (float)CXTH : 0.25f; return c >= 1 ? 1 : c > th ? (c - th) / (1 - th) : 0;
 }
 
 /* ------------------------------------------------------------------ */
@@ -58,7 +96,7 @@ static float qqsim(const QW *a, const QW *b) {
 #define KA 3
 typedef struct { uint32_t verb, head[KA], mod[KA], prep[KA], count; uint8_t role[KA], narg, flags; uint64_t ptr[2]; float s; uint32_t L; } KF;
 /* strength (docs/past/STRENGTH_COMPARE.md): s and the time last met L; the clock moves one step a sentence read */
-typedef struct { double fact, joint, open, mean; uint64_t optr; } BParts;
+typedef struct { double fact, joint, open, mean, fit; uint64_t optr; } BParts;
 static uint64_t CLK; static const double H0 = 1e6;
 static double eff(const KF *f) { double age = (double)(CLK - f->L); return f->s * exp2(-age / (H0 * f->s)); }
 static KF *kf; static uint32_t nkf, capkf, *kslot, kmask; static uint64_t forgotten; static int forget_th;
@@ -103,6 +141,98 @@ static void kf_add(const KF *f, uint64_t ptr) {
     if (nkf == capkf) { capkf = ROOM && capkf * 2 > ROOM ? ROOM : capkf * 2; kf = realloc(kf, (size_t)capkf * sizeof *kf); }
     if ((nkf + 1) * 2 > kmask) { kf[nkf] = *f; kf_rehash((kmask + 1) * 2); h = (uint32_t)kf_hash(f) & kmask; while (kslot[h]) h = (h + 1) & kmask; }
     KF *e = &kf[nkf]; *e = *f; e->count = 1; e->ptr[0] = ptr; e->ptr[1] = ~0ull; e->s = 1; e->L = (uint32_t)CLK; kslot[h] = ++nkf;
+}
+
+/* ------------------------------------------------------------------ */
+/* the cortex learning while Mimir reads                                */
+/* ------------------------------------------------------------------ */
+
+/* The reader hands each fact's words to the cortex (a queue) as it stores the fact; the cortex learns from them in its
+   own thread. Every two words of one fact: reward, the links between one's meaning cells and the other's context cells
+   grow by how much the pair was not yet expected (1 - sigma); NEG words drawn from what it met lately: penalty, their
+   links shrink by how much they were expected (sigma). Very common words are thinned, as K3b. The rate: CXSCHED 1 falls
+   with the reading clock (to CXFLOOR of the start at the shelf's end), 2 falls for each word as it is met more often. */
+enum { CXQ = 1 << 22, CXR = 1 << 24 };
+static uint32_t *cxq; static uint64_t cxqh, cxqt; static int cxdone; static pthread_t cxthr;
+static uint32_t *cxring; static uint64_t cxnring;       /* words met lately (after thinning), for the penalties */
+static uint64_t cxtot, cxpairs;                         /* words met in facts; pairs learned */
+static double CXETA = 0.025, CXSUB = 1e-4, CXFLOOR = 0.05, CXT = 10000; static int CXSCHED = 2;
+static double cxprog = -1;                              /* reading progress 0..1 (CXSCHED 1); -1: continuing a cortex, rate at its floor */
+static float cx_sig(float x) { return x > 8 ? 1 : x < -8 ? 0 : 1 / (1 + expf(-x)); }
+static void cx_learn(const uint32_t *w, int n, double prog, uint64_t *st, float *neu) {
+    uint32_t k[16]; int m = 0;
+    for (int i = 0; i < n; i++) { uint32_t g = w[i]; CXN(g)++; cxtot++;
+        double f = (double)CXN(g) / cxtot, keep = (sqrt(f / CXSUB) + 1) * CXSUB / f;
+        if (keep < 1 && (cx_rnd(st) >> 11) * (1.0 / 9007199254740992.0) > keep) continue;
+        int dup = 0; for (int j = 0; j < m; j++) dup |= k[j] == g; if (dup) continue;
+        k[m++] = g; cxring[cxnring++ & (CXR - 1)] = g; }
+    if (m < 2 || cxnring < 10000) return;
+    uint64_t nr = cxnring < CXR ? cxnring : CXR;
+    for (int a = 0; a < m; a++) { uint32_t t = k[a]; float *u = CXU(t);
+        double r = CXSCHED == 1 ? (prog < 0 ? 0 : 1 - prog) : 1 / sqrt(1 + CXN(t) / CXT);
+        float eta = (float)(CXETA * (r > CXFLOOR ? r : CXFLOOR));
+        for (int b = 0; b < m; b++) { if (b == a) continue; memset(neu, 0, CXD * 4);
+            for (int x = 0; x <= CXNEG; x++) { uint32_t o; float label;
+                if (!x) { o = k[b]; label = 1; } else { o = cxring[(cx_rnd(st) >> 11) % nr]; if (o == k[b]) continue; label = 0; }
+                float *v = CXC(o), g = eta * (label - cx_sig(cx_dot(u, v)));   /* reward (label 1) or penalty (0), times the surprise */
+                for (int i = 0; i < CXD; i++) { neu[i] += g * v[i]; v[i] += g * u[i]; } }
+            for (int i = 0; i < CXD; i++) u[i] += neu[i];
+            cxpairs++; } }
+}
+static void *cx_thread(void *arg) {
+    (void)arg; uint64_t st = 88172645463325252ull; float *neu = malloc(CXD * 4); uint32_t w[16];
+    for (;;) { uint64_t h = __atomic_load_n(&cxqh, __ATOMIC_ACQUIRE);
+        if (cxqt == h) { if (__atomic_load_n(&cxdone, __ATOMIC_ACQUIRE) && cxqt == __atomic_load_n(&cxqh, __ATOMIC_ACQUIRE)) break; usleep(200); continue; }
+        uint32_t n = cxq[cxqt & (CXQ - 1)], p = cxq[(cxqt + 1) & (CXQ - 1)];
+        for (uint32_t i = 0; i < n; i++) w[i] = cxq[(cxqt + 2 + i) & (CXQ - 1)];
+        __atomic_store_n(&cxqt, cxqt + 2 + n, __ATOMIC_RELEASE);
+        cx_learn(w, (int)n, p == 0xffffffffu ? -1 : p / 1e9, &st, neu); }
+    free(neu); return 0;
+}
+static int kf_words(const KF *f, uint32_t *w);
+static void cx_fact(const KF *f) {                      /* the reader's side: a fact was stored (or met again) */
+    uint32_t w[8]; int n = kf_words(f, w); if (n < 2) return;
+    for (int i = 0; i < n; i++) while ((w[i] >> CXB) >= (uint32_t)cxnb) { if (cxnb >= CXMAXB) return; cx_block(); }
+    while (cxqh + 2 + n - __atomic_load_n(&cxqt, __ATOMIC_ACQUIRE) > CXQ) usleep(50);
+    uint64_t h = cxqh; cxq[h & (CXQ - 1)] = (uint32_t)n; cxq[(h + 1) & (CXQ - 1)] = cxprog < 0 ? 0xffffffffu : (uint32_t)(fmin(cxprog, 1) * 1e9);
+    for (int i = 0; i < n; i++) cxq[(h + 2 + i) & (CXQ - 1)] = w[i];
+    __atomic_store_n(&cxqh, h + 2 + n, __ATOMIC_RELEASE);
+}
+static void cx_start(void) {
+    cxq = malloc((size_t)CXQ * 4); if (!cxring) cxring = malloc((size_t)CXR * 4);
+    if (getenv("CXETA")) CXETA = atof(getenv("CXETA")); if (getenv("CXSCHED")) CXSCHED = atoi(getenv("CXSCHED"));
+    if (getenv("CXFLOOR")) CXFLOOR = atof(getenv("CXFLOOR")); if (getenv("CXT")) CXT = atof(getenv("CXT"));
+    pthread_create(&cxthr, 0, cx_thread, 0);
+}
+static void cx_finish(void) { __atomic_store_n(&cxdone, 1, __ATOMIC_RELEASE); pthread_join(cxthr, 0);
+    fprintf(stderr, "cortex: %llu words met in facts, %llu pairs learned, %d blocks (%.1f GB)\n", (unsigned long long)cxtot, (unsigned long long)cxpairs, cxnb, cxnb * (double)CXBLK * CXD * 8 / 1e9); }
+/* the cortex on disk, beside the brain (BRAIN.cx): words met, then meaning and context cells, word by word */
+static int cx_save(const char *brain) {
+    char p[4096], tmp[4200]; snprintf(p, sizeof p, "%s.cx", brain); snprintf(tmp, sizeof tmp, "%s.part", p);
+    FILE *f = fopen(tmp, "wb"); if (!f) { perror(tmp); return 1; }
+    uint32_t nw = LX.n < (uint32_t)cxnb * CXBLK ? LX.n : (uint32_t)cxnb * CXBLK, d = CXD;
+    fwrite("MCX1", 1, 4, f); fwrite(&d, 4, 1, f); fwrite(&nw, 4, 1, f); fwrite(&cxtot, 8, 1, f); fwrite(&cxpairs, 8, 1, f);
+    for (uint32_t g = 0; g < nw; g += CXBLK) { uint32_t k = nw - g < CXBLK ? nw - g : CXBLK; fwrite(&CXN(g), 4, k, f); }
+    for (uint32_t g = 0; g < nw; g += CXBLK) { uint32_t k = nw - g < CXBLK ? nw - g : CXBLK; fwrite(CXU(g), 4, (size_t)k * CXD, f); }
+    for (uint32_t g = 0; g < nw; g += CXBLK) { uint32_t k = nw - g < CXBLK ? nw - g : CXBLK; fwrite(CXC(g), 4, (size_t)k * CXD, f); }
+    if (fflush(f) || fsync(fileno(f))) { perror(tmp); fclose(f); return 1; } fclose(f);
+    if (rename(tmp, p)) { perror(p); return 1; }
+    fprintf(stderr, "cortex saved: %s (%u words)\n", p, nw); return 0;
+}
+static int cx_load(const char *brain) {
+    char p[4096]; snprintf(p, sizeof p, "%s.cx", brain); FILE *f = fopen(p, "rb"); if (!f) { perror(p); return 1; }
+    char mg[4]; uint32_t d, nw; if (fread(mg, 1, 4, f) != 4 || memcmp(mg, "MCX1", 4) || fread(&d, 4, 1, f) != 1 || d != CXD || fread(&nw, 4, 1, f) != 1) { fprintf(stderr, "%s: not a cortex\n", p); return 1; }
+    if (fread(&cxtot, 8, 1, f) != 1 || fread(&cxpairs, 8, 1, f) != 1) return 1;
+    while ((uint32_t)cxnb * CXBLK < nw) cx_block();
+    for (uint32_t g = 0; g < nw; g += CXBLK) { uint32_t k = nw - g < CXBLK ? nw - g : CXBLK; if (fread(&CXN(g), 4, k, f) != k) return 1; }
+    for (uint32_t g = 0; g < nw; g += CXBLK) { uint32_t k = nw - g < CXBLK ? nw - g : CXBLK; if (fread(CXU(g), 4, (size_t)k * CXD, f) != (size_t)k * CXD) return 1; }
+    for (uint32_t g = 0; g < nw; g += CXBLK) { uint32_t k = nw - g < CXBLK ? nw - g : CXBLK; if (fread(CXC(g), 4, (size_t)k * CXD, f) != (size_t)k * CXD) return 1; }
+    fclose(f);
+    /* what it met lately, for the penalties when it reads on: words drawn by how often met (^0.75) */
+    if (!cxring) cxring = malloc((size_t)CXR * 4);
+    double z = 0; for (uint32_t g = 0; g < nw; g++) z += pow(CXN(g), 0.75);
+    double c = 0; uint32_t g = 0; for (uint64_t i = 0; i < CXR && z > 0; i++) { while (g < nw - 1 && (c + pow(CXN(g), 0.75)) / z < (i + 0.5) / CXR) { c += pow(CXN(g), 0.75); g++; } cxring[i] = g; }
+    cxnring = CXR; fprintf(stderr, "cortex %s: %u words, %llu met in facts\n", p, nw, (unsigned long long)cxtot); return 0;
 }
 
 /* ------------------------------------------------------------------ */
@@ -151,7 +281,7 @@ static void read_block(Know *k, const char *b, size_t n, int fid, uint64_t off) 
         if (i - a > 120) { a = i + 1; continue; }                 /* not a sentence (a list, a table) */
         uint64_t ptr = ((uint64_t)fid << FID_SHIFT) | (off + t->tok[a].src);
         k->R.question = 0; int nf = read_span(&k->R, t->tok, a, i + 1, fr, 512, 0); nsent_read++; CLK++;
-        for (int j = 0; j < nf; j++) { KF f; if (to_kf(k, &fr[j], &f)) { kf_add(&f, ptr); nfacts_read++; } }
+        for (int j = 0; j < nf; j++) { KF f; if (to_kf(k, &fr[j], &f)) { kf_add(&f, ptr); nfacts_read++; if (CX) cx_fact(&f); } }
         a = i + 1;
     }
     t->ntok = 0; t->src_len = 0;
@@ -167,6 +297,11 @@ static int run_read(const char *brain, double seconds, int nfile, char **files) 
     if (getenv("FROM")) { setenv("NOCUES", "1", 1); if (brain_load(getenv("FROM"))) return 1; unsetenv("NOCUES");
         capkf = nkf > (1u << 20) ? nkf : 1u << 20; kf = realloc(kf, (size_t)capkf * sizeof *kf); uint32_t sl = 1u << 21; while (sl < 2 * nkf + 2) sl *= 2; kf_rehash(sl);
         fprintf(stderr, "continuing %s: %u facts, %u words, clock %llu\n", getenv("FROM"), nkf, LX.n, (unsigned long long)CLK); }
+    double total = 0;                                   /* bytes to read, for the cortex's reading clock */
+    for (int fi = 0; fi < nfile; fi++) { FILE *f = fopen(files[fi], "rb"); if (f) { fseeko(f, 0, SEEK_END); total += (double)ftello(f) / part; fclose(f); } }
+    double before = 0;                                  /* CXPOS="bytes read before, bytes in all": one shelf read file by file */
+    if (getenv("CXPOS") && sscanf(getenv("CXPOS"), "%lf %lf", &before, &total) != 2) return 1;
+    if (CX) { cxprog = cxnb && !getenv("CXPOS") ? -1 : before / total; cx_start(); }
     double t0 = now(), next = t0 + 60; uint64_t bytes = 0; const size_t B = 1 << 22; char *buf = malloc(B + 1); int stop = 0;
     for (int fi = 0; fi < nfile && !stop; fi++) {
         { int done = 0; for (int s = 0; s < NSHELF; s++) done |= !strcmp(SHELF[s], files[fi]);       /* read already (continuing from a brain) */
@@ -178,7 +313,7 @@ static int run_read(const char *brain, double seconds, int nfile, char **files) 
         for (;;) {
             size_t got = fread(buf + have, 1, B - have, f); size_t n = have + got; if (!n) break;
             size_t cut = n; if (got) { while (cut > 0 && buf[cut - 1] != '\n') cut--; if (!cut) cut = n; }
-            if (blk++ % part == 0) { read_block(&k, buf, cut, NSHELF - 1, off); bytes += cut; }
+            if (blk++ % part == 0) { if (cxprog >= 0) cxprog = (before + bytes) / total; read_block(&k, buf, cut, NSHELF - 1, off); bytes += cut; }
             memmove(buf, buf + cut, n - cut); have = n - cut; off += cut;
             double tn = now();
             if (tn > next) { next = tn + 60; fprintf(stderr, "  %4.0f s  %s  %.0f MB read (%.1f MB/s)  %llu sentences  %u facts kept, %llu forgotten\n",
@@ -193,6 +328,7 @@ static int run_read(const char *brain, double seconds, int nfile, char **files) 
     fprintf(stderr, "read %.0f MB in %.0f s (%.2f MB/s): %llu sentences, %llu facts read; %u kept, %llu forgotten%s\n", bytes / 1e6, secs, bytes / 1e6 / secs,
         (unsigned long long)nsent_read, (unsigned long long)nfacts_read, nkf, (unsigned long long)forgotten, stop ? " (time up)" : " (shelf finished)");
     if (nmemforget) fprintf(stderr, "low memory made it forget %llu times\n", (unsigned long long)nmemforget);
+    if (CX) { cx_finish(); if (cx_save(brain)) return 1; }
     return brain_save(brain, secs, bytes);
 }
 
@@ -252,7 +388,7 @@ static int brain_load(const char *path) {
         for (int j = 0; j < e->narg; j++) { e->role[j] = fgetc(f); e->prep[j] = (uint32_t)vget64(f) - 1; e->head[j] = (uint32_t)vget64(f) - 1; e->mod[j] = (uint32_t)vget64(f) - 1; }
         e->count = (uint32_t)vget64(f); e->ptr[0] = vget64(f) - 1; e->ptr[1] = vget64(f) - 1;
         if (fread(&e->s, 4, 1, f) != 1) return 1; e->L = (uint32_t)vget64(f); if (fgetc(f) < 0) return 1; }
-    fclose(f); if (!getenv("NOCUES")) build_cues(); return 0;
+    fclose(f); if (CX && cx_load(path)) return 1; if (!getenv("NOCUES")) build_cues(); return 0;
 }
 
 /* ------------------------------------------------------------------ */
@@ -261,7 +397,7 @@ static int brain_load(const char *path) {
 
 /* words of a statement read by the answering context, as the brain knows them */
 static int qwords(Know *A, const uint32_t *w, int n, QW *out) {
-    for (int i = 0; i < n; i++) { const char *s = A->t.voc[w[i]].word; out[i].g = lx_id(s, 0); out[i].mid = meaning_id(MM, s); } return n;
+    for (int i = 0; i < n; i++) { const char *s = A->t.voc[w[i]].word; out[i].g = lx_id(s, 0); out[i].mid = wmid(s); } return n;
 }
 /* how well some words are covered in meaning by a known fact's words, rare words counting more */
 static double kcover(const QW *q, int nq, const uint32_t *w, int nw) {
@@ -276,9 +412,9 @@ static double qcover(const QW *q, int nq, const QW *w, int nw) {
 static float kfact_sim(Know *A, const Frame *h, const KF *f) {
     double num = 0, den = 0;
     if (h->verb != NONE) { int light = h->verb == A->R.w_be || h->verb == A->R.w_have || h->verb == A->R.w_do; double w = light ? 0.3 : 1.0;
-        QW v = { lx_id(A->t.voc[h->verb].word, 0), meaning_id(MM, A->t.voc[h->verb].word) }; num += w * (f->verb != NONE ? qsim(&v, f->verb) : 0); den += w; }
+        QW v = { lx_id(A->t.voc[h->verb].word, 0), wmid(A->t.voc[h->verb].word) }; num += w * (f->verb != NONE ? qsim(&v, f->verb) : 0); den += w; }
     for (int i = 0; i < h->narg; i++) { const Arg *a = &h->a[i]; if (a->head >= OPEN || !content(A, a->head)) continue;
-        QW x = { lx_id(A->t.voc[a->head].word, 0), meaning_id(MM, A->t.voc[a->head].word) }; double best = 0;
+        QW x = { lx_id(A->t.voc[a->head].word, 0), wmid(A->t.voc[a->head].word) }; double best = 0;
         for (int j = 0; j < f->narg; j++) { Arg b = { f->role[j], 0, f->prep[j], 0, 0 }, aa = *a; aa.prep = a->prep < OPEN ? lx_id(A->t.voc[a->prep].word, 0) : NONE;
             double s = role_fit(&aa, &b) * fmax(qsim(&x, f->head[j]), f->mod[j] != NONE ? 0.6 * qsim(&x, f->mod[j]) : 0); if (s > best) best = s; }
         num += best; den += 1; }
@@ -301,17 +437,22 @@ static int reread(Know *A, uint64_t ptr, QW *out, int max) {
 }
 
 static float *mark; static uint32_t nmark;
-static double BW[4] = { 1, 0.5, 2, 4 };   /* fact, joint, open, mean: chosen on ARC train + dev with a dev brain (5% of the shelf) */
+static double BW[5] = { 1, 0.5, 2, 4, 0 };   /* fact, joint, open, mean (chosen on ARC train + dev with a dev brain, 5% of the shelf); fit (CXFIT, CORTEX_LINK) */
 static int NOPEN = 20;  /* facts whose shelf sentences are re-read when answering (docs/past/LAYA_LEVEL.md stage 1, chosen on dev) */
 static void bg_option(Know *A, const char *q, const char *opt, BParts *P) {
     char st[4096]; statement(q, opt, st, sizeof st);
     static Frame hf[64], qf[64], of[64]; uint32_t sw[256], qwl[256], owl[128]; int nsw, nq, now_;
     int nh = read_statement(A, st, hf, 64, sw, &nsw, 256); read_statement(A, q, qf, 64, qwl, &nq, 256); read_statement(A, opt, of, 64, owl, &now_, 128);
     QW Q[256], O[128]; qwords(A, qwl, nq, Q);
-    int no = 0; for (int i = 0; i < now_; i++) { int inq = 0; for (int j = 0; j < nq; j++) inq |= qwl[j] == owl[i]; if (!inq) { const char *s = A->t.voc[owl[i]].word; O[no].g = lx_id(s, 0); O[no++].mid = meaning_id(MM, s); } }
+    int no = 0; for (int i = 0; i < now_; i++) { int inq = 0; for (int j = 0; j < nq; j++) inq |= qwl[j] == owl[i]; if (!inq) { const char *s = A->t.voc[owl[i]].word; O[no].g = lx_id(s, 0); O[no++].mid = wmid(s); } }
     memset(P, 0, sizeof *P); P->optr = ~0ull;
     /* (d) how close in meaning the option's own words are to the question's */
     P->mean = no && nq ? qcover(O, no, Q, nq) : 0;
+    /* (e) fit: how well the option fits the question as the cortex expects (the option's meaning cells against the
+       question words' context cells; K3's fill-the-blank score, docs/past/CORTEX.md) */
+    if (CX) { double s = 0; int k = 0; for (int i = 0; i < no; i++) { if (O[i].mid < 0) continue;
+        for (int j = 0; j < nq; j++) if (Q[j].mid >= 0 && Q[j].g != O[i].g) { s += cx_dot(CXU((uint32_t)O[i].mid), CXC((uint32_t)Q[j].mid)); k++; } }
+      P->fit = k ? s / k : 0; }
     if (!nkf || !no) return;
     /* candidate facts: those holding one of the option's own words, ranked first by the question's words they also hold (exactly) */
     if (nmark < LX.n) { mark = realloc(mark, LX.n * sizeof *mark); memset(mark + nmark, 0, (LX.n - nmark) * sizeof *mark); nmark = LX.n; }
@@ -342,7 +483,7 @@ static void bg_option(Know *A, const char *q, const char *opt, BParts *P) {
             if (j > P->open) { P->open = j; P->optr = pt; } } }
 }
 
-static double bscore(const BParts *p) { return BW[0] * p->fact + BW[1] * p->joint + BW[2] * p->open + BW[3] * p->mean; }
+static double bscore(const BParts *p) { return BW[0] * p->fact + BW[1] * p->joint + BW[2] * p->open + BW[3] * p->mean + BW[4] * p->fit; }
 /* the question asks for the option that is NOT so ("not", "least", "except", ...): support is turned around (docs/past/LAYA_LEVEL.md stage 2) */
 static int asks_opposite(const char *q) {
     static const char *W[] = { "not", "least", "except", "false", "unlikely", "cannot", "never", "incorrect", "untrue", "isn't", "doesn't", "can't", "won't", "wouldn't", "aren't", 0 };
@@ -373,7 +514,7 @@ static int run_arc(int nfile, char **files) {
             if (sc[want] > best - 1e-9) ok += 1.0 / nb;
             for (int c = 0; c < 4; c++) { double b = -1e9; int k = 0; for (int o = 0; o < no; o++) { double v = c == 0 ? P[o].fact : c == 1 ? P[o].joint : c == 2 ? P[o].open : P[o].mean; if (v > b + 1e-9) { b = v; k = 1; } else if (v > b - 1e-9) k++; }
                 double v = c == 0 ? P[want].fact : c == 1 ? P[want].joint : c == 2 ? P[want].open : P[want].mean; if (v > b - 1e-9) okp[c] += 1.0 / k; }
-            if (dump) { const char *bn = strrchr(files[fi], '/'); fprintf(dump, "%s\t%d\t%d\t%d", bn ? bn + 1 : files[fi], want, no, asks_opposite(fld[1])); for (int o = 0; o < no; o++) fprintf(dump, "\t%.5f %.5f %.5f %.5f", P[o].fact, P[o].joint, P[o].open, P[o].mean); fprintf(dump, "\n"); }
+            if (dump) { const char *bn = strrchr(files[fi], '/'); fprintf(dump, "%s\t%d\t%d\t%d", bn ? bn + 1 : files[fi], want, no, asks_opposite(fld[1])); for (int o = 0; o < no; o++) fprintf(dump, "\t%.5f %.5f %.5f %.5f %.5f", P[o].fact, P[o].joint, P[o].open, P[o].mean, P[o].fit); fprintf(dump, "\n"); }
             n++;
         }
         fclose(f); if (dump) fflush(dump);
@@ -410,16 +551,56 @@ static int run_serve(void) {
     return 0;
 }
 
+/* the cortex on word tests: Spearman between its cosines and people's ratings (a word it has not met scores 0) */
+static void cx_ranks(const double *a, int n, double *r) {
+    int *ix = malloc(n * sizeof *ix); for (int i = 0; i < n; i++) ix[i] = i;
+    for (int i = 1; i < n; i++) for (int j = i; j > 0 && a[ix[j]] < a[ix[j - 1]]; j--) { int t = ix[j]; ix[j] = ix[j - 1]; ix[j - 1] = t; }
+    for (int i = 0; i < n;) { int j = i; while (j + 1 < n && a[ix[j + 1]] == a[ix[i]]) j++; for (int k = i; k <= j; k++) r[ix[k]] = (i + j) / 2.0 + 1; i = j + 1; }
+    free(ix);
+}
+static int run_words(int nfile, char **files) {
+    for (int fi = 0; fi < nfile; fi++) {
+        FILE *f = fopen(files[fi], "r"); if (!f) { perror(files[fi]); return 1; } char a[256], b[256]; double h; int n = 0, known = 0;
+        double *x = malloc(20000 * sizeof *x), *y = malloc(20000 * sizeof *y), *rx = malloc(20000 * sizeof *rx), *ry = malloc(20000 * sizeof *ry);
+        while (n < 20000 && fscanf(f, "%255s %255s %lf%*[^\n]", a, b, &h) == 3) {
+            for (char *c = a; *c; c++) *c = (char)tolower((unsigned char)*c); for (char *c = b; *c; c++) *c = (char)tolower((unsigned char)*c);
+            uint32_t ga = lx_id(a, 0), gb = lx_id(b, 0); int ok = cx_has(ga) && cx_has(gb);
+            x[n] = ok ? mcos((int)ga, (int)gb) : 0; y[n++] = h; known += ok; }
+        fclose(f); cx_ranks(x, n, rx); cx_ranks(y, n, ry);
+        double mx = 0, my = 0, sxy = 0, sxx = 0, syy = 0; for (int i = 0; i < n; i++) { mx += rx[i]; my += ry[i]; } mx /= n; my /= n;
+        for (int i = 0; i < n; i++) { sxy += (rx[i] - mx) * (ry[i] - my); sxx += (rx[i] - mx) * (rx[i] - mx); syy += (ry[i] - my) * (ry[i] - my); }
+        const char *bn = strrchr(files[fi], '/'); bn = bn ? bn + 1 : files[fi];
+        printf("%-24s %5d pairs (%5d known)  spearman %.3f\n", bn, n, known, sxy / sqrt(sxx * syy));
+        printf("RESULT words file=%s n=%d known=%d spearman=%.4f\n", bn, n, known, sxy / sqrt(sxx * syy));
+        free(x); free(y); free(rx); free(ry); }
+    return 0;
+}
+/* the words nearest to some words, by the cortex (to look at) */
+static int run_near(int nw, char **ws) {
+    for (int i = 0; i < nw; i++) { uint32_t g = lx_id(ws[i], 0); if (!cx_has(g)) { printf("%s: not met often enough\n", ws[i]); continue; }
+        enum { K = 10 }; uint32_t top[K]; float tv[K]; int nt = 0;
+        for (uint32_t h = 0; h < LX.n && (h >> CXB) < (uint32_t)cxnb; h++) { if (h == g || CXN(h) < 20) continue; float c = mcos((int)g, (int)h);
+            if (nt < K) { top[nt] = h; tv[nt++] = c; } else if (c > tv[K - 1]) { top[K - 1] = h; tv[K - 1] = c; } else continue;
+            for (int x = nt - 1; x > 0 && tv[x] > tv[x - 1]; x--) { float t = tv[x]; tv[x] = tv[x - 1]; tv[x - 1] = t; uint32_t u = top[x]; top[x] = top[x - 1]; top[x - 1] = u; } }
+        printf("%s (met %u):", ws[i], CXN(g)); for (int x = 0; x < nt; x++) printf(" %s(%.2f)", LX.s[top[x]], tv[x]); printf("\n"); }
+    return 0;
+}
+
 int main(int argc, char **argv) {
-    if (argc < 3) { fprintf(stderr, "bg read BRAIN SECONDS FILE... | bg arc BRAIN FILE... | bg serve BRAIN\n"); return 1; }
+    if (argc < 3) { fprintf(stderr, "bg read BRAIN SECONDS FILE... | bg arc BRAIN FILE... | bg serve BRAIN | bg words BRAIN FILE... | bg near BRAIN WORD...\n"); return 1; }
     lex_load(getenv("WORDCLASS") ? getenv("WORDCLASS") : "data/understand/wordclass.tsv");
     static Meaning m; meaning_init(&m);
     if (meaning_load(&m, getenv("MEANING") ? getenv("MEANING") : MEANING_PATH) <= 0) { fprintf(stderr, "no meanings\n"); return 1; }
     meaning_norms(&m); MM = &m;
     if (getenv("NOPEN")) NOPEN = atoi(getenv("NOPEN"));
+    if (getenv("CX")) CX = atoi(getenv("CX")); if (!strcmp(argv[1], "words") || !strcmp(argv[1], "near")) CX = 1;
+    if (getenv("CXTH")) CXTH = atof(getenv("CXTH")); if (getenv("CXMIN")) CXMIN = atoi(getenv("CXMIN")); if (getenv("CXFIT")) BW[4] = atof(getenv("CXFIT"));
     if (!strcmp(argv[1], "read") && argc >= 5) return run_read(argv[2], atof(argv[3]), argc - 4, argv + 4);
     double t0 = now(); if (brain_load(argv[2])) return 1;
     fprintf(stderr, "brain %s: %u facts, %u words (loaded in %.1f s)\n", argv[2], nkf, LX.n, now() - t0);
+    if (CX) cx_norms();
+    if (!strcmp(argv[1], "words")) return run_words(argc - 3, argv + 3);
+    if (!strcmp(argv[1], "near")) return run_near(argc - 3, argv + 3);
     if (!strcmp(argv[1], "arc")) return run_arc(argc - 3, argv + 3);
     if (!strcmp(argv[1], "serve")) return run_serve();
     return 1;
