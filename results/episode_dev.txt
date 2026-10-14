@@ -1,0 +1,100 @@
+cortex /content/cx.brain.cx: 725317 words, 170762026 met in facts
+brain /content/cx.brain: 32488986 facts, 725317 words (loaded in 53.1 s)
+mc160.train.txt          280 q    32.41%   (episode facts: mode 0, EPW 1.00)  256.3 ms/q
+RESULT bgpass file=mc160.train.txt n=280 acc=32.41 mode=0 epw=1.00
+mc160.dev.txt            120 q    28.61%   (episode facts: mode 0, EPW 1.00)  270.8 ms/q
+RESULT bgpass file=mc160.dev.txt n=120 acc=28.61 mode=0 epw=1.00
+mc500.train.txt         1200 q    28.61%   (episode facts: mode 0, EPW 1.00)  207.7 ms/q
+RESULT bgpass file=mc500.train.txt n=1200 acc=28.61 mode=0 epw=1.00
+mc500.dev.txt            200 q    22.75%   (episode facts: mode 0, EPW 1.00)  199.8 ms/q
+RESULT bgpass file=mc500.dev.txt n=200 acc=22.75 mode=0 epw=1.00
+dev_middle.txt          1436 q    26.57%   (episode facts: mode 0, EPW 1.00)  348.1 ms/q
+RESULT bgpass file=dev_middle.txt n=1436 acc=26.57 mode=0 epw=1.00
+=== P0 EPW 1: dev_middle=26.57 mc160=31.27 mc500=27.77 mean 28.54
+cortex /content/cx.brain.cx: 725317 words, 170762026 met in facts
+brain /content/cx.brain: 32488986 facts, 725317 words (loaded in 45.3 s)
+mc160.train.txt          280 q    35.62%   (episode facts: mode 1, EPW 1.00)  189.8 ms/q
+RESULT bgpass file=mc160.train.txt n=280 acc=35.62 mode=1 epw=1.00
+mc160.dev.txt            120 q    28.61%   (episode facts: mode 1, EPW 1.00)  243.0 ms/q
+RESULT bgpass file=mc160.dev.txt n=120 acc=28.61 mode=1 epw=1.00
+mc500.train.txt         1200 q    33.26%   (episode facts: mode 1, EPW 1.00)  203.5 ms/q
+RESULT bgpass file=mc500.train.txt n=1200 acc=33.26 mode=1 epw=1.00
+mc500.dev.txt            200 q    29.25%   (episode facts: mode 1, EPW 1.00)  203.9 ms/q
+RESULT bgpass file=mc500.dev.txt n=200 acc=29.25 mode=1 epw=1.00
+dev_middle.txt          1436 q    28.93%   (episode facts: mode 1, EPW 1.00)  342.8 ms/q
+RESULT bgpass file=dev_middle.txt n=1436 acc=28.93 mode=1 epw=1.00
+=== P1 EPW 1: dev_middle=28.93 mc160=33.52 mc500=32.68 mean 31.71
+=== P1 EPW 2: dev_middle=35.53 mc160=50.65 mc500=44.39 mean 43.52
+=== P1 EPW 4: dev_middle=37.97 mc160=53.90 mc500=48.14 mean 46.67
+cortex /content/cx.brain.cx: 725317 words, 170762026 met in facts
+brain /content/cx.brain: 32488986 facts, 725317 words (loaded in 40.5 s)
+mc160.train.txt          280 q    34.55%   (episode facts: mode 2, EPW 1.00)  236.8 ms/q
+RESULT bgpass file=mc160.train.txt n=280 acc=34.55 mode=2 epw=1.00
+mc160.dev.txt            120 q    27.78%   (episode facts: mode 2, EPW 1.00)  271.6 ms/q
+RESULT bgpass file=mc160.dev.txt n=120 acc=27.78 mode=2 epw=1.00
+mc500.train.txt         1200 q    33.09%   (episode facts: mode 2, EPW 1.00)  204.8 ms/q
+RESULT bgpass file=mc500.train.txt n=1200 acc=33.09 mode=2 epw=1.00
+mc500.dev.txt            200 q    27.75%   (episode facts: mode 2, EPW 1.00)  211.8 ms/q
+RESULT bgpass file=mc500.dev.txt n=200 acc=27.75 mode=2 epw=1.00
+dev_middle.txt          1436 q    29.00%   (episode facts: mode 2, EPW 1.00)  336.4 ms/q
+RESULT bgpass file=dev_middle.txt n=1436 acc=29.00 mode=2 epw=1.00
+=== P2 EPW 1: dev_middle=29.00 mc160=32.52 mc500=32.33 mean 31.28
+=== P2 EPW 2: dev_middle=36.02 mc160=50.40 mc500=44.79 mean 43.73
+=== P2 EPW 4: dev_middle=37.62 mc160=53.15 mc500=48.07 mean 46.28
+cortex /content/cx.brain.cx: 725317 words, 170762026 met in facts
+brain /content/cx.brain: 32488986 facts, 725317 words (loaded in 42.0 s)
+mc160.train.txt          280 q    39.82%   (episode facts: mode 3, EPW 1.00)  187.5 ms/q
+RESULT bgpass file=mc160.train.txt n=280 acc=39.82 mode=3 epw=1.00
+mc160.dev.txt            120 q    34.44%   (episode facts: mode 3, EPW 1.00)  242.1 ms/q
+RESULT bgpass file=mc160.dev.txt n=120 acc=34.44 mode=3 epw=1.00
+mc500.train.txt         1200 q    35.64%   (episode facts: mode 3, EPW 1.00)  196.6 ms/q
+RESULT bgpass file=mc500.train.txt n=1200 acc=35.64 mode=3 epw=1.00
+mc500.dev.txt            200 q    29.75%   (episode facts: mode 3, EPW 1.00)  215.7 ms/q
+RESULT bgpass file=mc500.dev.txt n=200 acc=29.75 mode=3 epw=1.00
+dev_middle.txt          1436 q    30.62%   (episode facts: mode 3, EPW 1.00)  344.0 ms/q
+RESULT bgpass file=dev_middle.txt n=1436 acc=30.62 mode=3 epw=1.00
+=== P3 EPW 1: dev_middle=30.62 mc160=38.21 mc500=34.80 mean 34.54
+=== P3 EPW 2: dev_middle=36.26 mc160=51.71 mc500=46.76 mean 44.91
+=== P3 EPW 4: dev_middle=36.65 mc160=53.96 mc500=48.33 mean 46.31
+=== chosen P1 EPW 4 (mean 46.67; P0 28.54)
+cortex /content/cx.brain.cx: 725317 words, 170762026 met in facts
+brain /content/cx.brain: 32488986 facts, 725317 words (loaded in 40.7 s)
+  single	Who built the clock in the tower?	pick=Imra Batsho	right=Imra Batsho	OK
+  single	What kind of animal is Pell?	pick=a cat	right=an owl	WRONG
+  single	What does Pell eat?	pick=bread	right=beetles	WRONG
+  single	What does Dumi oil the gears with?	pick=olive oil	right=goose fat	WRONG
+  single	Why does Imra use goose fat on the gears?	pick=it is cheap	right=it does not freeze in winter	WRONG
+  single	What stopped the clock?	pick=a walnut jammed the gear	right=a walnut jammed the gear	OK
+  single	Who hid the walnut in the clock?	pick=a red squirrel	right=a red squirrel	OK
+  single	What did the mayor want to do with the clock?	pick=sell it	right=pull it down	WRONG
+  single	How many times did Dumi turn the big key?	pick=forty	right=forty	OK
+  single	What did Imra give Dumi?	pick=her brass screwdriver	right=her brass screwdriver	OK
+clock_dev.txt             10 q    50.00%   (episode facts: mode 0, EPW 1.00)  114.3 ms/q
+RESULT bgpass file=clock_dev.txt n=10 acc=50.00 mode=0 epw=1.00
+cortex /content/cx.brain.cx: 725317 words, 170762026 met in facts
+brain /content/cx.brain: 32488986 facts, 725317 words (loaded in 34.6 s)
+  single	Who built the clock in the tower?	pick=Imra Batsho	right=Imra Batsho	OK
+  single	What kind of animal is Pell?	pick=an owl	right=an owl	OK
+  single	What does Pell eat?	pick=mice	right=beetles	WRONG
+  single	What does Dumi oil the gears with?	pick=goose fat	right=goose fat	OK
+  single	Why does Imra use goose fat on the gears?	pick=it does not freeze in winter	right=it does not freeze in winter	OK
+  single	What stopped the clock?	pick=a walnut jammed the gear	right=a walnut jammed the gear	OK
+  single	Who hid the walnut in the clock?	pick=a red squirrel	right=a red squirrel	OK
+  single	What did the mayor want to do with the clock?	pick=move it to the school	right=pull it down	WRONG
+  single	How many times did Dumi turn the big key?	pick=forty	right=forty	OK
+  single	What did Imra give Dumi?	pick=her brass screwdriver	right=her brass screwdriver	OK
+clock_dev.txt             10 q    80.00%   (episode facts: mode 1, EPW 4.00)  106.6 ms/q
+RESULT bgpass file=clock_dev.txt n=10 acc=80.00 mode=1 epw=4.00
+=== general dev sets, no episode (CORTEX_LINK's choice gave 47.81 20.01 25.25 29.32 31.55)
+cortex /content/cx.brain.cx: 725317 words, 170762026 met in facts
+brain /content/cx.brain: 32488986 facts, 725317 words (loaded in 54.4 s)
+easy_dev.tsv             570 q    47.81%   (alone: fact 31.97  joint 32.91  open 43.96  meaning 35.83)  198.6 ms/q
+RESULT bgarc file=easy_dev.tsv n=570 acc=47.81 facts=32488986
+challenge_dev.tsv        299 q    20.01%   (alone: fact 23.90  joint 19.84  open 20.29  meaning 22.85)  219.9 ms/q
+RESULT bgarc file=challenge_dev.tsv n=299 acc=20.01 facts=32488986
+obqa_dev.tsv             500 q    25.25%   (alone: fact 24.00  joint 16.45  open 21.07  meaning 24.40)  196.3 ms/q
+RESULT bgarc file=obqa_dev.tsv n=500 acc=25.25 facts=32488986
+mmlu_hs_dev.tsv          370 q    29.32%   (alone: fact 23.33  joint 26.55  open 30.41  meaning 29.39)  315.0 ms/q
+RESULT bgarc file=mmlu_hs_dev.tsv n=370 acc=29.32 facts=32488986
+csqa_traindev.tsv       1000 q    31.55%   (alone: fact 21.83  joint 20.65  open 27.58  meaning 24.90)  211.1 ms/q
+RESULT bgarc file=csqa_traindev.tsv n=1000 acc=31.55 facts=32488986

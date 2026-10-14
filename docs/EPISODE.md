@@ -83,3 +83,23 @@ dev than the step before it (as LAYA_LEVEL did).
 * A pipeline smoke run on the droplet's 3 MB test brain (Alice + War and Peace) went once
   through the new test stories and printed a score; nothing is chosen from it, and the
   tests run on the school brain.
+
+## Dev results (2026-10-14, Colab; `results/episode_dev.txt`)
+
+Means of MC160 (train + dev), MC500 (train + dev) and RACE-Middle dev; chance 25%:
+
+| cell | EPW 1 | EPW 2 | EPW 4 |
+|---|---|---|---|
+| **P0** one pool (now) | 28.54 | | |
+| P1 kept apart, active | 31.71 | 43.52 | **46.67** (MC160 53.90, MC500 48.14, RACE-M 37.97) |
+| P2 + inhibition | 31.28 | 43.73 | 46.28 |
+| P3 + recency | 34.54 | 44.91 | 46.31 |
+
+**Chosen: P1, EPW 4 (+18.1 over P0).** P2 and P3 add nothing more than 1 point over P1,
+so they are not kept. EPW 4 is the top of the grid and the score was still rising there.
+Frozen in `tools/episode_choice.env`.
+
+Clock story (shown, not counted): P0 5/10, **P1 EPW 4: 8/10** ("Pell is an owl" now right;
+misses: "What does Pell eat?" → mice, the shelf's owls, not the story's beetles; the mayor).
+General dev sets with no episode: exactly CORTEX_LINK's numbers (47.81, 20.01, 25.25,
+29.32, 31.55), as required.
