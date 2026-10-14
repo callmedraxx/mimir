@@ -1,0 +1,43 @@
+# Builds the school brain with its cortex (docs/CORTEX_LINK.md) and publishes it as the release brain-school-cx, so a Colab
+# session downloads it instead of rebuilding (tools/brain_release.py). Uses GitHub's own token for this job only; no key.
+# Runs when tools/brain_build.txt changes on the reader branch.
+name: brain
+on:
+  push:
+    branches: [reader]
+    paths: [tools/brain_build.txt]
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    steps:
+      - uses: actions/checkout@v4
+      - name: free disk
+        run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL; df -h / ; nproc; free -g
+      - name: build bg
+        run: gcc -O3 -march=native -std=gnu11 -D_GNU_SOURCE -w -o bg sandbox/brain/bg.c src/meaning.c src/reader.c -Isrc -lm -fopenmp -lpthread
+      - name: word classes
+        run: mkdir -p data/understand && curl -sL https://github.com/callmedraxx/mimir/releases/download/brain-E/wordclass.tsv.gz | gunzip > data/understand/wordclass.tsv
+      - name: school shelf
+        run: python3 tools/school_shelf.py && rm -rf data/school/raw && ls -l data/school/
+      - name: read the shelf, file by file, the cortex learning from the facts
+        run: |
+          B=$RUNNER_TEMP/cx.brain
+          for f in $(ls data/school/0*.txt | sort); do
+            if [ -f $B ]; then FROM=$B ./bg read $B 1000000000 $f; else ./bg read $B 1000000000 $f; fi
+          done
+          ls -l $B $B.cx
+      - name: publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd $RUNNER_TEMP
+          gzip -1 -c cx.brain > school_cx.brain.gz && rm cx.brain
+          gzip -1 -c cx.brain.cx > school_cx.brain.cx.gz && rm cx.brain.cx
+          sha256sum school_cx.brain.gz school_cx.brain.cx.gz > SHA256SUMS
+          gh release delete brain-school-cx --repo $GITHUB_REPOSITORY --yes --cleanup-tag 2>/dev/null || true
+          gh release create brain-school-cx --repo $GITHUB_REPOSITORY --target $GITHUB_SHA --title "School brain with its cortex" \
+            --notes "The school brain read with the cortex learning from its facts (docs/CORTEX_LINK.md), built by .github/workflows/brain.yml at $GITHUB_SHA. BRAIN and BRAIN.cx gzipped; SHA256SUMS." \
+            school_cx.brain.gz school_cx.brain.cx.gz SHA256SUMS

@@ -2,8 +2,8 @@
 #   %run /content/mimir/tools/passage_colab.py dev     U0-U3 on the dev passages (EA, SW chosen offline from two dumps),
 #                                                       the general dev sets (must not move), the clock story
 #   %run /content/mimir/tools/passage_colab.py test    after the choice is frozen in tools/passage_choice.env: the tests, once
-# The brain: from the GitHub release brain-school-cx if there is one; else the school shelf is rebuilt and read with the
-# cortex (about 1.5 hours) and, with the owner's GH_TOKEN in Colab Secrets, saved there for next time.
+# The brain: from the GitHub release brain-school-cx (built by .github/workflows/brain.yml) if there is one; else the
+# school shelf is rebuilt and read with the cortex in the session (about 1.5 hours).
 import glob, os, subprocess, sys
 from google.colab import files
 def sh(cmd, log=None):
@@ -30,7 +30,6 @@ if not brain_release.get(BRAIN):                        # the school brain with 
     if not os.path.exists("data/school/07_vital.txt"): sh("python3 tools/school_shelf.py && rm -rf data/school/raw")
     for f in sorted(glob.glob("data/school/0*.txt")):
         sh("%s./bg read %s 1000000000 %s" % ("FROM=%s " % BRAIN if os.path.exists(BRAIN) else "", BRAIN, f))
-    brain_release.put(BRAIN)
 
 def stories(name, qfile, names):
     """stories in the passage layout: S / T (the story on one line) / Q single question A B C D letter"""
