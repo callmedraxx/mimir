@@ -1,0 +1,48 @@
+=== G0 NCAND=200
+brain /content/school.brain: 32489775 facts, 725326 words (loaded in 34.5 s)
+easy_dev.tsv             570 q    47.54%   (alone: fact 31.65  joint 34.31  open 43.99  meaning 28.68)  174.7 ms/q
+RESULT bgarc file=easy_dev.tsv n=570 acc=47.54 facts=32489775
+challenge_dev.tsv        299 q    20.18%   (alone: fact 24.96  joint 19.68  open 21.63  meaning 24.59)  189.2 ms/q
+RESULT bgarc file=challenge_dev.tsv n=299 acc=20.18 facts=32489775
+obqa_dev.tsv             500 q    18.35%   (alone: fact 25.02  joint 16.95  open 18.82  meaning 25.15)  190.3 ms/q
+RESULT bgarc file=obqa_dev.tsv n=500 acc=18.35 facts=32489775
+mmlu_hs_dev.tsv          370 q    29.68%   (alone: fact 25.54  joint 25.99  open 30.54  meaning 25.09)  245.7 ms/q
+RESULT bgarc file=mmlu_hs_dev.tsv n=370 acc=29.68 facts=32489775
+csqa_traindev.tsv       1000 q    26.05%   (alone: fact 22.35  joint 21.03  open 26.43  meaning 21.66)  176.3 ms/q
+RESULT bgarc file=csqa_traindev.tsv n=1000 acc=26.05 facts=32489775
+=== G1 NCAND=1000
+brain /content/school.brain: 32489775 facts, 725326 words (loaded in 31.9 s)
+easy_dev.tsv             570 q    43.86%   (alone: fact 33.87  joint 32.47  open 42.19  meaning 28.68)  448.7 ms/q
+RESULT bgarc file=easy_dev.tsv n=570 acc=43.86 facts=32489775
+challenge_dev.tsv        299 q    19.68%   (alone: fact 24.62  joint 22.19  open 18.23  meaning 24.59)  528.4 ms/q
+RESULT bgarc file=challenge_dev.tsv n=299 acc=19.68 facts=32489775
+obqa_dev.tsv             500 q    17.05%   (alone: fact 22.55  joint 16.35  open 19.05  meaning 25.15)  471.7 ms/q
+RESULT bgarc file=obqa_dev.tsv n=500 acc=17.05 facts=32489775
+mmlu_hs_dev.tsv          370 q    28.40%   (alone: fact 22.93  joint 25.36  open 28.42  meaning 25.09)  761.7 ms/q
+RESULT bgarc file=mmlu_hs_dev.tsv n=370 acc=28.40 facts=32489775
+csqa_traindev.tsv       1000 q    26.10%   (alone: fact 21.16  joint 20.73  open 25.49  meaning 21.66)  488.5 ms/q
+RESULT bgarc file=csqa_traindev.tsv n=1000 acc=26.10 facts=32489775
+=== J0 NCAND=200 CANDJOIN=1
+brain /content/school.brain: 32489775 facts, 725326 words (loaded in 41.2 s)
+easy_dev.tsv             570 q    47.54%   (alone: fact 31.83  joint 34.31  open 43.99  meaning 28.68)  147.2 ms/q
+RESULT bgarc file=easy_dev.tsv n=570 acc=47.54 facts=32489775
+challenge_dev.tsv        299 q    20.18%   (alone: fact 24.96  joint 19.68  open 21.63  meaning 24.59)  174.1 ms/q
+RESULT bgarc file=challenge_dev.tsv n=299 acc=20.18 facts=32489775
+obqa_dev.tsv             500 q    18.35%   (alone: fact 25.02  joint 16.95  open 18.82  meaning 25.15)  156.0 ms/q
+RESULT bgarc file=obqa_dev.tsv n=500 acc=18.35 facts=32489775
+mmlu_hs_dev.tsv          370 q    29.41%   (alone: fact 25.54  joint 25.99  open 30.54  meaning 25.09)  244.4 ms/q
+RESULT bgarc file=mmlu_hs_dev.tsv n=370 acc=29.41 facts=32489775
+csqa_traindev.tsv       1000 q    25.85%   (alone: fact 22.35  joint 21.03  open 26.23  meaning 21.66)  170.0 ms/q
+RESULT bgarc file=csqa_traindev.tsv n=1000 acc=25.85 facts=32489775
+=== J1 NCAND=1000 CANDJOIN=1
+brain /content/school.brain: 32489775 facts, 725326 words (loaded in 28.9 s)
+easy_dev.tsv             570 q    43.86%   (alone: fact 33.87  joint 32.47  open 42.19  meaning 28.68)  440.9 ms/q
+RESULT bgarc file=easy_dev.tsv n=570 acc=43.86 facts=32489775
+challenge_dev.tsv        299 q    19.68%   (alone: fact 24.62  joint 22.19  open 18.23  meaning 24.59)  525.3 ms/q
+RESULT bgarc file=challenge_dev.tsv n=299 acc=19.68 facts=32489775
+obqa_dev.tsv             500 q    16.85%   (alone: fact 22.35  joint 16.35  open 19.05  meaning 25.15)  470.2 ms/q
+RESULT bgarc file=obqa_dev.tsv n=500 acc=16.85 facts=32489775
+mmlu_hs_dev.tsv          370 q    28.40%   (alone: fact 22.93  joint 25.36  open 28.42  meaning 25.09)  747.6 ms/q
+RESULT bgarc file=mmlu_hs_dev.tsv n=370 acc=28.40 facts=32489775
+csqa_traindev.tsv       1000 q    26.10%   (alone: fact 21.26  joint 20.73  open 25.61  meaning 21.66)  485.2 ms/q
+RESULT bgarc file=csqa_traindev.tsv n=1000 acc=26.10 facts=32489775

@@ -53,6 +53,30 @@ tests: `NOPEN=20 POLARITY=1 STRENGTH=1`.
   deterministic). Reported as they come out.
 * Run in Colab (`tools/ranking_colab.py`), from the shared browser.
 
-## Results
+## Results (2026-10-14, Colab, dev sets only)
 
-(to be filled in)
+The shelf rebuilt in Colab came out at the original sizes, file for file (BabyLM 535 MB,
+children's books 936 MB, …, 2.2 GB in all).
+
+| cell | ARC-Easy dev | ARC-Challenge dev | OpenBookQA dev | MMLU-HS validation | CSQA train 1,000 | **mean** | ms/q |
+|---|---|---|---|---|---|---|---|
+| **G0** (now) | 47.54 | 20.18 | 18.35 | 29.68 | 26.05 | **28.36** | 175–245 |
+| G1 (1000) | 43.86 | 19.68 | 17.05 | 28.40 | 26.10 | 27.02 | 450–760 |
+| J0 (join) | 47.54 | 20.18 | 18.35 | 29.41 | 25.85 | 28.27 | 145–245 |
+| J1 (both) | 43.86 | 19.68 | 16.85 | 28.40 | 26.10 | 26.98 | |
+
+**No cell beats G0; G0 stays, and the tests were not run** (the rule: only a dev winner
+is tested).
+
+* **The 200,000 cut was not the problem**: finding every fact that holds an option word
+  and a question word (J0) changes almost nothing. The right facts were already reachable.
+* **Looking at more facts makes it worse** (G1, J1: −1.3 to −1.4 on the mean, −3.7 on
+  ARC-Easy). The parts that take the best fact per option (joint, fact) get noisier: the
+  more facts looked at, the likelier a wrong option also finds one that fits it well.
+  With 32.5M facts that already happens at 200; this, not reach, is why joint fell
+  from 42.1 (brain E) to 33.8.
+* So the next step is not finding more but **telling a fact that fits by chance from one
+  that answers the question**: e.g. judging an option's best fact against what a random
+  option of the same commonness would find.
+
+Results: `sandbox/neurons/results/ranking_dev.txt`.
