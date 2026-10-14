@@ -1,0 +1,176 @@
+=== choice: CX=1 CXTH=0.40 CXFIT=1
+cortex /content/cx.brain.cx: 725317 words, 170762026 met in facts
+brain /content/cx.brain: 32488986 facts, 725317 words (loaded in 41.3 s)
+EN-SIMLEX-999.txt          999 pairs (  998 known)  spearman 0.381
+RESULT words file=EN-SIMLEX-999.txt n=999 known=998 spearman=0.3813
+EN-MEN-TR-3k.txt          3000 pairs ( 2989 known)  spearman 0.738
+RESULT words file=EN-MEN-TR-3k.txt n=3000 known=2989 spearman=0.7384
+=== CX=0
+brain /content/cx.brain: 32488986 facts, 725317 words (loaded in 45.9 s)
+mmlu_hs_test.tsv        3420 q    27.85%   (alone: fact 25.90  joint 23.42  open 27.96  meaning 25.52)  244.1 ms/q
+RESULT bgarc file=mmlu_hs_test.tsv n=3420 acc=27.85 facts=32488986
+csqa_dev.tsv            1221 q    25.50%   (alone: fact 24.86  joint 20.87  open 24.77  meaning 21.11)  181.3 ms/q
+RESULT bgarc file=csqa_dev.tsv n=1221 acc=25.50 facts=32488986
+easy_test.tsv           2376 q    45.52%   (alone: fact 32.77  joint 33.82  open 47.30  meaning 29.02)  155.8 ms/q
+RESULT bgarc file=easy_test.tsv n=2376 acc=45.52 facts=32488986
+challenge_test.tsv      1172 q    21.35%   (alone: fact 27.05  joint 18.15  open 21.93  meaning 22.40)  188.0 ms/q
+RESULT bgarc file=challenge_test.tsv n=1172 acc=21.35 facts=32488986
+obqa_test.tsv            500 q    20.67%   (alone: fact 22.33  joint 15.27  open 22.37  meaning 24.70)  156.2 ms/q
+RESULT bgarc file=obqa_test.tsv n=500 acc=20.67 facts=32488986
+=== CX=1 CXTH=0.40 CXFIT=1
+cortex /content/cx.brain.cx: 725317 words, 170762026 met in facts
+brain /content/cx.brain: 32488986 facts, 725317 words (loaded in 44.1 s)
+mmlu_hs_test.tsv        3420 q    27.41%   (alone: fact 26.09  joint 24.58  open 28.23  meaning 25.90)  306.7 ms/q
+RESULT bgarc file=mmlu_hs_test.tsv n=3420 acc=27.41 facts=32488986
+csqa_dev.tsv            1221 q    31.37%   (alone: fact 24.07  joint 21.42  open 26.62  meaning 28.19)  191.8 ms/q
+RESULT bgarc file=csqa_dev.tsv n=1221 acc=31.37 facts=32488986
+easy_test.tsv           2376 q    46.61%   (alone: fact 31.57  joint 32.37  open 45.97  meaning 34.93)  184.0 ms/q
+RESULT bgarc file=easy_test.tsv n=2376 acc=46.61 facts=32488986
+challenge_test.tsv      1172 q    21.22%   (alone: fact 26.07  joint 17.95  open 20.36  meaning 21.43)  222.3 ms/q
+RESULT bgarc file=challenge_test.tsv n=1172 acc=21.22 facts=32488986
+obqa_test.tsv            500 q    24.40%   (alone: fact 26.08  joint 17.47  open 21.33  meaning 29.72)  171.1 ms/q
+RESULT bgarc file=obqa_test.tsv n=500 acc=24.40 facts=32488986
+cortex /content/cx.brain.cx: 725317 words, 170762026 met in facts
+continuing /content/cx.brain: 32488986 facts, 725317 words, clock 30626599
+read 0 MB in 0 s (0.04 MB/s): 11 sentences, 16 facts read; 32488998 kept, 0 forgotten (shelf finished)
+cortex: 170762085 words met in facts, 280769052 pairs learned, 12 blocks (1.9 GB)
+cortex saved: /content/harbor.brain.cx (725317 words)
+RESULT bgread brain=/content/harbor.brain bytes=1077370819 facts=32488998 words=725317 forgotten=0 read_bytes=561 seconds=0 mb_s=0.04
+  before harbor_1	Who does Sefa live with?	pick=her brother	right=her grandfather	WRONG
+  before harbor_2	What is the Moth?	pick=an insect	right=a boat	WRONG
+  before harbor_3	What colour is the sail of the Moth?	pick=red	right=green	WRONG
+  before harbor_4	What is Tavi's job?	pick=teacher	right=fisherman	WRONG
+  before harbor_5	Why does Tavi hang a lantern on the mast?	pick=to scare birds	right=so other boats can see the Moth	WRONG
+  before harbor_6	Where did the storm come from?	pick=the west	right=the west	OK
+  before harbor_7	What did the wind tear?	pick=the sail	right=the sail	OK
+  before harbor_8	What did Sefa carry to the cliff?	pick=a torch	right=a jar of fireflies	WRONG
+  before harbor_9	Where did Tavi steer the Moth?	pick=up the river	right=into the harbor	WRONG
+  before harbor_10	What did the people of Oruna call Sefa?	pick=the Firefly Girl	right=the Firefly Girl	OK
+  after harbor_1	Who does Sefa live with?	pick=her brother	right=her grandfather	WRONG
+  after harbor_2	What is the Moth?	pick=an insect	right=a boat	WRONG
+  after harbor_3	What colour is the sail of the Moth?	pick=red	right=green	WRONG
+  after harbor_4	What is Tavi's job?	pick=teacher	right=fisherman	WRONG
+  after harbor_5	Why does Tavi hang a lantern on the mast?	pick=to read at night	right=so other boats can see the Moth	WRONG
+  after harbor_6	Where did the storm come from?	pick=the west	right=the west	OK
+  after harbor_7	What did the wind tear?	pick=the sail	right=the sail	OK
+  after harbor_8	What did Sefa carry to the cliff?	pick=a jar of fireflies	right=a jar of fireflies	OK
+  after harbor_9	Where did Tavi steer the Moth?	pick=into the harbor	right=into the harbor	OK
+  after harbor_10	What did the people of Oruna call Sefa?	pick=the Firefly Girl	right=the Firefly Girl	OK
+STORY harbor env=CX=0 before 3/10 after 5/10
+  before harbor_1	Who does Sefa live with?	pick=her aunt	right=her grandfather	WRONG
+  before harbor_2	What is the Moth?	pick=an insect	right=a boat	WRONG
+  before harbor_3	What colour is the sail of the Moth?	pick=white	right=green	WRONG
+  before harbor_4	What is Tavi's job?	pick=farmer	right=fisherman	WRONG
+  before harbor_5	Why does Tavi hang a lantern on the mast?	pick=to read at night	right=so other boats can see the Moth	WRONG
+  before harbor_6	Where did the storm come from?	pick=the west	right=the west	OK
+  before harbor_7	What did the wind tear?	pick=the roof	right=the sail	WRONG
+  before harbor_8	What did Sefa carry to the cliff?	pick=a rope	right=a jar of fireflies	WRONG
+  before harbor_9	Where did Tavi steer the Moth?	pick=into the harbor	right=into the harbor	OK
+  before harbor_10	What did the people of Oruna call Sefa?	pick=the Lantern Girl	right=the Firefly Girl	WRONG
+  after harbor_1	Who does Sefa live with?	pick=her aunt	right=her grandfather	WRONG
+  after harbor_2	What is the Moth?	pick=an insect	right=a boat	WRONG
+  after harbor_3	What colour is the sail of the Moth?	pick=white	right=green	WRONG
+  after harbor_4	What is Tavi's job?	pick=farmer	right=fisherman	WRONG
+  after harbor_5	Why does Tavi hang a lantern on the mast?	pick=to read at night	right=so other boats can see the Moth	WRONG
+  after harbor_6	Where did the storm come from?	pick=the west	right=the west	OK
+  after harbor_7	What did the wind tear?	pick=the roof	right=the sail	WRONG
+  after harbor_8	What did Sefa carry to the cliff?	pick=a rope	right=a jar of fireflies	WRONG
+  after harbor_9	Where did Tavi steer the Moth?	pick=into the harbor	right=into the harbor	OK
+  after harbor_10	What did the people of Oruna call Sefa?	pick=the Firefly Girl	right=the Firefly Girl	OK
+STORY harbor env=CX=1 CXTH=0.40 CXFIT=1 before 2/10 after 3/10
+cortex /content/cx.brain.cx: 725317 words, 170762026 met in facts
+continuing /content/cx.brain: 32488986 facts, 725317 words, clock 30626599
+read 0 MB in 0 s (0.04 MB/s): 10 sentences, 15 facts read; 32488999 kept, 0 forgotten (shelf finished)
+cortex: 170762091 words met in facts, 280769098 pairs learned, 12 blocks (1.9 GB)
+cortex saved: /content/garden.brain.cx (725317 words)
+RESULT bgread brain=/content/garden.brain bytes=1077370832 facts=32488999 words=725317 forgotten=0 read_bytes=575 seconds=0 mb_s=0.04
+  before garden_1	What did Mr. Halloran grow?	pick=apples	right=tomatoes	WRONG
+  before garden_2	Where was the glass house?	pick=on the roof	right=behind the school	WRONG
+  before garden_3	What is Big Ruth?	pick=a caterpillar	right=a tomato plant	WRONG
+  before garden_4	What was eating the leaves of Big Ruth?	pick=caterpillars	right=caterpillars	OK
+  before garden_5	What did Mr. Halloran bring in to help?	pick=chickens	right=ladybirds	WRONG
+  before garden_6	What do ladybirds eat?	pick=small insects	right=small insects	OK
+  before garden_7	Where did he carry the caterpillars?	pick=into the school	right=to the meadow	WRONG
+  before garden_8	What did the glass house do for the plants?	pick=gave them water	right=kept them warm	WRONG
+  before garden_9	Where did the children sell the tomatoes?	pick=at the market	right=at the market	OK
+  before garden_10	What did the children buy for the teachers?	pick=a chair	right=a kettle	WRONG
+  after garden_1	What did Mr. Halloran grow?	pick=apples	right=tomatoes	WRONG
+  after garden_2	Where was the glass house?	pick=on the roof	right=behind the school	WRONG
+  after garden_3	What is Big Ruth?	pick=a tomato plant	right=a tomato plant	OK
+  after garden_4	What was eating the leaves of Big Ruth?	pick=caterpillars	right=caterpillars	OK
+  after garden_5	What did Mr. Halloran bring in to help?	pick=chickens	right=ladybirds	WRONG
+  after garden_6	What do ladybirds eat?	pick=small insects	right=small insects	OK
+  after garden_7	Where did he carry the caterpillars?	pick=into the school	right=to the meadow	WRONG
+  after garden_8	What did the glass house do for the plants?	pick=kept them warm	right=kept them warm	OK
+  after garden_9	Where did the children sell the tomatoes?	pick=at the market	right=at the market	OK
+  after garden_10	What did the children buy for the teachers?	pick=a kettle	right=a kettle	OK
+STORY garden env=CX=0 before 3/10 after 6/10
+  before garden_1	What did Mr. Halloran grow?	pick=roses	right=tomatoes	WRONG
+  before garden_2	Where was the glass house?	pick=on the roof	right=behind the school	WRONG
+  before garden_3	What is Big Ruth?	pick=a cow	right=a tomato plant	WRONG
+  before garden_4	What was eating the leaves of Big Ruth?	pick=caterpillars	right=caterpillars	OK
+  before garden_5	What did Mr. Halloran bring in to help?	pick=a cat	right=ladybirds	WRONG
+  before garden_6	What do ladybirds eat?	pick=small insects	right=small insects	OK
+  before garden_7	Where did he carry the caterpillars?	pick=to the meadow	right=to the meadow	OK
+  before garden_8	What did the glass house do for the plants?	pick=kept them warm	right=kept them warm	OK
+  before garden_9	Where did the children sell the tomatoes?	pick=at the farm	right=at the market	WRONG
+  before garden_10	What did the children buy for the teachers?	pick=a chair	right=a kettle	WRONG
+  after garden_1	What did Mr. Halloran grow?	pick=roses	right=tomatoes	WRONG
+  after garden_2	Where was the glass house?	pick=on the roof	right=behind the school	WRONG
+  after garden_3	What is Big Ruth?	pick=a cow	right=a tomato plant	WRONG
+  after garden_4	What was eating the leaves of Big Ruth?	pick=caterpillars	right=caterpillars	OK
+  after garden_5	What did Mr. Halloran bring in to help?	pick=a cat	right=ladybirds	WRONG
+  after garden_6	What do ladybirds eat?	pick=small insects	right=small insects	OK
+  after garden_7	Where did he carry the caterpillars?	pick=to the meadow	right=to the meadow	OK
+  after garden_8	What did the glass house do for the plants?	pick=kept them warm	right=kept them warm	OK
+  after garden_9	Where did the children sell the tomatoes?	pick=at the market	right=at the market	OK
+  after garden_10	What did the children buy for the teachers?	pick=a chair	right=a kettle	WRONG
+STORY garden env=CX=1 CXTH=0.40 CXFIT=1 before 4/10 after 5/10
+cortex /content/cx.brain.cx: 725317 words, 170762026 met in facts
+continuing /content/cx.brain: 32488986 facts, 725317 words, clock 30626599
+read 0 MB in 0 s (0.03 MB/s): 8 sentences, 16 facts read; 32489001 kept, 0 forgotten (shelf finished)
+cortex: 170762090 words met in facts, 280769090 pairs learned, 12 blocks (1.9 GB)
+cortex saved: /content/snow.brain.cx (725317 words)
+RESULT bgread brain=/content/snow.brain bytes=1077370923 facts=32489001 words=725317 forgotten=0 read_bytes=565 seconds=0 mb_s=0.03
+  before snow_1	What did Anouk drive?	pick=a tractor	right=the mail truck	WRONG
+  before snow_2	When did Anouk drive over Kessel Pass?	pick=once a year	right=every Tuesday	WRONG
+  before snow_3	What often closes the pass in winter?	pick=snow	right=snow	OK
+  before snow_4	What kind of animal is Bruno?	pick=a dog	right=a dog	OK
+  before snow_5	What colour is Bruno?	pick=brown	right=grey	WRONG
+  before snow_6	What did Anouk put the letters in?	pick=a box	right=a sled	WRONG
+  before snow_7	How long did Bruno pull the sled?	pick=one day	right=three hours	WRONG
+  before snow_8	What was Anouk on when she walked beside Bruno?	pick=a horse	right=skis	WRONG
+  before snow_9	What did the baker give Bruno?	pick=bread	right=a sausage	WRONG
+  before snow_10	Why were the letters dry?	pick=it did not snow	right=she had wrapped them in her wool coat	WRONG
+  after snow_1	What did Anouk drive?	pick=the mail truck	right=the mail truck	OK
+  after snow_2	When did Anouk drive over Kessel Pass?	pick=every Tuesday	right=every Tuesday	OK
+  after snow_3	What often closes the pass in winter?	pick=snow	right=snow	OK
+  after snow_4	What kind of animal is Bruno?	pick=a dog	right=a dog	OK
+  after snow_5	What colour is Bruno?	pick=brown	right=grey	WRONG
+  after snow_6	What did Anouk put the letters in?	pick=a sled	right=a sled	OK
+  after snow_7	How long did Bruno pull the sled?	pick=three hours	right=three hours	OK
+  after snow_8	What was Anouk on when she walked beside Bruno?	pick=skis	right=skis	OK
+  after snow_9	What did the baker give Bruno?	pick=a sausage	right=a sausage	OK
+  after snow_10	Why were the letters dry?	pick=it did not snow	right=she had wrapped them in her wool coat	WRONG
+STORY snow env=CX=0 before 2/10 after 8/10
+  before snow_1	What did Anouk drive?	pick=a tractor	right=the mail truck	WRONG
+  before snow_2	When did Anouk drive over Kessel Pass?	pick=once a year	right=every Tuesday	WRONG
+  before snow_3	What often closes the pass in winter?	pick=snow	right=snow	OK
+  before snow_4	What kind of animal is Bruno?	pick=a dog	right=a dog	OK
+  before snow_5	What colour is Bruno?	pick=brown	right=grey	WRONG
+  before snow_6	What did Anouk put the letters in?	pick=a box	right=a sled	WRONG
+  before snow_7	How long did Bruno pull the sled?	pick=one day	right=three hours	WRONG
+  before snow_8	What was Anouk on when she walked beside Bruno?	pick=skis	right=skis	OK
+  before snow_9	What did the baker give Bruno?	pick=bread	right=a sausage	WRONG
+  before snow_10	Why were the letters dry?	pick=it did not snow	right=she had wrapped them in her wool coat	WRONG
+  after snow_1	What did Anouk drive?	pick=a tractor	right=the mail truck	WRONG
+  after snow_2	When did Anouk drive over Kessel Pass?	pick=every Tuesday	right=every Tuesday	OK
+  after snow_3	What often closes the pass in winter?	pick=snow	right=snow	OK
+  after snow_4	What kind of animal is Bruno?	pick=a dog	right=a dog	OK
+  after snow_5	What colour is Bruno?	pick=brown	right=grey	WRONG
+  after snow_6	What did Anouk put the letters in?	pick=a sled	right=a sled	OK
+  after snow_7	How long did Bruno pull the sled?	pick=three hours	right=three hours	OK
+  after snow_8	What was Anouk on when she walked beside Bruno?	pick=skis	right=skis	OK
+  after snow_9	What did the baker give Bruno?	pick=bread	right=a sausage	WRONG
+  after snow_10	Why were the letters dry?	pick=it did not snow	right=she had wrapped them in her wool coat	WRONG
+STORY snow env=CX=1 CXTH=0.40 CXFIT=1 before 3/10 after 6/10
