@@ -46,3 +46,22 @@ sets must give the same numbers).
 * Runs in Colab. The brain: from a GitHub release if one was saved (owner's token in Colab
   Secrets, `GH_TOKEN`); else rebuilt in the session (about 1.5 hours).
 * Reported as they come; journal updated; losers' code deleted.
+
+## How it was built (before any dev result)
+
+* `bg passages` with `PSLOT=2|3`, `EA`, `SW`; the dump has each option's parts and whether the
+  episode was active, so `EA` and `SW` are chosen offline from one run per slot version
+  (`tools/passage_colab.py`; the offline score reproduces `bg`'s). U0 and U1 come from the
+  `PSLOT=2` dump with `SW = 0`.
+* The asked slot: the question is read with `read_question` (the reader's question mode,
+  which leaves the asked argument open). An episode fact's match: verb and the question's
+  other arguments, by role (as the fact part); its fillers: every argument in the asked role
+  that the question did not name. A passive fact ("was built by a clockmaker") is matched as
+  active. Developed on the clock story (dev): "What does Pell eat?" became right; "Who built
+  the clock?" still wrong ("a clockmaker named Imra Batsho": the name is not linked by the
+  reader; "Pell eats beetles, not mice": the "not" is lost in reading). Those are reader
+  limits, not changed here.
+* With the defaults (`EA=1`, `SW=0`, `PSLOT=0`) the answers are EPISODE's, and with no
+  episode nothing changes (droplet checks).
+* The brain is kept as a GitHub release `brain-school-cx` (`tools/brain_release.py`) when the
+  owner's `GH_TOKEN` is in Colab Secrets; else rebuilt in the session.

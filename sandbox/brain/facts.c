@@ -498,6 +498,13 @@ static int read_statement(Know *k, const char *s, Frame *out, int max, uint32_t 
     t->ntok = n0; t->src_len = 0; k->R.refs = keep; return nf;
 }
 
+/* a question read as a frame, with the slot it asks for left open (frame 0's argument *whslot; -1: none) */
+static int read_question(Know *k, const char *s, Frame *out, int max, int *whslot) {
+    TextContext *t = &k->t; uint32_t n0 = t->ntok; Refs keep = k->R.refs;
+    text_take(t, NULL, s, strlen(s)); k->R.question = 1; *whslot = -1;
+    int nf = read_span(&k->R, t->tok, n0, t->ntok, out, max, whslot);
+    k->R.question = 0; t->ntok = n0; t->src_len = 0; k->R.refs = keep; return nf;
+}
 static float role_fit(const Arg *a, const Arg *b) {
     if (a->role == b->role) return a->role == A_PP && a->prep != b->prep ? 0.8f : 1.0f;
     if ((a->role == A_PAT && b->role == A_ATTR) || (a->role == A_ATTR && b->role == A_PAT)) return 0.8f;
