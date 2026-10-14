@@ -105,6 +105,8 @@ Lessons that keep coming back:
 
 * **Now: CORTEX_LINK** (docs/CORTEX_LINK.md): the cortex learns live from the facts as
   Mimir reads, and answers use both.
+* Next: **EPISODE** (docs/EPISODE.md): what it is reading now kept apart from what it knows
+  (the clock story fell 8/10 → 3/10 with the cortex on); scorecard written.
 * Then: sentences, not just words: pronouns ("He" = Dumi), "an owl named Pell", negation,
   relations (cause, kind of, part of).
 * Later: the cortex small enough for the phone (8-bit, ~30 MB for 50k words); a cap on what
