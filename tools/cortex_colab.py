@@ -37,7 +37,7 @@ if mode == "k3":
     log = []
     for name, cell, env in ((r[0], r[1], r[2].strip()) for r in rows):   # one at a time: each uses both cores
         m = "%s/%s.cx" % (W, name)
-        t = sh("%s MAXTOK=50000000 ./cortex train %s %s/vocab.tsv %s %s 2>&1 | grep RESULT" % (env, cell, W, m, SHELF), quiet=True)
+        t = sh("%s MAXTOK=50000000 ./cortex train %s %s/vocab.tsv %s %s 2>&1 | grep RESULT" % (env, cell, W, m, SHELF), quiet=True) if not os.path.exists(m) else "(trained already in this session)\n"
         t += sh("%s %s ./cortex eval %s %s/vocab.tsv; ./cortex near %s %s/vocab.tsv owl king water france blue" % (env, evd, m, W, m, W), quiet=True)
         t = "=== %s %s %s (dev)\n%s" % (name, cell, env, t); print(t, flush=True); log.append((mean_of(t), name, cell, env, t))
     best = max(log)
