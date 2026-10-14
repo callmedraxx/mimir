@@ -146,3 +146,34 @@ school shelf, then the tests once.
   was seen together. The K2 cells tried to add that with local rules and did not learn.
 
 Results: `results/cortex_test.txt`, `results/cortex_dev.txt`.
+
+---
+
+# v0.1: Hebbian + anti-Hebbian (K3)
+
+Owner (2026-10-14): "let's mix Hebbian learning and anti-Hebbian learning instead of using
+backprop: we will reward and penalize. We don't need to rerun word2vec … compare with the
+scores we already have."
+
+**K3.** Each word has meaning cells and context cells (D of each). When word t appears with a
+neighbour u: **reward** — the links between t's meaning cells and u's context cells grow, by
+how much the pair was *not* yet expected (1 − σ(agreement)); **penalty** — for NEG words drawn
+at random (that did not appear there), the links shrink by how much they *were* expected
+(σ(agreement)). Each change uses only the two cells it joins and the reward/penalty signal
+(a three-factor rule); nothing is sent back through layers. With one layer this is close to
+word2vec's negative sampling, written as local learning: the comparison asks whether the
+local reward/penalty form reaches word2vec's level. Learning rate falls linearly over the one
+pass. A word's meaning = its meaning cells (cosine for similarity); filling a blank = how
+well a word's meaning cells fit the context cells of the words around the blank.
+
+**Cells** (dev grid, first 50M replayed words, dev sets): K3a D 300 WIN 5 NEG 5; K3b D 300
+WIN 2 NEG 5; K3c D 100 WIN 5 NEG 5 (phone-sized: 100 numbers per word).
+
+**Choice, fixed now:** the best mean of WS-353, SimVerb and fill-the-blank (as a fraction),
+picked by the script itself, then trained once on the whole school shelf and tested once
+(SimLex-999, MEN, fill-the-blank test items, stories). Compared with the test scores already
+run: K1b and B5 (word2vec, not rerun). Note: these tests have been looked at once (v0); the
+v0.1 numbers are therefore a second look, said here so they are read that way.
+
+**v0.1 works if** K3 beats K1b on SimLex-999 and fill-the-blank and reaches within 0.05 of
+word2vec on SimLex-999 and MEN.
