@@ -1,0 +1,228 @@
+=== choice: EA=0
+=== PSLOT=0
+cortex /content/cx.brain.cx: 725317 words, 170762026 met in facts
+brain /content/cx.brain: 32488986 facts, 725317 words (loaded in 36.4 s)
+mc160.test.txt           240 q    50.00%   (episode weight 4.00)  193.0 ms/q
+RESULT bgpass file=mc160.test.txt n=240 acc=50.00 epw=4.00
+mc500.test.txt           600 q    49.19%   (episode weight 4.00)  166.4 ms/q
+RESULT bgpass file=mc500.test.txt n=600 acc=49.19 epw=4.00
+test_middle.txt         1436 q    39.12%   (episode weight 4.00)  288.9 ms/q
+RESULT bgpass file=test_middle.txt n=1436 acc=39.12 epw=4.00
+cortex /content/cx.brain.cx: 725317 words, 170762026 met in facts
+brain /content/cx.brain: 32488986 facts, 725317 words (loaded in 36.8 s)
+  single	What is Comet?	pick=a bicycle	right=a bicycle	OK
+  single	What colour is Comet?	pick=red	right=red	OK
+  single	On which day does Nadia not ride her bicycle to school?	pick=Tuesday	right=Friday	WRONG
+  single	Who drives Nadia to school on Fridays?	pick=her uncle Bram	right=her uncle Bram	OK
+  single	What broke?	pick=the chain	right=the chain	OK
+  single	Where did the chain break?	pick=near the bakery	right=near the bakery	OK
+  single	Was Nadia sad?	pick=she was angry	right=no, she was not sad	WRONG
+  single	Who fixed the chain?	pick=the baker	right=the baker	OK
+  single	What did the baker fix the chain with?	pick=a rope	right=a piece of wire	WRONG
+  single	What did Nadia give the baker?	pick=a drawing of a horse	right=a drawing of a horse	OK
+  single	What is Old Watch?	pick=a real bird	right=a stone owl	WRONG
+  single	What is the owl made of?	pick=gold	right=stone	WRONG
+  single	Who carved the owl?	pick=a sculptor named Ines	right=a sculptor named Ines	OK
+  single	When was the owl carved?	pick=a hundred years ago	right=a hundred years ago	OK
+  single	Which birds build a nest on the owl's head?	pick=swallows	right=swallows	OK
+  single	When do the birds build their nest?	pick=every spring	right=every spring	OK
+  single	What did Teo want to do?	pick=paint the owl gold	right=paint the owl gold	OK
+  single	What did the mayor say?	pick=maybe	right=no	WRONG
+  single	What did Teo paint instead?	pick=a picture of a bird	right=a sign	WRONG
+  single	Where did Teo hang the sign?	pick=in his room	right=on the fence	WRONG
+  single	What is Lina?	pick=a swimmer	right=a swimmer	OK
+  single	What did Lina swim across?	pick=Lake Moro	right=Lake Moro	OK
+  single	Why did Lina swim across the lake?	pick=to raise money for the hospital	right=to raise money for the hospital	OK
+  single	Why did Lina not swim in the morning?	pick=the boat was broken	right=the lake is cold	WRONG
+  single	When did Lina start?	pick=at six	right=at noon	WRONG
+  single	Who followed Lina in a boat?	pick=her brother Paolo	right=her brother Paolo	OK
+  single	What did Paolo give Lina?	pick=warm tea	right=warm tea	OK
+  single	How long did Lina swim?	pick=one hour	right=six hours	WRONG
+  single	How many coins did people give Lina?	pick=four hundred	right=four hundred	OK
+  single	What did the hospital buy?	pick=a new bed for children	right=a new bed for children	OK
+stories_new.txt           30 q    63.33%   (episode weight 4.00)  151.2 ms/q
+RESULT bgpass file=stories_new.txt n=30 acc=63.33 epw=4.00
+  single	What does Mira keep?	pick=bees	right=bees	OK
+  single	What is Queen Agnes?	pick=a beehive	right=a beehive	OK
+  single	What colour is Queen Agnes?	pick=blue	right=blue	OK
+  single	What is Lenno's job?	pick=potter	right=potter	OK
+  single	Which is true about Lenno?	pick=he keeps bees	right=he does not like bees	WRONG
+  single	What does Mira trade her honey for?	pick=salt	right=salt	OK
+  single	Why were the traders late?	pick=a goat ate the sign	right=a goat ate the sign	OK
+  single	What was the new sign made of?	pick=clay	right=clay	OK
+  single	When did the traders arrive?	pick=two days later	right=two days later	OK
+  single	How many bags of salt did the traders pay?	pick=nine	right=nine	OK
+  single	When does the train leave Vell?	pick=at ten o'clock at night	right=at ten o'clock at night	OK
+  single	Who drives the train?	pick=Hester Brann	right=Hester Brann	OK
+  single	What is the Grey Heron?	pick=a bird	right=a train	WRONG
+  single	Where does the train go?	pick=to the sea	right=to the sea	OK
+  single	What did Kofi not have?	pick=a coat	right=a ticket	WRONG
+  single	Why did Kofi get on the train?	pick=to see his father	right=to see his father	OK
+  single	Where does Kofi's father work?	pick=at the lighthouse	right=at the lighthouse	OK
+  single	What did Hester let Kofi do?	pick=blow the whistle	right=blow the whistle	OK
+  single	Who was waiting on the platform?	pick=his teacher	right=Kofi's father	WRONG
+  single	How did Kofi's father pay for the ticket?	pick=with three silver coins	right=with three silver coins	OK
+  single	Who built the kite with Tomas?	pick=his sister Ilse	right=his sister Ilse	OK
+  single	What was the kite made of?	pick=red paper and bamboo	right=red paper and bamboo	OK
+  single	What is Firebird?	pick=a kite	right=a kite	OK
+  single	When did they fly the kite?	pick=on Saturday	right=on Saturday	OK
+  single	What broke?	pick=the string	right=the string	OK
+  single	What did the kite fly over?	pick=the river	right=the river	OK
+  single	Where did the kite land?	pick=in the river	right=in the garden of Mrs. Vanek	WRONG
+  single	What does Mrs. Vanek grow?	pick=sunflowers	right=sunflowers	OK
+  single	Was Mrs. Vanek angry?	pick=she cried	right=no, she was not angry	WRONG
+  single	What did Mrs. Vanek give the children with the kite?	pick=a new string	right=a jar of plum jam	WRONG
+stories_old.txt           30 q    76.67%   (episode weight 4.00)  158.4 ms/q
+RESULT bgpass file=stories_old.txt n=30 acc=76.67 epw=4.00
+  single	Who does Sefa live with?	pick=her grandfather	right=her grandfather	OK
+  single	What is the Moth?	pick=an insect	right=a boat	WRONG
+  single	What colour is the sail of the Moth?	pick=green	right=green	OK
+  single	What is Tavi's job?	pick=fisherman	right=fisherman	OK
+  single	Why does Tavi hang a lantern on the mast?	pick=so other boats can see the Moth	right=so other boats can see the Moth	OK
+  single	Where did the storm come from?	pick=the west	right=the west	OK
+  single	What did the wind tear?	pick=the sail	right=the sail	OK
+  single	What did Sefa carry to the cliff?	pick=a jar of fireflies	right=a jar of fireflies	OK
+  single	Where did Tavi steer the Moth?	pick=into the harbor	right=into the harbor	OK
+  single	What did the people of Oruna call Sefa?	pick=the Firefly Girl	right=the Firefly Girl	OK
+  single	What did Mr. Halloran grow?	pick=tomatoes	right=tomatoes	OK
+  single	Where was the glass house?	pick=on the roof	right=behind the school	WRONG
+  single	What is Big Ruth?	pick=a tomato plant	right=a tomato plant	OK
+  single	What was eating the leaves of Big Ruth?	pick=caterpillars	right=caterpillars	OK
+  single	What did Mr. Halloran bring in to help?	pick=ladybirds	right=ladybirds	OK
+  single	What do ladybirds eat?	pick=small insects	right=small insects	OK
+  single	Where did he carry the caterpillars?	pick=to the meadow	right=to the meadow	OK
+  single	What did the glass house do for the plants?	pick=kept them warm	right=kept them warm	OK
+  single	Where did the children sell the tomatoes?	pick=at the market	right=at the market	OK
+  single	What did the children buy for the teachers?	pick=a kettle	right=a kettle	OK
+  single	What did Anouk drive?	pick=the mail truck	right=the mail truck	OK
+  single	When did Anouk drive over Kessel Pass?	pick=every morning	right=every Tuesday	WRONG
+  single	What often closes the pass in winter?	pick=snow	right=snow	OK
+  single	What kind of animal is Bruno?	pick=a dog	right=a dog	OK
+  single	What colour is Bruno?	pick=grey	right=grey	OK
+  single	What did Anouk put the letters in?	pick=a sled	right=a sled	OK
+  single	How long did Bruno pull the sled?	pick=three hours	right=three hours	OK
+  single	What was Anouk on when she walked beside Bruno?	pick=skis	right=skis	OK
+  single	What did the baker give Bruno?	pick=a sausage	right=a sausage	OK
+  single	Why were the letters dry?	pick=she had wrapped them in her wool coat	right=she had wrapped them in her wool coat	OK
+stories_link.txt          30 q    90.00%   (episode weight 4.00)  121.5 ms/q
+RESULT bgpass file=stories_link.txt n=30 acc=90.00 epw=4.00
+=== EA=0
+cortex /content/cx.brain.cx: 725317 words, 170762026 met in facts
+brain /content/cx.brain: 32488986 facts, 725317 words (loaded in 31.1 s)
+mc160.test.txt           240 q    49.58%   (episode weight 4.00)  177.4 ms/q
+RESULT bgpass file=mc160.test.txt n=240 acc=49.58 epw=4.00
+mc500.test.txt           600 q    50.56%   (episode weight 4.00)  154.1 ms/q
+RESULT bgpass file=mc500.test.txt n=600 acc=50.56 epw=4.00
+test_middle.txt         1436 q    40.68%   (episode weight 4.00)  277.4 ms/q
+RESULT bgpass file=test_middle.txt n=1436 acc=40.68 epw=4.00
+cortex /content/cx.brain.cx: 725317 words, 170762026 met in facts
+brain /content/cx.brain: 32488986 facts, 725317 words (loaded in 38.1 s)
+  single	What is Comet?	pick=a bicycle	right=a bicycle	OK
+  single	What colour is Comet?	pick=red	right=red	OK
+  single	On which day does Nadia not ride her bicycle to school?	pick=Sunday	right=Friday	WRONG
+  single	Who drives Nadia to school on Fridays?	pick=her uncle Bram	right=her uncle Bram	OK
+  single	What broke?	pick=the chain	right=the chain	OK
+  single	Where did the chain break?	pick=near the bakery	right=near the bakery	OK
+  single	Was Nadia sad?	pick=she was angry	right=no, she was not sad	WRONG
+  single	Who fixed the chain?	pick=the baker	right=the baker	OK
+  single	What did the baker fix the chain with?	pick=a piece of wire	right=a piece of wire	OK
+  single	What did Nadia give the baker?	pick=a drawing of a horse	right=a drawing of a horse	OK
+  single	What is Old Watch?	pick=a real bird	right=a stone owl	WRONG
+  single	What is the owl made of?	pick=stone	right=stone	OK
+  single	Who carved the owl?	pick=a sculptor named Ines	right=a sculptor named Ines	OK
+  single	When was the owl carved?	pick=a hundred years ago	right=a hundred years ago	OK
+  single	Which birds build a nest on the owl's head?	pick=swallows	right=swallows	OK
+  single	When do the birds build their nest?	pick=every spring	right=every spring	OK
+  single	What did Teo want to do?	pick=paint the owl gold	right=paint the owl gold	OK
+  single	What did the mayor say?	pick=maybe	right=no	WRONG
+  single	What did Teo paint instead?	pick=a picture of a bird	right=a sign	WRONG
+  single	Where did Teo hang the sign?	pick=on the school	right=on the fence	WRONG
+  single	What is Lina?	pick=a swimmer	right=a swimmer	OK
+  single	What did Lina swim across?	pick=Lake Moro	right=Lake Moro	OK
+  single	Why did Lina swim across the lake?	pick=to raise money for the hospital	right=to raise money for the hospital	OK
+  single	Why did Lina not swim in the morning?	pick=the boat was broken	right=the lake is cold	WRONG
+  single	When did Lina start?	pick=at noon	right=at noon	OK
+  single	Who followed Lina in a boat?	pick=her brother Paolo	right=her brother Paolo	OK
+  single	What did Paolo give Lina?	pick=warm tea	right=warm tea	OK
+  single	How long did Lina swim?	pick=ten minutes	right=six hours	WRONG
+  single	How many coins did people give Lina?	pick=four hundred	right=four hundred	OK
+  single	What did the hospital buy?	pick=a new bed for children	right=a new bed for children	OK
+stories_new.txt           30 q    71.67%   (episode weight 4.00)  140.3 ms/q
+RESULT bgpass file=stories_new.txt n=30 acc=71.67 epw=4.00
+  single	What does Mira keep?	pick=bees	right=bees	OK
+  single	What is Queen Agnes?	pick=a beehive	right=a beehive	OK
+  single	What colour is Queen Agnes?	pick=blue	right=blue	OK
+  single	What is Lenno's job?	pick=trader	right=potter	WRONG
+  single	Which is true about Lenno?	pick=he keeps bees	right=he does not like bees	WRONG
+  single	What does Mira trade her honey for?	pick=salt	right=salt	OK
+  single	Why were the traders late?	pick=a goat ate the sign	right=a goat ate the sign	OK
+  single	What was the new sign made of?	pick=clay	right=clay	OK
+  single	When did the traders arrive?	pick=two days later	right=two days later	OK
+  single	How many bags of salt did the traders pay?	pick=nine	right=nine	OK
+  single	When does the train leave Vell?	pick=at ten o'clock at night	right=at ten o'clock at night	OK
+  single	Who drives the train?	pick=Hester Brann	right=Hester Brann	OK
+  single	What is the Grey Heron?	pick=a train	right=a train	OK
+  single	Where does the train go?	pick=to the sea	right=to the sea	OK
+  single	What did Kofi not have?	pick=a coat	right=a ticket	WRONG
+  single	Why did Kofi get on the train?	pick=to see his father	right=to see his father	OK
+  single	Where does Kofi's father work?	pick=at the lighthouse	right=at the lighthouse	OK
+  single	What did Hester let Kofi do?	pick=blow the whistle	right=blow the whistle	OK
+  single	Who was waiting on the platform?	pick=his teacher	right=Kofi's father	WRONG
+  single	How did Kofi's father pay for the ticket?	pick=with three silver coins	right=with three silver coins	OK
+  single	Who built the kite with Tomas?	pick=his sister Ilse	right=his sister Ilse	OK
+  single	What was the kite made of?	pick=red paper and bamboo	right=red paper and bamboo	OK
+  single	What is Firebird?	pick=a kite	right=a kite	OK
+  single	When did they fly the kite?	pick=on Saturday	right=on Saturday	OK
+  single	What broke?	pick=the string	right=the string	OK
+  single	What did the kite fly over?	pick=the river	right=the river	OK
+  single	Where did the kite land?	pick=in the river	right=in the garden of Mrs. Vanek	WRONG
+  single	What does Mrs. Vanek grow?	pick=sunflowers	right=sunflowers	OK
+  single	Was Mrs. Vanek angry?	pick=yes, she was very angry	right=no, she was not angry	WRONG
+  single	What did Mrs. Vanek give the children with the kite?	pick=a new string	right=a jar of plum jam	WRONG
+stories_old.txt           30 q    76.67%   (episode weight 4.00)  141.6 ms/q
+RESULT bgpass file=stories_old.txt n=30 acc=76.67 epw=4.00
+  single	Who does Sefa live with?	pick=her grandfather	right=her grandfather	OK
+  single	What is the Moth?	pick=a boat	right=a boat	OK
+  single	What colour is the sail of the Moth?	pick=green	right=green	OK
+  single	What is Tavi's job?	pick=fisherman	right=fisherman	OK
+  single	Why does Tavi hang a lantern on the mast?	pick=so other boats can see the Moth	right=so other boats can see the Moth	OK
+  single	Where did the storm come from?	pick=the west	right=the west	OK
+  single	What did the wind tear?	pick=the sail	right=the sail	OK
+  single	What did Sefa carry to the cliff?	pick=a jar of fireflies	right=a jar of fireflies	OK
+  single	Where did Tavi steer the Moth?	pick=into the harbor	right=into the harbor	OK
+  single	What did the people of Oruna call Sefa?	pick=the Firefly Girl	right=the Firefly Girl	OK
+  single	What did Mr. Halloran grow?	pick=tomatoes	right=tomatoes	OK
+  single	Where was the glass house?	pick=in the market	right=behind the school	WRONG
+  single	What is Big Ruth?	pick=a tomato plant	right=a tomato plant	OK
+  single	What was eating the leaves of Big Ruth?	pick=caterpillars	right=caterpillars	OK
+  single	What did Mr. Halloran bring in to help?	pick=ladybirds	right=ladybirds	OK
+  single	What do ladybirds eat?	pick=small insects	right=small insects	OK
+  single	Where did he carry the caterpillars?	pick=to the meadow	right=to the meadow	OK
+  single	What did the glass house do for the plants?	pick=kept them warm	right=kept them warm	OK
+  single	Where did the children sell the tomatoes?	pick=at the market	right=at the market	OK
+  single	What did the children buy for the teachers?	pick=a kettle	right=a kettle	OK
+  single	What did Anouk drive?	pick=the mail truck	right=the mail truck	OK
+  single	When did Anouk drive over Kessel Pass?	pick=every Tuesday	right=every Tuesday	OK
+  single	What often closes the pass in winter?	pick=snow	right=snow	OK
+  single	What kind of animal is Bruno?	pick=a dog	right=a dog	OK
+  single	What colour is Bruno?	pick=grey	right=grey	OK
+  single	What did Anouk put the letters in?	pick=a sled	right=a sled	OK
+  single	How long did Bruno pull the sled?	pick=three hours	right=three hours	OK
+  single	What was Anouk on when she walked beside Bruno?	pick=skis	right=skis	OK
+  single	What did the baker give Bruno?	pick=a sausage	right=a sausage	OK
+  single	Why were the letters dry?	pick=she had wrapped them in her wool coat	right=she had wrapped them in her wool coat	OK
+stories_link.txt          30 q    96.67%   (episode weight 4.00)  121.3 ms/q
+RESULT bgpass file=stories_link.txt n=30 acc=96.67 epw=4.00
+=== general tests, no episode (must be 27.41 31.37 46.61 21.22 24.40)
+cortex /content/cx.brain.cx: 725317 words, 170762026 met in facts
+brain /content/cx.brain: 32488986 facts, 725317 words (loaded in 30.5 s)
+mmlu_hs_test.tsv        3420 q    27.41%   (alone: fact 26.09  joint 24.58  open 28.23  meaning 25.90)  268.0 ms/q
+RESULT bgarc file=mmlu_hs_test.tsv n=3420 acc=27.41 facts=32488986
+csqa_dev.tsv            1221 q    31.37%   (alone: fact 24.07  joint 21.42  open 26.62  meaning 28.19)  175.6 ms/q
+RESULT bgarc file=csqa_dev.tsv n=1221 acc=31.37 facts=32488986
+easy_test.tsv           2376 q    46.61%   (alone: fact 31.57  joint 32.37  open 45.97  meaning 34.93)  157.9 ms/q
+RESULT bgarc file=easy_test.tsv n=2376 acc=46.61 facts=32488986
+challenge_test.tsv      1172 q    21.22%   (alone: fact 26.07  joint 17.95  open 20.36  meaning 21.43)  193.7 ms/q
+RESULT bgarc file=challenge_test.tsv n=1172 acc=21.22 facts=32488986
+obqa_test.tsv            500 q    24.40%   (alone: fact 26.08  joint 17.47  open 21.33  meaning 29.72)  151.0 ms/q
+RESULT bgarc file=obqa_test.tsv n=500 acc=24.40 facts=32488986

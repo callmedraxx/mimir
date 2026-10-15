@@ -38,7 +38,7 @@ anti-Hebbian, reward and penalty); answers use both.
 |---|---|---|
 | the brain | `sandbox/brain/bg.c` | `bg read` (shelf → facts with pointers), `bg arc` (answer a test file), `bg serve` (one question at a time), `bg words` / `bg near` (the cortex) |
 | **the cortex** | `sandbox/brain/bg.c` | learns from each fact in its own thread while reading (K3b's reward/penalty rule; each word's rate falls as it is met more often); saved as `BRAIN.cx`; compares words when answering (a link from cosine 0.40) and scores how well an option fits the question (weight 1) |
-| **the episode** | `sandbox/brain/bg.c`, `bg passages` | the text being read kept apart from the shelf's facts, active while asked about; its facts answer first, weighted 4 (EPISODE); after each passage everything is put back |
+| **the episode** | `sandbox/brain/bg.c`, `bg passages` | the text being read kept apart from the shelf's facts, active while asked about; its facts answer first, weighted 4 (EPISODE); inside it the association parts are off and the passage decides (PASSAGE); after each passage everything is put back |
 | passage tests | `data/understand/mctest` (`tools/understand_fetch.py`), `data/understand/race` (`tools/race_fetch.py`) | MCTest MC160/MC500, RACE-Middle |
 | reading sentences into facts | `sandbox/brain/facts.c` | word classes, chunks, frames (verb, who, what, is-what, place/time, negation) |
 | tokens, word meanings, word reader | `src/text.c`, `src/meaning.c`, `src/reader.c` | shared with the app |
@@ -76,7 +76,7 @@ Reading a passage and answering about it (`bg passages`, with the episode):
 
 | | MC160 | MC500 | RACE-Middle | new stories (30) | harbor/garden/snow (30) |
 |---|---|---|---|---|---|
-| **Mimir, school brain + cortex + episode** | 50.0 | 49.2 | 39.1 | 23/30 | 27/30 |
+| **Mimir, school brain + cortex + episode, passage decides** | 49.6 | 50.6 | 40.7 | 23/30 (salt/train/kite), 21.5/30 (bicycle/stone owl/swim) | 29/30 |
 | sliding window (MCTest paper) | 67.1 | 57.8 | 45.3 | | |
 | Mimir's passage-only reader (10-12) | 63.8 | 52.8 | 41.1 | | |
 Word tests (cortex learned from facts): SimLex-999 0.381, MEN 0.738 (word2vec 0.398 / 0.717).
@@ -104,6 +104,7 @@ Word tests (cortex learned from facts): SimLex-999 0.381, MEN 0.738 (word2vec 0.
 | 10-14 | Cortex v0.1: Hebbian + anti-Hebbian (reward/penalty), from text | **beats word2vec**: SimLex 0.464 (w2v 0.398), MEN 0.739 (0.717), fill-the-blank 10.1% (6.6%); owl → eagle, raven, bird | its rule (K3b) goes into the brain (CORTEX_LINK); the text-trained version removed |
 | 10-14 | **CORTEX_LINK: one brain**, the cortex learning live from the facts as Mimir reads, used when answering | tests: CommonsenseQA +5.9, OpenBookQA +3.7, ARC-Easy +1.1, MMLU/ARC-C ties (mean 28.2 → 30.2); **stories worse** (19 → 14 of 30) | **in use**; rate falling with the reading clock, cosine 0.25 and the old meaning table removed |
 | 10-14 | **EPISODE**: the text being read kept apart from what it knows, active while asked about | passages: MC160 25 → 50, MC500 28 → 49, RACE-M 26 → 39; stories 7/30 → 23/30 and 14 → 27/30; general tests unchanged. Inhibition and recency added nothing | **in use** (EPW 4); one pool, inhibition, recency removed |
+| 10-15 | **PASSAGE**: answering about a passage by understanding: association off inside it, the asked slot, yes/no polarity | association off: MC500 +1.4, RACE-M +1.6, stories 19 → 21.5 and 27 → 29 of 30; the slot +0.4 and polarity +0.1 on dev (under the bar) | association off **in use**; slot and polarity removed |
 
 Lessons that keep coming back:
 * Reading more helps ARC-Easy only; ARC-Challenge and OpenBookQA were built against
@@ -119,7 +120,7 @@ Lessons that keep coming back:
 
 ## Open
 
-* **Now: PASSAGE** (docs/PASSAGE.md, scorecard written): answering about a passage by understanding it, not by association: the meaning and
+* **Next: reading negation and "what a thing is"** (docs/PASSAGE.md misses): "was not sad", "does not like", "without a ticket", "is not a real bird", "the train is called X", "said no" are lost when sentences are read into facts. Before: answering about a passage by understanding it, not by association: the meaning and
   fit parts never look at the passage (passage tests still below Mimir's own passage-only reader
   and the sliding window); negation ("She was not angry"); "X gave Y with Z".
 * Then: sentences, not just words: pronouns ("He" = Dumi), "an owl named Pell", negation,
@@ -128,6 +129,9 @@ Lessons that keep coming back:
   is kept for good; the GPT-2 vs Mimir chat page (half built).
 
 ## Log
+
+**2026-10-15**
+* PASSAGE tested: association off inside a passage adopted (MC500 +1.4, RACE-M +1.6, stories better); the asked slot and polarity not kept. Remaining misses are negation and naming, lost in reading.
 
 **2026-10-14**
 * The school brain with its cortex published as release `brain-school-cx` by GitHub Actions (owner: "you have gh access create the key you need"; GitHub does not let tools create keys, and the existing all-repos key was not put in Colab; the workflow uses GitHub's own job token). Same 32,488,986 facts as the Colab builds.

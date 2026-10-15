@@ -90,7 +90,7 @@ static float qqsim(const QW *a, const QW *b) {
 #define KA 3
 typedef struct { uint32_t verb, head[KA], mod[KA], prep[KA], count; uint8_t role[KA], narg, flags; uint64_t ptr[2]; float s; uint32_t L; } KF;
 /* strength (docs/past/STRENGTH_COMPARE.md): s and the time last met L; the clock moves one step a sentence read */
-typedef struct { double fact, joint, open, mean, fit, sfact, sjoint, sopen, efact, ejoint, eopen, slot; int active; uint64_t optr, eptr; } BParts;
+typedef struct { double fact, joint, open, mean, fit, efact, ejoint, eopen; int active; uint64_t optr, eptr; } BParts;
 static uint64_t CLK; static const double H0 = 1e6;
 static double eff(const KF *f) { double age = (double)(CLK - f->L); return f->s * exp2(-age / (H0 * f->s)); }
 static KF *kf; static uint32_t nkf, capkf, *kslot, kmask; static uint64_t forgotten; static int forget_th;
@@ -482,59 +482,9 @@ static int reread(Know *A, uint64_t ptr, QW *out, int max) {
 static float *mark; static uint32_t nmark;
 static double BW[5] = { 1, 0.5, 2, 4, 1 };   /* fact, joint, open, mean (chosen on ARC train + dev with a dev brain, 5% of the shelf); fit (chosen on dev, CORTEX_LINK) */
 static int NOPEN = 20;  /* facts whose shelf sentences are re-read when answering (docs/past/LAYA_LEVEL.md stage 1, chosen on dev) */
-/* docs/PASSAGE.md. EA: inside an active episode the meaning and fit parts are scaled by it (the passage decides); PSLOT 2:
-   the asked slot, 3: and the polarity of yes/no questions; SW the slot part's weight */
-static double EA = 1, SW = 0; static int PSLOT;
-static uint32_t qgid(Know *A, uint32_t w) { return w < OPEN ? lx_id(A->t.voc[w].word, 0) : NONE; }
-/* how well an episode fact matches a question frame apart from its open slot; the fact's arguments that fill the slot
-   (a bit each). A passive fact ("was built by a clockmaker") is matched as active: "by X" is the doer, its subject the thing done to. */
-static double slot_match(Know *A, const Frame *h, int ws, const KF *f0, uint32_t *fill) {
-    double num = 0, den = 0; uint32_t used = 0; *fill = 0;
-    KF fa = *f0; const KF *f = &fa; static uint32_t g_by = NONE - 1; if (g_by == NONE - 1) g_by = lx_id("by", 0);
-    for (int j = 0; j < fa.narg; j++) if (fa.role[j] == A_PP && fa.prep[j] == g_by && g_by != NONE) {
-        for (int i = 0; i < fa.narg; i++) if (fa.role[i] == A_AGENT) fa.role[i] = A_PAT;
-        fa.role[j] = A_AGENT; fa.prep[j] = NONE; break; }
-    if (h->verb != NONE) { int light = h->verb == A->R.w_be || h->verb == A->R.w_have || h->verb == A->R.w_do; double w = light ? 0.3 : 1.0;
-        QW v = { qgid(A, h->verb), wmid(A->t.voc[h->verb].word) }; num += w * (f->verb != NONE ? qsim(&v, f->verb) : 0); den += w; }
-    for (int i = 0; i < h->narg; i++) { const Arg *a = &h->a[i]; if (i == ws || a->head >= OPEN || !content(A, a->head)) continue;
-        QW x = { qgid(A, a->head), wmid(A->t.voc[a->head].word) }; double best = 0; int bj = -1;
-        for (int j = 0; j < f->narg; j++) { Arg b = { f->role[j], 0, f->prep[j], 0, 0 }, aa = *a; aa.prep = qgid(A, a->prep);
-            double s = role_fit(&aa, &b) * fmax(qsim(&x, f->head[j]), f->mod[j] != NONE ? 0.6 * qsim(&x, f->mod[j]) : 0); if (s > best) { best = s; bj = j; } }
-        if (bj >= 0 && best > 0.5) used |= 1u << bj; num += best; den += 1; }
-    if (den <= 0) return 0;
-    Arg o = h->a[ws]; o.prep = qgid(A, o.prep); double bf = 0;     /* the fillers: the fact's arguments in the asked role, not ones the question named */
-    for (int j = 0; j < f->narg; j++) { if (used >> j & 1) continue; Arg b = { f->role[j], 0, f->prep[j], 0, 0 }; double r = role_fit(&o, &b);
-        if (r > bf + 1e-9) { bf = r; *fill = 1u << j; } else if (r > bf - 1e-9) *fill |= 1u << j; }
-    return num / den * bf;
-}
-static int says_no(const char *s) {
-    char w[32]; int n = 0;
-    for (;; s++) { if (isalpha((unsigned char)*s) || *s == '\'') { if (n < 31) w[n++] = (char)tolower((unsigned char)*s); continue; }
-        if (n) { w[n] = 0; if (!strcmp(w, "no") || !strcmp(w, "not") || !strcmp(w, "never") || strstr(w, "n't")) return 1; n = 0; } if (!*s) break; }
-    return 0;
-}
-static int yes_no(const char *q) {                     /* a question asked with a helping verb first, no wh-word */
-    static const char *AUX[] = { "is", "was", "are", "were", "do", "does", "did", "can", "could", "has", "have", "had", "will", "would", 0 };
-    while (*q == ' ') q++; for (int i = 0; AUX[i]; i++) if (is_word_at(q, AUX[i])) return 1; return 0;
-}
-/* (f) the asked slot: the best episode fact for the question gives the filler; how well the option's words match it */
-static double slot_part(Know *A, const char *q, const char *opt, const QW *O, int no) {
-    static Frame qf[64]; int ws;
-    if (PSLOT >= 3 && yes_no(q)) {                      /* yes / no: the fact that matches the question says which, by its negation */
-        uint32_t w[256]; int nw; int nq = read_statement(A, q, qf, 64, w, &nw, 256); if (!nq) return 0;
-        double best = 0; int neg = 0;
-        for (uint32_t e = 0; e < nep; e++) { Frame h = qf[0]; h.flags = (h.flags & ~F_NEG) | (ep[e].flags & F_NEG); double s = kfact_sim(A, &h, &ep[e]);
-            if (s > best) { best = s; neg = ((ep[e].flags ^ qf[0].flags) & F_NEG) != 0; } }
-        return best * (says_no(opt) == neg ? 1 : 0);
-    }
-    int nq = read_question(A, q, qf, 64, &ws); if (!nq || ws < 0 || ws >= qf[0].narg) return 0;
-    double best = 0;
-    for (uint32_t e = 0; e < nep; e++) { uint32_t fm; double m = slot_match(A, &qf[0], ws, &ep[e], &fm); if (!fm || m <= 0) continue;
-        for (int j = 0; j < ep[e].narg; j++) { if (!(fm >> j & 1)) continue;
-            uint32_t fw[2]; int nf = 0; fw[nf++] = ep[e].head[j]; if (ep[e].mod[j] != NONE) fw[nf++] = ep[e].mod[j];
-            double c = m * kcover(O, no, fw, nf); if (c > best) best = c; } }
-    return best;
-}
+/* docs/PASSAGE.md: inside an active episode the meaning and fit parts (association, which never look at the passage) are
+   scaled by EA: 0, chosen on dev, so the passage decides */
+static double EA = 0;
 /* candidate facts: shelf facts by index, episode facts with the top bit set */
 static const KF *kf_at(uint32_t i) { return i & 0x80000000u ? &ep[i & 0x7fffffffu] : &kf[i]; }
 /* (a) fact agreement, (b) one known fact covering the question and the option, (c) open book, over some candidates */
@@ -586,7 +536,6 @@ static void bg_option(Know *A, const char *q, const char *opt, BParts *P) {
     for (int i = 0; i < nq; i++) if (Q[i].g != NONE) mark[Q[i].g] = 0;
     int focus = 0; for (int i = 0; i < nh; i++) { uint32_t w[24]; int m; fact_words(&hf[i], w, &m); int has = 0; for (int j = 0; j < m; j++) for (int x = 0; x < now_; x++) has |= w[j] == owl[x]; hf[i].tc = has; focus += has; }
     score_cands(A, hf, nh, focus, Q, nq, O, no, cand, nc, &P->fact, &P->joint, &P->open, &P->optr);
-    P->sfact = P->fact; P->sjoint = P->joint; P->sopen = P->open;
     /* the episode: when the question or the option speaks of it, its facts answer first, weighted EPW */
     if (nep) {
         int active = 0; for (int i = 0; i < nq; i++) active |= Q[i].g != NONE && Q[i].g < nepword && epword[Q[i].g];
@@ -596,11 +545,10 @@ static void bg_option(Know *A, const char *q, const char *opt, BParts *P) {
             if (EPW * P->efact > P->fact) P->fact = EPW * P->efact;
             if (EPW * P->ejoint > P->joint) P->joint = EPW * P->ejoint;
             if (EPW * P->eopen > P->open) { P->open = EPW * P->eopen; P->optr = P->eptr; }
-            P->active = 1; P->mean *= EA; P->fit *= EA;
-            if (PSLOT >= 2) P->slot = slot_part(A, q, opt, O, no); } }
+            P->active = 1; P->mean *= EA; P->fit *= EA; } }
 }
 
-static double bscore(const BParts *p) { return BW[0] * p->fact + BW[1] * p->joint + BW[2] * p->open + BW[3] * p->mean + BW[4] * p->fit + SW * p->slot; }
+static double bscore(const BParts *p) { return BW[0] * p->fact + BW[1] * p->joint + BW[2] * p->open + BW[3] * p->mean + BW[4] * p->fit; }
 /* the question asks for the option that is NOT so ("not", "least", "except", ...): support is turned around (docs/past/LAYA_LEVEL.md stage 2) */
 static int asks_opposite(const char *q) {
     static const char *W[] = { "not", "least", "except", "false", "unlikely", "cannot", "never", "incorrect", "untrue", "isn't", "doesn't", "can't", "won't", "wouldn't", "aren't", 0 };
@@ -715,7 +663,7 @@ static int run_passages(int nfile, char **files) {
             double best = -1e9; int nb = 0; for (int o = 0; o < 4; o++) if (sc[o] > best + 1e-9) { best = sc[o]; nb = 1; } else if (sc[o] > best - 1e-9) nb++;
             if (want >= 0 && want < 4 && sc[want] > best - 1e-9) ok += 1.0 / nb;
             if (dump) { fprintf(dump, "%s\t%d\t4\t%d", bn, want, asks_opposite(q));
-                for (int o = 0; o < 4; o++) fprintf(dump, "\t%.5f %.5f %.5f %.5f %.5f %.5f %d", P[o].fact, P[o].joint, P[o].open, EA ? P[o].mean / EA : 0, EA ? P[o].fit / EA : 0, P[o].slot, P[o].active);
+                for (int o = 0; o < 4; o++) fprintf(dump, "\t%.5f %.5f %.5f %.5f %.5f %d", P[o].fact, P[o].joint, P[o].open, P[o].mean, P[o].fit, P[o].active);
                 fprintf(dump, "\n"); }
             if (getenv("SHOW")) { int pick = 0; for (int o = 1; o < 4; o++) if (sc[o] > sc[pick] + 1e-9) pick = o; printf("  %s\t%s\tpick=%s\tright=%s\t%s\n", fld[1], q, fld[3 + pick], fld[3 + want], pick == want ? "OK" : "WRONG"); }
             n++; }
@@ -776,7 +724,7 @@ int main(int argc, char **argv) {
     cx_norms();
     if (!strcmp(argv[1], "words")) return run_words(argc - 3, argv + 3);
     if (!strcmp(argv[1], "passages")) { if (getenv("EPW")) EPW = atof(getenv("EPW"));
-        if (getenv("EA")) EA = atof(getenv("EA")); if (getenv("SW")) SW = atof(getenv("SW")); if (getenv("PSLOT")) PSLOT = atoi(getenv("PSLOT")); return run_passages(argc - 3, argv + 3); }
+        if (getenv("EA")) EA = atof(getenv("EA")); return run_passages(argc - 3, argv + 3); }
     if (!strcmp(argv[1], "near")) return run_near(argc - 3, argv + 3);
     if (!strcmp(argv[1], "arc")) return run_arc(argc - 3, argv + 3);
     if (!strcmp(argv[1], "serve")) return run_serve();

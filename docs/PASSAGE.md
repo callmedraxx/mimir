@@ -82,3 +82,28 @@ dev numbers exactly). Means of MC160 (train + dev), MC500 (train + dev), RACE-Mi
 **Chosen: U1, EA 0 (+2.6).** The slot (+0.4) and polarity (+0.1 more) help a little but
 less than the 1 point a step needs, so they are not kept. Frozen in `tools/passage_choice.env`.
 Clock story: 8/10 → 8.5/10 (a tie). General dev sets with no episode: unchanged.
+
+## Test results (2026-10-15, Colab, once, frozen 9834049; `results/passage_test.txt`)
+
+| test | **U0** (EPISODE) | **U1** (EA 0) | change |
+|---|---|---|---|
+| MCTest MC160 test (240) | 50.00 | 49.58 | −0.4 tie |
+| MCTest MC500 test (600) | 49.19 | **50.56** | +1.4 better |
+| RACE-Middle test (1,436) | 39.12 | **40.68** | +1.6 better |
+| new stories: bicycle, stone owl, swim (30) | 63.33 (19/30) | **71.67** (21.5/30) | +8.3 better |
+| salt, train, kite (30) | 76.67 | 76.67 | tie |
+| harbor, garden, snow (30) | 90.00 | **96.67** | +6.7 better |
+| general tests, no episode | | 27.41, 31.37, 46.61, 21.22, 24.40 | unchanged |
+
+**Count: better 4, tie 2, worse 0. Adopted (EA 0).** A small step: MCTest and RACE are still
+below the sliding window (67.1 / 57.8 / 45.3) and Mimir's passage-only reader (63.8 / 52.8 / 41.1).
+
+What the misses show (the new stories, after U1): most are **negation** and **what a thing
+is**, both lost in reading, not in answering:
+"Was Nadia sad?" → angry ("Nadia was not sad"); "Which is true about Lenno?" → he keeps
+bees ("does not like bees"); "What did Kofi not have?" → a coat ("without a ticket");
+"What is Old Watch?" → a real bird ("It is not a real bird", "an owl made of stone");
+"What is the Grey Heron / the Moth?" → a bird / an insect ("the train is called the Grey
+Heron", "His boat is called the Moth"); "What did the mayor say?" → maybe ("said no").
+
+Losers deleted: the asked slot (U2) and yes/no polarity (U3).
