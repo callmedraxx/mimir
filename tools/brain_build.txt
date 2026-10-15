@@ -1,2 +1,5 @@
 build 1: the cortex as adopted in CORTEX_LINK (2026-10-14)
 build 2: pyarrow on the runner
+build 3: COMPREHEND R2, the shelf read by the new reader (2026-10-15)
+tag: brain-school-cx2
+env: RD=1
