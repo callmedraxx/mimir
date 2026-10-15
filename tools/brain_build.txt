@@ -3,3 +3,5 @@ build 2: pyarrow on the runner
 build 3: COMPREHEND R2, the shelf read by the new reader (2026-10-15)
 tag: brain-school-cx2
 env: RD=1
+build 4: the shelf published with the brain (open book needs it; COMPREHEND tests ran without it) (2026-10-15)
+tag: brain-school-cx2
