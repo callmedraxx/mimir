@@ -1,0 +1,27 @@
+# docs/COMPREHEND.md dev, Colab 2026-10-15, school brain (brain-school-cx), commit 8a0d6a9. Summary lines of /content/comprehend_dev.txt.
+=== R0
+RESULT bgpass file=mc160.train.txt n=280 acc=59.67 / mc160.dev.txt n=120 acc=51.94 / mc500.train.txt n=1200 acc=50.99 / mc500.dev.txt n=200 acc=53.17 / dev_middle.txt n=1436 acc=39.28 / clock.txt n=10 acc=85.00 / dev_stories.txt n=30 acc=71.67
+=== R1 NW 0.5
+RESULT 61.88 49.44 51.92 53.42 40.19 80.00 83.33
+=== R1 NW 1
+RESULT 61.88 49.44 52.01 53.42 40.33 80.00 83.33
+=== R1 NW 2
+RESULT 62.59 49.44 51.92 52.92 40.68 80.00 83.33
+=== R2 NW 0.5
+RESULT 63.84 49.86 53.01 56.75 40.96 100.00 83.33
+=== R2 NW 1
+RESULT 63.84 49.86 53.01 56.75 40.89 100.00 83.33
+=== R2 NW 2
+RESULT 64.20 49.86 52.85 56.75 41.17 100.00 83.33
+(order: mc160.train mc160.dev mc500.train mc500.dev dev_middle clock dev_stories)
+=== R0: passages mean 49.31, dev stories 30.0 / 40
+=== R1 NW 0.5: passages mean 50.16, dev stories 33.0 / 40
+=== R1 NW 1: passages mean 50.23, dev stories 33.0 / 40
+=== R1 NW 2: passages mean 50.46, dev stories 33.0 / 40
+=== R2 NW 0.5: passages mean 51.38, dev stories 35.0 / 40
+=== R2 NW 1: passages mean 51.36, dev stories 35.0 / 40
+=== R2 NW 2: passages mean 51.49, dev stories 35.0 / 40
+=== chosen: R2 NW 2 (NW=2 RD=1)
+=== general dev sets, no episode (easy, challenge, obqa, mmlu_hs, csqa)
+R0:        43.68 19.68 24.05 28.72 29.50
+R2 NW 2:   43.68 20.04 24.25 28.24 29.40

@@ -125,6 +125,7 @@ Lessons that keep coming back:
   and the sliding window); negation ("She was not angry"); "X gave Y with Z".
 * Then: sentences, not just words: pronouns ("He" = Dumi), "an owl named Pell", negation,
   relations (cause, kind of, part of).
+* Size (owner 2026-10-15: "let's first make it smart then we begin to prune later"): today ~2.8 GB on disk + 2.2 GB shelf, ~5 GB in memory (facts 80 B each = 2.6 GB, cortex 1.7 GB float32, cue lists) against Laya 846 MB, GPT-2 XL 3.1 GB. Pruning comes after the smartness steps: cortex to the ~50k words met often, 8-bit (~30-60 MB); facts packed (~25-30 B); weak facts let go; shelf compressed.
 * Later: the cortex small enough for the phone (8-bit, ~30 MB for 50k words); a cap on what
   is kept for good; the GPT-2 vs Mimir chat page (half built).
 

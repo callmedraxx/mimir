@@ -105,3 +105,20 @@ as before, byte for byte (passages, dev stories, four general dev sets).
 On the test brain (dev only, 3 MB brain, not a result): MC160 dev 51.1 / 52.4 / 50.3, MC500
 dev 52.4 / 56.1 / 55.9, clock 7.5 / 8 / 9 of 10, dev stories 19.5 / 25 / 26 of 30 (R0 / R1 /
 R2, NW 1; NW 0.5 and 2 the same there).
+
+## Dev results (2026-10-15, Colab, school brain; `results/comprehend_dev.txt`)
+
+Means of MC160 (train + dev), MC500 (train + dev), RACE-Middle dev; dev stories = clock + bicycle, stone owl, swim (40):
+
+| cell | MC160 | MC500 | RACE-M dev | mean | dev stories |
+|---|---|---|---|---|---|
+| **R0** (now) | 57.35 | 51.30 | 39.28 | 49.31 | 30 / 40 |
+| R1, NW 0.5 / 1 / **2** | | | | 50.16 / 50.23 / **50.46** | 33 / 40 |
+| R2, NW 0.5 / 1 / **2** | 59.90 | 53.39 | 41.17 | 51.38 / 51.36 / **51.49** | 35 / 40 |
+
+**Chosen: R2, NW 2** (R1 +1.15 over R0, R2 +1.03 over R1; each more than 1 point). Clock 8.5 → 10 of 10.
+General dev sets with no episode: 43.68 / 20.04 / 24.25 / 28.24 / 29.40 (R0 43.68 / 19.68 / 24.05 /
+28.72 / 29.50); the old brain's shelf, the new reader only in the questions. R0 here: RACE-M dev 39.28
+(PASSAGE's U1 39.12, same code; MC160 and MC500 identical) — a small run-to-run difference.
+Frozen in `tools/comprehend_choice.env`. The tests use `brain-school-cx2` (the shelf read by the new
+reader, built by GitHub Actions from 402003d: 32,484,331 facts, 753,686 words).
