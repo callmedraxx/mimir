@@ -153,3 +153,15 @@ longer sick".
 
 Losers deleted: the switches `NW` and `RD` (the old reading and answering are gone; NW is 2).
 `brain-school-cx2` is now the brain (`tools/brain_release.py`).
+
+## Correction (2026-10-15, after adoption)
+
+The general tests above are **not a fair comparison**. R0's numbers (27.41 / 31.37 / 46.61 /
+21.22 / 24.40) were measured with the shelf on disk; the R2 run downloaded the brain from its
+release but **not the shelf**, so open book (which re-reads shelf sentences, weight 2) scored
+nothing: "open 25.02" alone on ARC-Easy, against 45.97 with the shelf. The same shows on dev:
+R0's code and brain gave 43.68 / 19.68 / 24.05 / 28.72 / 29.50 without the shelf, against 47.81 /
+20.01 / 25.25 / 29.32 / 31.55 with it. So the ARC-Easy and MMLU "losses" are most likely the
+missing shelf, not the reader. The passage results stand (R0 and R2 both ran without it). The
+release now carries its shelf (build 4); the general tests are run again on `brain-school-cx2` with
+the shelf, once, as the measurement this step should have had (docs/READ2.md step 1).

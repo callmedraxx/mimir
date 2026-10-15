@@ -16,6 +16,13 @@ a sentence ("He is a carpenter, Mr. Eze."), "made of red paper and bamboo" (two 
 
 ## Steps
 
+**0. Measure it properly first (found after this page was written).** COMPREHEND's general run had
+no shelf on disk, so open book scored nothing (docs/COMPREHEND.md, Correction). The release now
+carries its shelf. The five general **tests** are run once on `brain-school-cx2` with the shelf (the
+measurement COMPREHEND should have had; no choice is made from it), and the general dev sets with
+and without the shelf on both brains. If ARC-Easy is then within 1 point of 46.61, there is no loss
+to find: step 1 and S1 are dropped and S2 is built over S0.
+
 **1. Find it (dev only).** The five general dev sets on `brain-school-cx` (old reader) and
 `brain-school-cx2` (new), each option's parts dumped; for the dev questions whose answer changed,
 the facts and shelf sentences each brain answered from (`bg serve`). What the new reader does to

@@ -68,8 +68,8 @@ uses them; say if they should go too.
 
 | | MMLU-HS | CommonsenseQA | ARC-Easy | ARC-Challenge | OpenBookQA |
 |---|---|---|---|---|---|
-| **Mimir, school brain + cortex, COMPREHEND reader** | 26.3 | **32.4** | 43.0 | 23.7 | **25.6** |
-| Mimir, school brain + cortex (before COMPREHEND) | 27.4 | 31.4 | **46.6** | 21.2 | 24.4 |
+| Mimir, COMPREHEND reader, **run without its shelf (open book off): not comparable**, rerun pending | 26.3 | 32.4 | 43.0 | 23.7 | 25.6 |
+| **Mimir, school brain + cortex** (before COMPREHEND, with shelf) | 27.4 | 31.4 | **46.6** | 21.2 | 24.4 |
 | Mimir, school brain alone | 27.9 | 25.5 | 45.5 | 21.3 | 20.7 |
 | GPT-2 XL (1.5B) | 29.9 | 37.1 | 58.3 | 25.0 | 18.2 |
 | Laya (421M) | 33.2 | 44.7 | 50.1 | 30.5 | 40.0 |
@@ -110,7 +110,7 @@ Word tests (cortex learned from facts): SimLex-999 0.381, MEN 0.738 (word2vec 0.
 | 10-14 | **EPISODE**: the text being read kept apart from what it knows, active while asked about | passages: MC160 25 → 50, MC500 28 → 49, RACE-M 26 → 39; stories 7/30 → 23/30 and 14 → 27/30; general tests unchanged. Inhibition and recency added nothing | **in use** (EPW 4); one pool, inhibition, recency removed |
 | 10-15 | **PASSAGE**: answering about a passage by understanding: association off inside it, the asked slot, yes/no polarity | association off: MC500 +1.4, RACE-M +1.6, stories 19 → 21.5 and 27 → 29 of 30; the slot +0.4 and polarity +0.1 on dev (under the bar) | association off **in use**; slot and polarity removed |
 
-| 10-15 | **COMPREHEND**: reading what a sentence says ("not", names, made of, without) and "not" counting against | MC160 +5.1, MC500 +1.8, new stories 16 → 21 of 30, ARC-C +2.5, OBQA +1.2; ARC-E −3.6, MMLU −1.1, one story question lost (5 better, 3 worse, 3 ties; general mean the same). A new "he/she" rule cost MCTest dev and was dropped | **in use** (owner adopted); the old reading and the switches removed |
+| 10-15 | **COMPREHEND**: reading what a sentence says ("not", names, made of, without) and "not" counting against | MC160 +5.1, MC500 +1.8, new stories 16 → 21 of 30, ARC-C +2.5, OBQA +1.2; ARC-E −3.6, MMLU −1.1, one story question lost (5 better, 3 worse, 3 ties; general mean the same). **Correction:** the general run had no shelf (open book off), so those general numbers do not compare; rerun with the shelf in READ2 step 1. A new "he/she" rule cost MCTest dev and was dropped | **in use** (owner adopted); the old reading and the switches removed |
 
 Lessons that keep coming back:
 * Reading more helps ARC-Easy only; ARC-Challenge and OpenBookQA were built against
@@ -120,15 +120,17 @@ Lessons that keep coming back:
   chance from one that answers the question.
 * General knowledge drowns out what was just read (passage questions with background, 10-12;
   stories with the cortex, 10-14). Fixed by giving the text being read its own place (EPISODE).
+* A brain from a release needs its shelf too: without it open book is silently 0 (COMPREHEND's general
+  run). The release now carries the shelf; check "open" alone is above chance before trusting a run.
 * Sending big files (100 MB and up) from Colab through the shared browser fails. The brain is
   built by GitHub Actions instead and published as a release (no key needed: GitHub's own job
   token); a Colab session downloads it in minutes.
 
 ## Open
 
-* **Next: why ARC-Easy fell 3.6 with the COMPREHEND reader** (on the general dev sets, with `brain-school-cx2`):
-  which reading rule changes the shelf's facts for the worse. Then the misses left in reading: "no longer",
-  apposition at a sentence end, "made of X and Y", "X gave Y with Z", "he/she" for the right person.
+* **Now: READ2** (docs/READ2.md): the COMPREHEND general tests rerun with the shelf (the first run had
+  none); then, only if the reader still costs ARC-Easy, find the rule; then the misses left in reading:
+  "no longer", apposition at a sentence end, "made of X and Y", "he/she" for the right person.
 * Then: sentences, not just words: pronouns ("He" = Dumi), "an owl named Pell", negation,
   relations (cause, kind of, part of).
 * Size (owner 2026-10-15: "let's first make it smart then we begin to prune later"): today ~2.8 GB on disk + 2.2 GB shelf, ~5 GB in memory (facts 80 B each = 2.6 GB, cortex 1.7 GB float32, cue lists) against Laya 846 MB, GPT-2 XL 3.1 GB. Pruning comes after the smartness steps: cortex to the ~50k words met often, 8-bit (~30-60 MB); facts packed (~25-30 B); weak facts let go; shelf compressed.
@@ -136,6 +138,10 @@ Lessons that keep coming back:
   is kept for good; the GPT-2 vs Mimir chat page (half built).
 
 ## Log
+
+**2026-10-15 (evening)**
+* Found: COMPREHEND's general tests ran without the shelf (release had only the brain), so open book
+  was off. Release now carries the shelf (build 4); the general tests to be rerun.
 
 **2026-10-15 (later)**
 * COMPREHEND tested once and adopted by the owner (mixed: passages and the new stories better, ARC-E and
