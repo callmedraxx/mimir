@@ -56,3 +56,25 @@ those sentences says which rule hurts. Written up here before any change.
   the sliding window.
 * All runs in Colab; brains built by GitHub Actions. Reported as they come; journal updated;
   losers' code and releases deleted. Size is not a goal of this step (owner: smart first, prune later).
+
+## Step 0 result (2026-10-15, Colab, once; `results/read2_measure.txt`)
+
+`brain-school-cx2` with its shelf (build 5, 32,484,331 facts; open book alone 42.47 on ARC-Easy dev,
+so the shelf was loaded). Before COMPREHEND = `brain-school-cx` with its shelf.
+
+| test | before COMPREHEND | COMPREHEND (S0) | change |
+|---|---|---|---|
+| MMLU-HS | 27.41 | 26.56 | −0.85 |
+| CommonsenseQA | 31.37 | 31.08 | −0.29 |
+| ARC-Easy | 46.61 | 46.09 | −0.52 |
+| ARC-Challenge | 21.22 | 21.98 | +0.76 |
+| OpenBookQA | 24.40 | 24.20 | −0.20 |
+| mean | 30.20 | 29.98 | −0.22 |
+
+General dev sets (ARC-E, ARC-C, OBQA, MMLU-HS, CSQA): 47.81 / 20.01 / 25.25 / 29.32 / 31.55 before,
+47.63 / 17.25 / 23.05 / 28.13 / 29.20 now. Dev shows drops of 1–3 points on four sets that the
+tests (8,689 questions) do not confirm; the dev sets are small (299–1,000 questions each).
+
+**Decision by the rule:** ARC-Easy is within 1 point of 46.61 (−0.52), so there is no loss to find.
+Step 1 and S1 are dropped; **S2 is built over S0.** COMPREHEND's general cost is a mean of −0.2,
+within noise; its ARC-Easy "drop" of 3.6 was the missing shelf.

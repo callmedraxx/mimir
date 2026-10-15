@@ -1,0 +1,30 @@
+# docs/READ2.md step 0, Colab 2026-10-15 (finished 13:25 UTC), once, commit 749c29a. brain-school-cx2 with its shelf (build 5, Wikipedia articles present).
+# Measured by the previous Claude session; read off the runtime's /content/read2_measure.txt by the session that took over.
+=== general dev sets, brain-school-cx2 with its shelf (before COMPREHEND, with the shelf: 47.81 20.01 25.25 29.32 31.55)
+$ ./bg arc /content/cx2.brain data/dev_sets/easy_dev.tsv data/dev_sets/challenge_dev.tsv data/dev_sets/obqa_dev.tsv data/dev_sets/mmlu_hs_dev.tsv data/dev_sets/csqa_traindev.tsv
+cortex /content/cx2.brain.cx: 753686 words, 171028072 met in facts
+brain /content/cx2.brain: 32484331 facts, 753686 words (loaded in 38.8 s)
+easy_dev.tsv             570 q    47.63%   (alone: fact 30.41  joint 33.00  open 42.47  meaning 36.36)  180.3 ms/q
+RESULT bgarc file=easy_dev.tsv n=570 acc=47.63 facts=32484331
+challenge_dev.tsv        299 q    17.25%   (alone: fact 24.31  joint 20.43  open 19.87  meaning 20.26)  190.3 ms/q
+RESULT bgarc file=challenge_dev.tsv n=299 acc=17.25 facts=32484331
+obqa_dev.tsv             500 q    23.05%   (alone: fact 22.18  joint 15.65  open 22.22  meaning 25.80)  163.9 ms/q
+RESULT bgarc file=obqa_dev.tsv n=500 acc=23.05 facts=32484331
+mmlu_hs_dev.tsv          370 q    28.13%   (alone: fact 24.59  joint 25.72  open 31.10  meaning 29.77)  253.1 ms/q
+RESULT bgarc file=mmlu_hs_dev.tsv n=370 acc=28.13 facts=32484331
+csqa_traindev.tsv       1000 q    29.20%   (alone: fact 21.50  joint 21.40  open 26.23  meaning 27.35)  169.8 ms/q
+RESULT bgarc file=csqa_traindev.tsv n=1000 acc=29.20 facts=32484331
+=== general tests, once, brain-school-cx2 with its shelf (before COMPREHEND: 27.41 31.37 46.61 21.22 24.40)
+$ ./bg arc /content/cx2.brain data/arc_tests/mmlu_hs_test.tsv data/arc_tests/csqa_dev.tsv data/arc_tests/easy_test.tsv data/arc_tests/challenge_test.tsv data/arc_tests/obqa_test.tsv
+cortex /content/cx2.brain.cx: 753686 words, 171028072 met in facts
+brain /content/cx2.brain: 32484331 facts, 753686 words (loaded in 42.5 s)
+mmlu_hs_test.tsv        3420 q    26.56%   (alone: fact 26.23  joint 24.44  open 28.98  meaning 26.55)  268.1 ms/q
+RESULT bgarc file=mmlu_hs_test.tsv n=3420 acc=26.56 facts=32484331
+csqa_dev.tsv            1221 q    31.08%   (alone: fact 22.92  joint 20.43  open 27.05  meaning 27.49)  167.8 ms/q
+RESULT bgarc file=csqa_dev.tsv n=1221 acc=31.08 facts=32484331
+easy_test.tsv           2376 q    46.09%   (alone: fact 32.41  joint 31.98  open 46.10  meaning 35.60)  155.1 ms/q
+RESULT bgarc file=easy_test.tsv n=2376 acc=46.09 facts=32484331
+challenge_test.tsv      1172 q    21.98%   (alone: fact 26.59  joint 18.38  open 20.20  meaning 21.79)  190.8 ms/q
+RESULT bgarc file=challenge_test.tsv n=1172 acc=21.98 facts=32484331
+obqa_test.tsv            500 q    24.20%   (alone: fact 24.35  joint 16.27  open 22.93  meaning 28.67)  155.6 ms/q
+RESULT bgarc file=obqa_test.tsv n=500 acc=24.20 facts=32484331

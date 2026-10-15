@@ -164,4 +164,9 @@ R0's code and brain gave 43.68 / 19.68 / 24.05 / 28.72 / 29.50 without the shelf
 20.01 / 25.25 / 29.32 / 31.55 with it. So the ARC-Easy and MMLU "losses" are most likely the
 missing shelf, not the reader. The passage results stand (R0 and R2 both ran without it). The
 release now carries its shelf (build 4); the general tests are run again on `brain-school-cx2` with
-the shelf, once, as the measurement this step should have had (docs/READ2.md step 1).
+the shelf, once, as the measurement this step should have had (docs/READ2.md step 0).
+
+**Measured (2026-10-15, READ2 step 0, `results/read2_measure.txt`):** R2 on `brain-school-cx2` with
+its shelf scores 26.56 / 31.08 / 46.09 / 21.98 / 24.20 (MMLU-HS / CSQA / ARC-E / ARC-C / OBQA) against
+R0's 27.41 / 31.37 / 46.61 / 21.22 / 24.40: mean 29.98 vs 30.20. ARC-Easy is −0.5, not −3.6. These are
+the general-test numbers for COMPREHEND; the table above is superseded.

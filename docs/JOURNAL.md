@@ -68,8 +68,8 @@ uses them; say if they should go too.
 
 | | MMLU-HS | CommonsenseQA | ARC-Easy | ARC-Challenge | OpenBookQA |
 |---|---|---|---|---|---|
-| Mimir, COMPREHEND reader, **run without its shelf (open book off): not comparable**, rerun pending | 26.3 | 32.4 | 43.0 | 23.7 | 25.6 |
-| **Mimir, school brain + cortex** (before COMPREHEND, with shelf) | 27.4 | 31.4 | **46.6** | 21.2 | 24.4 |
+| **Mimir, COMPREHEND reader** (`brain-school-cx2` with its shelf; READ2 step 0) | 26.6 | 31.1 | 46.1 | 22.0 | 24.2 |
+| Mimir, school brain + cortex (before COMPREHEND, with shelf) | 27.4 | 31.4 | **46.6** | 21.2 | 24.4 |
 | Mimir, school brain alone | 27.9 | 25.5 | 45.5 | 21.3 | 20.7 |
 | GPT-2 XL (1.5B) | 29.9 | 37.1 | 58.3 | 25.0 | 18.2 |
 | Laya (421M) | 33.2 | 44.7 | 50.1 | 30.5 | 40.0 |
@@ -128,9 +128,10 @@ Lessons that keep coming back:
 
 ## Open
 
-* **Now: READ2** (docs/READ2.md): the COMPREHEND general tests rerun with the shelf (the first run had
-  none); then, only if the reader still costs ARC-Easy, find the rule; then the misses left in reading:
-  "no longer", apposition at a sentence end, "made of X and Y", "he/she" for the right person.
+* **Now: READ2 S2** (docs/READ2.md): step 0 done (the reader does not cost ARC-Easy: −0.5, mean −0.2;
+  step 1 / S1 dropped). Next the misses left in reading, developed on the bakery and other dev
+  stories: "no longer" as "not", a name at the end of a sentence ("…, Mr. Eze."), "made of X and Y",
+  "he/she" to the right person.
 * Then: sentences, not just words: pronouns ("He" = Dumi), "an owl named Pell", negation,
   relations (cause, kind of, part of).
 * Size (owner 2026-10-15: "let's first make it smart then we begin to prune later"): today ~2.8 GB on disk + 2.2 GB shelf, ~5 GB in memory (facts 80 B each = 2.6 GB, cortex 1.7 GB float32, cue lists) against Laya 846 MB, GPT-2 XL 3.1 GB. Pruning comes after the smartness steps: cortex to the ~50k words met often, 8-bit (~30-60 MB); facts packed (~25-30 B); weak facts let go; shelf compressed.
@@ -138,6 +139,14 @@ Lessons that keep coming back:
   is kept for good; the GPT-2 vs Mimir chat page (half built).
 
 ## Log
+
+**2026-10-15 (night)**
+* READ2 step 0: the general tests rerun on `brain-school-cx2` with its shelf: 26.56 / 31.08 / 46.09 /
+  21.98 / 24.20, mean 29.98 vs 30.20 before COMPREHEND. ARC-Easy −0.5 (within the 1-point rule), so
+  step 1 is dropped and S2 goes over S0. Build 4 had lost the Wikipedia articles (the API no longer
+  marks links "exists"); fixed, build 5 stops if a shelf file is empty.
+* Session handover: the Mimir Claude session that ran CORTEX_LINK → READ2 was closed by the owner;
+  a new session continues from this journal.
 
 **2026-10-15 (evening)**
 * Found: COMPREHEND's general tests ran without the shelf (release had only the brain), so open book
