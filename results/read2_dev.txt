@@ -1,0 +1,60 @@
+# docs/READ2.md S2 dev, Colab 2026-10-15 (finished 17:5x UTC), school brain brain-school-cx2 with its shelf, commit 542477b.
+# S2 bits: 7 = pronouns by sex + apposition + lists; 15 = + the main character; 31 = + yes/no questions judged whole.
+# Summary lines of /content/read2_dev.txt (the per-question lines stayed in the runtime).
+=== S0
+RESULT bgpass file=mc160.train.txt n=280 acc=62.77 epw=4.00
+RESULT bgpass file=mc160.dev.txt n=120 acc=49.86 epw=4.00
+RESULT bgpass file=mc500.train.txt n=1200 acc=53.86 epw=4.00
+RESULT bgpass file=mc500.dev.txt n=200 acc=59.75 epw=4.00
+RESULT bgpass file=dev_middle.txt n=1436 acc=40.61 epw=4.00
+RESULT bgpass file=clock.txt n=10 acc=100.00 epw=4.00
+RESULT bgpass file=dev_stories.txt n=30 acc=90.00 epw=4.00
+RESULT bgpass file=bakery.txt n=10 acc=60.00 epw=4.00
+=== S2 7
+RESULT bgpass file=mc160.train.txt n=280 acc=62.23 epw=4.00
+RESULT bgpass file=mc160.dev.txt n=120 acc=52.36 epw=4.00
+RESULT bgpass file=mc500.train.txt n=1200 acc=53.65 epw=4.00
+RESULT bgpass file=mc500.dev.txt n=200 acc=58.75 epw=4.00
+RESULT bgpass file=dev_middle.txt n=1436 acc=41.13 epw=4.00
+RESULT bgpass file=clock.txt n=10 acc=100.00 epw=4.00
+RESULT bgpass file=dev_stories.txt n=30 acc=93.33 epw=4.00
+RESULT bgpass file=bakery.txt n=10 acc=70.00 epw=4.00
+=== S2 15
+RESULT bgpass file=mc160.train.txt n=280 acc=62.23 epw=4.00
+RESULT bgpass file=mc160.dev.txt n=120 acc=52.36 epw=4.00
+RESULT bgpass file=mc500.train.txt n=1200 acc=53.65 epw=4.00
+RESULT bgpass file=mc500.dev.txt n=200 acc=58.75 epw=4.00
+RESULT bgpass file=dev_middle.txt n=1436 acc=41.17 epw=4.00
+RESULT bgpass file=clock.txt n=10 acc=100.00 epw=4.00
+RESULT bgpass file=dev_stories.txt n=30 acc=93.33 epw=4.00
+RESULT bgpass file=bakery.txt n=10 acc=70.00 epw=4.00
+=== S2 31
+RESULT bgpass file=mc160.train.txt n=280 acc=62.23 epw=4.00
+RESULT bgpass file=mc160.dev.txt n=120 acc=52.36 epw=4.00
+RESULT bgpass file=mc500.train.txt n=1200 acc=53.82 epw=4.00
+RESULT bgpass file=mc500.dev.txt n=200 acc=58.75 epw=4.00
+RESULT bgpass file=dev_middle.txt n=1436 acc=41.17 epw=4.00
+RESULT bgpass file=clock.txt n=10 acc=100.00 epw=4.00
+RESULT bgpass file=dev_stories.txt n=30 acc=93.33 epw=4.00
+RESULT bgpass file=bakery.txt n=10 acc=70.00 epw=4.00
+=== S0: passages mean 51.40, dev stories 43.0 / 50
+=== S2 7: passages mean 51.59, dev stories 45.0 / 50
+=== S2 15: passages mean 51.61, dev stories 45.0 / 50
+=== S2 31: passages mean 51.65, dev stories 45.0 / 50
+=== chosen by the passage rule: S0 (S2=0); the general dev sets must not fall by more than 1
+# ^ the runner's own verdict is wrong by rounding: it summed 93.33% of 30 as 27.999, so 44.999 >= 45 failed.
+#   By count, S2 has 45 of 50 dev-story questions right against S0's 43: two more, with the passage mean 0.25 higher.
+#   The rule (>= 2 more dev-story questions, mean not more than 0.5 lower) is met; S2 31 is the best cell and is chosen.
+=== general dev sets (S0 with this shelf: 47.63 17.25 23.05 28.13 29.20; S2 changes how questions are read)
+=== general S0
+RESULT bgarc file=easy_dev.tsv n=570 acc=47.63 facts=32484331
+RESULT bgarc file=challenge_dev.tsv n=299 acc=17.25 facts=32484331
+RESULT bgarc file=obqa_dev.tsv n=500 acc=23.05 facts=32484331
+RESULT bgarc file=mmlu_hs_dev.tsv n=370 acc=28.13 facts=32484331
+RESULT bgarc file=csqa_traindev.tsv n=1000 acc=29.20 facts=32484331
+=== general S2 31
+RESULT bgarc file=easy_dev.tsv n=570 acc=47.63 facts=32484331
+RESULT bgarc file=challenge_dev.tsv n=299 acc=17.25 facts=32484331
+RESULT bgarc file=obqa_dev.tsv n=500 acc=23.05 facts=32484331
+RESULT bgarc file=mmlu_hs_dev.tsv n=370 acc=28.13 facts=32484331
+RESULT bgarc file=csqa_traindev.tsv n=1000 acc=29.20 facts=32484331

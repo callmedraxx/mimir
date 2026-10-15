@@ -7,3 +7,6 @@ build 4: the shelf published with the brain (open book needs it; COMPREHEND test
 tag: brain-school-cx2
 build 5: vital articles again (the Wikipedia API dropped "exists"; build 4 had none) (2026-10-15)
 tag: brain-school-cx2
+build 6: READ2 S2 (frozen at S2=31): the shelf read with the S2 reader, for the test (2026-10-15)
+tag: brain-school-cx3
+env: S2=31

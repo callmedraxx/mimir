@@ -116,3 +116,23 @@ ran `bg facts` on three sentences copied from the test stories (orchard, lantern
 relative-clause miss ("…, who is no longer able to see well, could not help her" loses its
 subject) that is **not** fixed and not in S2's scope. Nothing was changed for those sentences
 beyond what the bakery sentences already asked for.
+
+## S2 dev result (2026-10-15, Colab, school brain `brain-school-cx2`; `results/read2_dev.txt`)
+
+| | MC160 train / dev | MC500 train / dev | RACE-M dev | passage mean | dev stories (50) |
+|---|---|---|---|---|---|
+| S0 | 62.77 / 49.86 | 53.86 / 59.75 | 40.61 | 51.40 | 43 |
+| S2 7 (reader) | 62.23 / 52.36 | 53.65 / 58.75 | 41.13 | 51.59 | 45 |
+| S2 15 (+ main character) | same | same | 41.17 | 51.61 | 45 |
+| **S2 31** (+ yes/no whole) | 62.23 / 52.36 | 53.82 / 58.75 | 41.17 | **51.65** | **45** |
+
+Bakery 6 → 7 of 10; bicycle / stone owl / swim 27 → 28 of 30; clock 10 / 10. The general dev sets are
+identical for S0 and S2 31 (47.63 / 17.25 / 23.05 / 28.13 / 29.20): S2 changes how questions are read
+only when a pronoun, an apposition or a list is in them. **Choice by the rule:** two more dev-story
+questions right with the passage mean 0.25 higher → S2 is kept; S2 31 is the best cell. (The runner's
+own line said S0: it compared 44.999 with 45 after rounding 93.33% of 30; fixed to whole questions.)
+Bits 8 and 16 move one or two MCTest questions each, never down; kept as part of S2 31.
+
+**Frozen 2026-10-15 at S2=31.** Build 6 (`brain-school-cx3`) reads the shelf with the S2 reader. The
+test, once: MC160, MC500, RACE-Middle tests; the three new stories (orchard, paper lanterns, ferry; S0
+on `brain-school-cx2` for them too); the nine older test stories; the five general tests.

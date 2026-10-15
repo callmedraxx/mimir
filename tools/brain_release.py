@@ -8,10 +8,12 @@ REPO, TAG = "callmedraxx/mimir", "brain-school-cx2"
 URL = "https://github.com/%s/releases/download/%s/" % (REPO, TAG)
 FILES = ("school_cx.brain.gz", "school_cx.brain.cx.gz", "school_shelf.tar.gz")
 def sh(cmd): print("$", cmd, flush=True); subprocess.run(cmd, shell=True, check=True)
-def get(dst):
+def get(dst, tag=TAG):
+    """the release `tag` (brain-school-cx2 unless another is named) to dst, dst.cx and data/school/"""
+    URL = "https://github.com/%s/releases/download/%s/" % (REPO, tag)
     if os.path.exists(dst) and os.path.exists(dst + ".cx") and os.path.exists("data/school/07_vital.txt"): return True
     d = os.path.dirname(dst) or "."
-    if subprocess.run("curl -sfL -o %s/SHA256SUMS %sSHA256SUMS" % (d, URL), shell=True).returncode: print("no release", TAG, flush=True); return False
+    if subprocess.run("curl -sfL -o %s/SHA256SUMS %sSHA256SUMS" % (d, URL), shell=True).returncode: print("no release", tag, flush=True); return False
     for f in FILES: sh("curl -sfL -o %s/%s %s%s" % (d, f, URL, f))
     sh("cd %s && sha256sum -c SHA256SUMS" % d)
     sh("gunzip -c %s/%s > %s && gunzip -c %s/%s > %s.cx && tar -xzf %s/%s && rm %s/%s %s/%s %s/%s" % (d, FILES[0], dst, d, FILES[1], dst, d, FILES[2], d, FILES[0], d, FILES[1], d, FILES[2]))

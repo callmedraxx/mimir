@@ -3,6 +3,8 @@
 #                                                      the five general tests once (COMPREHEND's measurement, rerun)
 #   %run /content/mimir/tools/read2_colab.py dev       S2: S0 and S2 (S2=7: pronouns by sex, apposition, lists) on the dev
 #                                                      passages, the 50 dev-story questions and the general dev sets
+#   %run /content/mimir/tools/read2_colab.py test      after the freeze (S2=31, release brain-school-cx3 = the shelf read by
+#                                                      the S2 reader): the tests, once; S0 on brain-school-cx2 for the new stories
 # The brain and its shelf: the GitHub release (tools/brain_release.py). Stops if open book is not working.
 import os, re, subprocess, sys
 from google.colab import files
@@ -69,7 +71,7 @@ if mode == "dev":
     def mean(c):   # MC160 (train + dev), MC500 (train + dev), RACE-M dev: the mean of the three
         def m(fs): n = sum(a[(c, f)][1] for f in fs); return sum(a[(c, f)][0] * a[(c, f)][1] for f in fs) / n
         return (m(["mc160.train.txt", "mc160.dev.txt"]) + m(["mc500.train.txt", "mc500.dev.txt"]) + a[(c, "dev_middle.txt")][0]) / 3
-    def right(c): return sum(a[(c, f)][0] * a[(c, f)][1] / 100 for f in ("clock.txt", "dev_stories.txt", "bakery.txt"))
+    def right(c): return round(sum(a[(c, f)][0] * a[(c, f)][1] / 100 for f in ("clock.txt", "dev_stories.txt", "bakery.txt")))   # whole questions (93.33% of 30 is 28, not 27.999)
     with open(out, "a") as f:
         for n, e in CELLS: f.write("=== %s: passages mean %.2f, dev stories %.1f / 50\n" % (n, mean(n), right(n)))
     # docs/READ2.md: S2 over S0 if the passage dev mean is > 1 better, or >= 2 more dev-story questions right with the mean not > 0.5 lower
@@ -80,5 +82,16 @@ if mode == "dev":
     G = " ".join("data/dev_sets/%s.tsv" % t for t in ("easy_dev", "challenge_dev", "obqa_dev", "mmlu_hs_dev", "csqa_traindev"))
     open(out, "a").write("=== general dev sets (S0 with this shelf: 47.63 17.25 23.05 28.13 29.20; S2 changes how questions are read)\n")
     pair([("general %s" % n, "%s ./bg arc %s %s" % (e, BRAIN, G)) for n, e in CELLS], out)
+    files.download(out)
+if mode == "test":
+    out = "/content/read2_test.txt"; open(out, "w").write("=== choice: S2=31 (frozen; docs/READ2.md)\n")
+    NB = "/content/cx3.brain"
+    if not brain_release.get(NB, "brain-school-cx3"): raise SystemExit("no brain-school-cx3 release")
+    T = "%smc160.test.txt %smc500.test.txt %stest_middle.txt %s/read2_tests.txt %s/comprehend_tests.txt %s/episode_tests.txt %s/story_tests.txt" % (M, M, R, ST, ST, ST, ST)
+    pair([("S0 new stories (brain-school-cx2)", "SHOW=1 S2=0 ./bg passages %s %s/read2_tests.txt" % (BRAIN, ST)),
+          ("S2 passages (brain-school-cx3)", "SHOW=1 S2=31 ./bg passages %s %s" % (NB, T))], out)
+    GT = " ".join("data/arc_tests/%s.tsv" % t for t in ("mmlu_hs_test", "csqa_dev", "easy_test", "challenge_test", "obqa_test"))
+    open(out, "a").write("=== general tests, once (S0 on brain-school-cx2 with its shelf: 26.56 31.08 46.09 21.98 24.20)\n")
+    pair([("general S2 (brain-school-cx3)", "S2=31 ./bg arc %s %s" % (NB, GT))], out)
     files.download(out)
 print("read2", mode, "done", flush=True)

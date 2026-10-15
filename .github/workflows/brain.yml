@@ -1,6 +1,7 @@
 # Builds the school brain with its cortex (docs/CORTEX_LINK.md) and publishes it as a release (now brain-school-cx2), so a
 # Colab session downloads it instead of rebuilding (tools/brain_release.py). Uses GitHub's own token for this job only; no key.
-# Runs when tools/brain_build.txt changes on the reader branch; its last "tag: NAME" line names the release.
+# Runs when tools/brain_build.txt changes on the reader branch; its last "tag: NAME" line names the release and its last
+# "env: ..." line is the environment of the read (a reader switch under test, e.g. S2=31).
 name: brain
 on:
   push:
@@ -24,9 +25,10 @@ jobs:
         run: pip install -q pyarrow && python3 tools/school_shelf.py && rm -rf data/school/raw && ls -l data/school/
       - name: read the shelf, file by file, the cortex learning from the facts
         run: |
-          B=$RUNNER_TEMP/cx.brain
+          B=$RUNNER_TEMP/cx.brain; E=$(grep '^env: ' tools/brain_build.txt | tail -1 | cut -c6-)   # the reader's switches for this build
+          echo "env: $E"
           for f in $(ls data/school/0*.txt | sort); do
-            if [ -f $B ]; then FROM=$B ./bg read $B 1000000000 $f; else ./bg read $B 1000000000 $f; fi
+            if [ -f $B ]; then env $E FROM=$B ./bg read $B 1000000000 $f; else env $E ./bg read $B 1000000000 $f; fi
           done
           ls -l $B $B.cx
       - name: publish
