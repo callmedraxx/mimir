@@ -536,6 +536,8 @@ static void score_cands(Know *A, Frame *hf, int nh, int focus, const QW *Q, int 
     if (bopp) *open *= -NW;                  /* the sentence that covers the question and option best says the opposite */
 }
 static int asks_opposite(const char *q);
+static int yesno_q(const char *q) { static const char *AUX[] = { "do", "does", "did", "is", "are", "was", "were", "can", "could", "will", "would", "has", "have", "had", 0 };
+    for (int i = 0; AUX[i]; i++) if (is_word_at(q, AUX[i])) return 1; return 0; }
 static void bg_option(Know *A, const char *q, const char *opt, BParts *P) {
     char st[4096]; statement(q, opt, st, sizeof st);
     static Frame hf[64], qf[64], of[64]; uint32_t sw[256], qwl[256], owl[128]; int nsw, nq, now_;
@@ -570,6 +572,7 @@ static void bg_option(Know *A, const char *q, const char *opt, BParts *P) {
 #undef CAND_ADD
     for (int i = 0; i < nq; i++) if (Q[i].g != NONE) mark[Q[i].g] = 0;
     int focus = 0; for (int i = 0; i < nh; i++) { uint32_t w[24]; int m; fact_words(&hf[i], w, &m); int has = 0; for (int j = 0; j < m; j++) for (int x = 0; x < now_; x++) has |= w[j] == owl[x]; hf[i].tc = has; focus += has; }
+    if ((s2() & 16) && yesno_q(q)) focus = 0;     /* S2: "Does Mr. Sola bake on Sundays?": every option's statement is judged whole, "only cakes" too */
     score_cands(A, hf, nh, focus, Q, nq, O, no, cand, nc, &P->fact, &P->joint, &P->open, &P->optr);
     /* the episode: when the question or the option speaks of it, its facts answer first, weighted EPW */
     if (nep) {

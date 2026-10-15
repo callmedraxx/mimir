@@ -78,3 +78,41 @@ tests (8,689 questions) do not confirm; the dev sets are small (299–1,000 ques
 **Decision by the rule:** ARC-Easy is within 1 point of 46.61 (−0.52), so there is no loss to find.
 Step 1 and S1 are dropped; **S2 is built over S0.** COMPREHEND's general cost is a mean of −0.2,
 within noise; its ARC-Easy "drop" of 3.6 was the missing shelf.
+
+## How S2 was built (2026-10-15, before any school-brain result)
+
+Developed on the bakery and the other dev stories and MCTest dev, on the droplet's 3 MB test brain,
+with `bg facts` and a pronoun trace (`PRDBG=1`). Switch `S2` (bits while developing: 1 pronouns by
+sex, 2 apposition, 4 lists and "made of"; 8 the main character; 16 yes/no questions judged whole).
+`S2=0` gives byte-identical answers and parts to the adopted code on every dev set.
+
+* **He / she.** The reader kept "the latest person" from the word table's name class, so "baker"
+  and "van" (surnames in the table) became the person "she" pointed to. Now: the people mentioned
+  are kept latest-first (the subject of a sentence last, so it is the latest); each one's sex comes
+  from a title ("Mr."), a word for a man or woman ("his wife Bisi", "a boy named Leke", "her
+  brother Tunde"), or the pronoun that pointed to them; "he" goes to the latest person who is not
+  a woman, "she" to the latest who is not a man; a thing called "it" is neither; "him" / "her" as
+  an object never point to the subject of their own clause; plural words ("his friends", "the
+  students") are not a he or she; a person picked by a pronoun is not a new mention. **Bit 8**: among
+  the three latest fitting people, one mentioned more than twice as often as the latest wins (Luna
+  over her mother, Joe over his father, in MCTest dev).
+* **Apposition.** "…, Mr. Eze." at the end of a sentence names the phrase before it; "…, an
+  electrician." / "…, a boy named Leke." says what it is (a fact "X is a Y"); the same before the
+  verb: "Bisi's cousin, an electrician fixed the oven". A pronoun before it is resolved first
+  ("to her, a girl of nine").
+* **Lists.** In a passive ("is made of flour"), "of" belongs to the verb, not the noun ("the flour's
+  bread" before); "…, water and salt" / "eggs and sugar" after a part of the fact add more of that
+  part, unless a verb follows the list (a new clause).
+* **Bit 16** (answering, `bg.c`): for a yes/no question every option's statement is judged whole;
+  before, "only cakes" was judged on "cakes" alone and the "does bake on Sundays" it asserts was
+  skipped, so the "not bake" fact never counted against it.
+
+Tiny brain, dev (not a score): bakery 4 → 5 of 10 with bits 7, 6 with 31; clock 9/10 same; the other
+dev stories 26 → 24 of 30 (bicycle "What did Nadia give the baker?", swim "When did Lina start?"
+flip although every pronoun in both stories now resolves right); MC160 dev 50.3 → 49.4, MC500 dev
+55.9 → 53.4. In the MC flips the facts are mostly better read (Toodles, Joey, Joe) but the answer
+is worse, which the school brain's dev run has to judge. Disclosure: while checking the reader I
+ran `bg facts` on three sentences copied from the test stories (orchard, lantern); one showed a
+relative-clause miss ("…, who is no longer able to see well, could not help her" loses its
+subject) that is **not** fixed and not in S2's scope. Nothing was changed for those sentences
+beyond what the bakery sentences already asked for.
