@@ -136,3 +136,37 @@ Bits 8 and 16 move one or two MCTest questions each, never down; kept as part of
 **Frozen 2026-10-15 at S2=31.** Build 6 (`brain-school-cx3`) reads the shelf with the S2 reader. The
 test, once: MC160, MC500, RACE-Middle tests; the three new stories (orchard, paper lanterns, ferry; S0
 on `brain-school-cx2` for them too); the nine older test stories; the five general tests.
+
+## Test results (2026-10-15, Colab, once, frozen bf6a421; `results/read2_test.txt`)
+
+S2 on `brain-school-cx3` (the shelf read by the S2 reader: 32,964,286 facts, 760,737 words, against
+32,484,331 and 753,686; the extra facts are mostly list items that were dropped before).
+
+| test | before (COMPREHEND / step 0) | **S2** | |
+|---|---|---|---|
+| **new stories** orchard, paper lanterns, ferry (30) | 25 (S0, same run) | **27** | +2: "What did Kemi give the neighbour?", "How old is Zara?" |
+| MC160 | 54.69 | 54.48 | −0.2 |
+| MC500 | 52.47 | 52.06 | −0.4 |
+| RACE-Middle | 40.38 | 39.78 | −0.6 |
+| lighthouse / paper dragon / night bus (30) | 21 | 20 | −1: "Who is the keeper of the lighthouse?" → a cat |
+| salt / train / kite (30) | 23 | 23 | same misses |
+| harbor / garden / snow (30) | 28 | 28 | same misses |
+| MMLU-HS | 26.56 | 26.87 | +0.3 |
+| CommonsenseQA | 31.08 | 31.12 | 0 |
+| ARC-Easy | 46.09 | 46.34 | +0.3 |
+| ARC-Challenge | 21.98 | 22.00 | 0 |
+| OpenBookQA | 24.20 | 24.20 | 0 |
+| general mean | 29.98 | 30.11 | +0.1 |
+
+Still missed in the new stories: "Who picks the apples?" (Kemi, not Tunde), "Who won the prize?"
+(the teacher, not Zara: "The teacher gave the prize to her"), "What was on the front of the Duck?".
+On the COMPREHEND stories the targeted misses did **not** move: "What is the kite made of?" is still
+"plastic", "Who is Mr. Bayo?" still "a doctor", "Was Mr. Bayo still sick?" still wrong; these are
+answering misses now (the facts read right on the droplet), to be looked at next.
+
+**Adopted by the owner (2026-10-15: "adopt it").** The switch is removed; `S2=31` is the reader and the
+yes/no scoring. Checked on the droplet's test brain: answers and parts on every dev set, the facts of
+the five dev stories, and a freshly read brain are byte-identical to the frozen setting.
+`brain-school-cx3` is the brain; the READ2 Colab runner is deleted. `brain-school-cx2` (the loser) is to be
+deleted by the owner (`gh release delete brain-school-cx2 --repo callmedraxx/mimir --yes --cleanup-tag`;
+the session's permission guard refused the delete).

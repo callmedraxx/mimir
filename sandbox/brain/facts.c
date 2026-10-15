@@ -102,7 +102,7 @@ typedef struct { uint32_t verb, part; uint8_t flags, tc, narg; Arg a[MAXARG]; ui
 typedef struct {                       /* what the reader carries from sentence to sentence (counted) */
     uint32_t single, group[4]; int ngroup;
     uint32_t person, thing;            /* reader 2: the latest named person, the latest thing */
-    uint32_t ppl[8]; int nppl; uint32_t cnt[8];   /* S2: the people mentioned, the latest first, and how often */
+    uint32_t ppl[8]; int nppl; uint32_t cnt[8];   /* the people mentioned, the latest first, and how often */
 } Refs;
 
 typedef struct { uint32_t head, mod, grp[4]; int ngrp; uint8_t det, pron, obj; } NP;
@@ -115,21 +115,15 @@ typedef struct {
     TextContext *t; WMap *wm; Refs refs; int question;
     uint32_t w_be, w_have, w_do, w_not, w_you;
     uint32_t *name, nname, nsent;         /* the sentence (+1) where each word was last read as a name */
-    uint8_t *sex; uint32_t *sexat, nsex;  /* S2: a person's sex (1 man, 2 woman) and the sentence (+1) it was learnt in */
-    uint32_t subj;                        /* S2: the subject of the clause being read ("Mr. Sola paid him": not Mr. Sola) */
-    uint32_t pres[16]; int npres;         /* S2: who the pronouns of this sentence pointed to (not new mentions) */
-    uint32_t plur[32]; int nplur;         /* S2: words that were plural in this sentence ("his friends": not a he or she) */
+    uint8_t *sex; uint32_t *sexat, nsex;  /* a person's sex (1 man, 2 woman) and the sentence (+1) it was learnt in */
+    uint32_t subj;                        /* the subject of the clause being read ("Mr. Sola paid him": not Mr. Sola) */
+    uint32_t pres[16]; int npres;         /* who the pronouns of this sentence pointed to (not new mentions) */
+    uint32_t plur[32]; int nplur;         /* words that were plural in this sentence ("his friends": not a he or she) */
 } Reader2;
 static void r2_name(Reader2 *R, uint32_t id) { if (id >= R->nname) { uint32_t n = R->nname ? R->nname : 4096; while (n <= id) n *= 2; R->name = realloc(R->name, n * 4); memset(R->name + R->nname, 0, (n - R->nname) * 4); R->nname = n; } R->name[id] = R->nsent + 1; }
 static int r2_is_name(const Reader2 *R, uint32_t id) { return id < R->nname && R->name[id] && R->nsent + 1 - R->name[id] < 50; }   /* a name for the next 50 sentences */
 
-/* docs/READ2.md S2 (switch S2=1): "he" / "she" to the right person, a name at the end of a sentence, "made of X and Y" */
-static int S2 = -1;
-static int s2(void) { if (S2 < 0) S2 = getenv("S2") ? atoi(getenv("S2")) : 0; return S2; }   /* bits while developing: 1 pronouns, 2 apposition, 4 lists */
-#define S2P (s2() & 1)
-#define S2A (s2() & 2)
-#define S2L (s2() & 4)
-#define S2S (s2() & 8)      /* the main character: among the latest people, the one mentioned most */
+/* docs/READ2.md (S2, adopted 2026-10-15): "he" / "she" to the right person, a name at the end of a sentence, "made of X and Y" */
 static int sex_word(const char *w) {              /* 1: a word for a man, 2: for a woman */
     static const char *M[] = { "man", "boy", "brother", "father", "grandfather", "son", "grandson", "uncle", "husband", "king", "prince", "mister", "mr", "sir", "gentleman", "nephew", "he", "him", "his", 0 };
     static const char *F[] = { "woman", "girl", "sister", "mother", "grandmother", "daughter", "granddaughter", "aunt", "wife", "queen", "princess", "mrs", "ms", "miss", "madam", "lady", "niece", "she", "her", 0 };
@@ -294,7 +288,7 @@ static int chunk(Reader2 *R, Tk *k, int n, Chunk *ch, int max) {
                 int det = 0; uint32_t mod = NONE; int h = j;
                 for (int q = i; q < j; q++) { if (k[q].sp == SP_A) det = 1; if (k[q].c == 'J' || k[q].poss || k[q].c == 'Q') mod = k[q].poss ? k[q].nb : k[q].id; }
                 while (h + 1 < n && (is_nounish(&k[h + 1])) && !k[h].poss && !relword(R->t, k[h + 1].id)) { mod = k[h].nb; h++; }
-                c.np.head = k[h].c == 'O' || k[h].sp == SP_I ? k[h].id : k[h].nb; c.np.mod = mod; c.np.det = (uint8_t)det; c.np.pron = k[h].sp == SP_HE || k[h].sp == SP_THEY || (S2P && k[h].sp == SP_HER && k[h].c == 'O');
+                c.np.head = k[h].c == 'O' || k[h].sp == SP_I ? k[h].id : k[h].nb; c.np.mod = mod; c.np.det = (uint8_t)det; c.np.pron = k[h].sp == SP_HE || k[h].sp == SP_THEY || (k[h].sp == SP_HER && k[h].c == 'O');
                 c.np.obj = k[h].c == 'O';
                 if (c.np.pron) c.np.head = k[h].id;
                 i = h + 1;
@@ -331,7 +325,7 @@ static int chunk(Reader2 *R, Tk *k, int n, Chunk *ch, int max) {
                 int h = j; while (h + 1 < n && is_nounish(&k[h + 1]) && !k[h].poss && k[h].c != 'O' && !relword(R->t, k[h + 1].id)) { mod = k[h].nb; h++; }
                 if (k[h].poss && h + 1 < n && is_nounish(&k[h + 1])) { mod = k[h].nb; h++; }
                 c.type = CH_NP; c.np.det = (uint8_t)det; c.np.mod = mod;
-                c.np.pron = k[h].sp == SP_HE || k[h].sp == SP_THEY || (S2P && k[h].sp == SP_HER && k[h].c == 'O');
+                c.np.pron = k[h].sp == SP_HE || k[h].sp == SP_THEY || (k[h].sp == SP_HER && k[h].c == 'O');
                 c.np.obj = k[h].c == 'O';
                 c.np.head = c.np.pron || k[h].sp == SP_I ? k[h].id : k[h].nb;
                 if (c.np.pron) c.np.head = k[h].id;
@@ -358,18 +352,18 @@ static int resolve(Reader2 *R, NP *np, uint32_t *out) {
     if (sp == SP_THEY && R->refs.ngroup) { for (int i = 0; i < R->refs.ngroup; i++) out[i] = R->refs.group[i]; return R->refs.ngroup; }
     if (sp == SP_HE || sp == SP_HER) {          /* he / she / him / her: the latest person named; it: the latest thing */
         int it = !strcmp(R->t->voc[np->head].word, "it");
-        if (S2P && !it) {      /* S2: he / him / his: the latest man, or someone whose sex is not known (who is then a man); she / her: a woman */
+        if (!it) {      /* he / him / his: the latest man, or someone whose sex is not known (who is then a man); she / her: a woman */
             int want = sex_word(R->t->voc[np->head].word), pick = -1, seen = 0;
             for (int i = 0; i < R->refs.nppl; i++) { uint32_t p = R->refs.ppl[i]; if (np->obj && p == R->subj) continue;
                 int sx = sex_get(R, p); if (sx && sx != want) continue;
-                if (pick < 0) pick = i; else if (S2S && seen < 3 && R->refs.cnt[i] > 2 * R->refs.cnt[pick]) pick = i;   /* the main character over a passer-by */
-                if (++seen >= 3 || !S2S) break; }
+                if (pick < 0) pick = i; else if (seen < 3 && R->refs.cnt[i] > 2 * R->refs.cnt[pick]) pick = i;   /* the main character over a passer-by */
+                if (++seen >= 3) break; }
             if (pick >= 0) { uint32_t p = R->refs.ppl[pick]; if (!sex_get(R, p)) sex_set(R, p, want); if (R->npres < 16) R->pres[R->npres++] = p;
                 if (getenv("PRDBG")) { fprintf(stderr, "    [%s -> %s |", R->t->voc[np->head].word, R->t->voc[p].word); for (int i = 0; i < R->refs.nppl; i++) fprintf(stderr, " %s:%d/%u", R->t->voc[R->refs.ppl[i]].word, sex_get(R, R->refs.ppl[i]), R->refs.cnt[i]); fprintf(stderr, "]\n"); }
                 out[0] = p; return 1; }
         }
         if (!it && R->refs.person != NONE) { out[0] = R->refs.person; return 1; }
-        if (it && R->refs.thing != NONE) { if (S2P && !sex_get(R, R->refs.thing)) sex_set(R, R->refs.thing, 3); out[0] = R->refs.thing; return 1; }   /* S2: called "it": a thing, not he or she */
+        if (it && R->refs.thing != NONE) { if (!sex_get(R, R->refs.thing)) sex_set(R, R->refs.thing, 3); out[0] = R->refs.thing; return 1; }   /* called "it": a thing, not he or she */
     }
     if (R->refs.single != NONE) { out[0] = R->refs.single; return 1; }
     out[0] = np->head; return 1;
@@ -397,13 +391,13 @@ static int names_pass(Reader2 *R, Chunk *ch, int m) {
         if (!(a + 3 < m && ch[a].type == CH_COMMA && ch[a + 1].type == CH_NP && !ch[a + 1].np.pron && ch[a + 1].np.head < OPEN && ch[a + 2].type == CH_COMMA && ch[a + 3].type == CH_VG)) continue;
         name_merge(&ch[j].np, &ch[a + 1].np); memmove(ch + a, ch + a + 3, (size_t)(m - a - 3) * sizeof *ch); m -= 3;
     }
-    if (S2A && m >= 4 && ch[0].type == CH_NP && !ch[0].np.pron && ch[0].np.head < OPEN && ch[1].type == CH_COMMA && ch[2].type == CH_NP && !ch[2].np.pron && ch[2].np.head < OPEN
-        && ch[3].type == CH_VG && (ch[2].np.det || r2_is_name(R, ch[2].np.head))) {     /* S2: "Bisi's cousin, an electrician fixed the oven": the cousin is an electrician */
+    if (m >= 4 && ch[0].type == CH_NP && !ch[0].np.pron && ch[0].np.head < OPEN && ch[1].type == CH_COMMA && ch[2].type == CH_NP && !ch[2].np.pron && ch[2].np.head < OPEN
+        && ch[3].type == CH_VG && (ch[2].np.det || r2_is_name(R, ch[2].np.head))) {     /* "Bisi's cousin, an electrician fixed the oven": the cousin is an electrician */
         if (r2_is_name(R, ch[2].np.head) && !r2_is_name(R, ch[0].np.head)) name_merge(&ch[0].np, &ch[2].np);
         else { if (nnmf < 16) nmf[nnmf++] = (NameF){ ch[0].np.head, ch[0].np.mod, ch[2].np.head, ch[2].np.mod }; if (ch[0].np.mod == NONE) ch[0].np.mod = ch[2].np.head; }
         memmove(ch + 1, ch + 3, (size_t)(m - 3) * sizeof *ch); m -= 2;
     }
-    if (S2A && m >= 3) {                                /* S2: "He is a carpenter, Mr. Eze." / "his grandson, a boy named Leke." / "her cousin, an electrician." */
+    if (m >= 3) {                                /* "He is a carpenter, Mr. Eze." / "his grandson, a boy named Leke." / "her cousin, an electrician." */
         int j = m - 3, pp = 0;                           /* the last phrase, after a comma, may end with "of ...": "a girl of nine" */
         if (j > 0 && ch[m - 1].type == CH_PP && spw(R->t, ch[m - 1].prep) == SP_OF) { j--; pp = ch[m - 1].np.head < OPEN; }
         Chunk *x = j >= 0 ? &ch[j] : 0, *y = j >= 0 ? &ch[j + 2] : 0; int ok = j >= 0 && ch[j + 1].type == CH_COMMA;
@@ -445,8 +439,8 @@ static int read_sentence(Reader2 *R, Tk *k, int n, Frame *out, int max, int *whs
         case CH_EITHER: either = 1; break;
         case CH_COMMA: case CH_AND:
             if (c->type == CH_AND) pend_and = 1;
-            if (S2L && cur >= 0 && out[cur].verb != NONE && out[cur].narg && out[cur].a[out[cur].narg - 1].role != A_AGENT) {
-                /* S2: "made of flour, water and salt", "eggs and sugar": more of the last part, unless a new clause follows the list */
+            if (cur >= 0 && out[cur].verb != NONE && out[cur].narg && out[cur].a[out[cur].narg - 1].role != A_AGENT) {
+                /* "made of flour, water and salt", "eggs and sugar": more of the last part, unless a new clause follows the list */
                 int k = i, cnt = 0, nxt = -1;
                 while (k + 1 < m && ch[k + 1].type == CH_NP && !ch[k + 1].np.pron && ch[k + 1].np.head < OPEN) { cnt++; k += 2;
                     if (k >= m) { nxt = m; break; } if (ch[k].type != CH_COMMA && ch[k].type != CH_AND) { nxt = k; break; } }
@@ -515,7 +509,7 @@ static int read_sentence(Reader2 *R, Tk *k, int n, Frame *out, int max, int *whs
                 Frame *f = &out[q]; int last = f->narg - 1, sp = spw(R->t, c->prep);
                 /* "east of the hallway", "to the left of the square", "afraid of wolves", "bigger than the box": a relation */
                 if (last >= 0 && sp == SP_OF && (f->a[last].role == A_AGENT || (f->a[last].role == A_PP && spw(R->t, f->a[last].prep) != SP_TO)) && f->a[last].mod == NONE
-                    && !(S2L && (f->flags & F_PASS))) {                 /* S2: "is made of flour": what it is made of, not "the flour's bread" */
+                    && !((f->flags & F_PASS))) {                 /* "is made of flour": what it is made of, not "the flour's bread" */
                     f->a[last].mod = who[0];                       /* "the box of chocolates" */
                 } else if (last >= 0 && (sp == SP_OF || sp == SP_THAN) && (f->a[last].role == A_ATTR || f->a[last].role == A_PP) && f->a[last].mod == NONE && f->a[last].head < OPEN &&
                     !(f->a[last].k & K_KIND)) {
@@ -620,9 +614,9 @@ static int read_sentence(Reader2 *R, Tk *k, int n, Frame *out, int max, int *whs
     for (int x = 0; x < nnmf && nf < max; x++) { if (nmf[x].h >= OPEN || nmf[x].k >= OPEN) continue;
         Frame *f = &out[nf++]; memset(f, 0, sizeof *f); f->verb = R->w_be; f->part = NONE;
         frame_arg(f, A_AGENT, NONE, nmf[x].h, nmf[x].hm, 0); frame_arg(f, A_ATTR, NONE, nmf[x].k, nmf[x].km, K_KIND); }
-    if (S2P) for (int i = 0; i < m; i++) if ((ch[i].type == CH_NP || ch[i].type == CH_PP) && !ch[i].np.pron && ch[i].np.head < OPEN && ch[i].np.mod < OPEN && !sex_get(R, ch[i].np.head))
-        sex_set(R, ch[i].np.head, sex_get(R, ch[i].np.mod));                                       /* S2: "her brother Tunde", "his wife Bisi" */
-    if (S2P) for (int pass = 0; pass < 2; pass++) for (int q = 0; q < nf; q++) {   /* S2: the people in this sentence (the subject last: the latest), and their sex */
+    for (int i = 0; i < m; i++) if ((ch[i].type == CH_NP || ch[i].type == CH_PP) && !ch[i].np.pron && ch[i].np.head < OPEN && ch[i].np.mod < OPEN && !sex_get(R, ch[i].np.head))
+        sex_set(R, ch[i].np.head, sex_get(R, ch[i].np.mod));                                       /* "her brother Tunde", "his wife Bisi" */
+    for (int pass = 0; pass < 2; pass++) for (int q = 0; q < nf; q++) {   /* the people in this sentence (the subject last: the latest), and their sex */
         int ag = find_arg(&out[q], A_AGENT);
         if (pass && ag >= 0 && out[q].verb == R->w_be && out[q].a[ag].head < OPEN) for (int a = 0; a < out[q].narg; a++)   /* "Leke is a boy", "Sola is an old man" */
             if (out[q].a[a].role == A_ATTR && (out[q].a[a].k & K_KIND) && !sex_get(R, out[q].a[ag].head)) { int sx = sex_get(R, out[q].a[a].head); if (!sx) sx = sex_get(R, out[q].a[a].mod); sex_set(R, out[q].a[ag].head, sx); }
