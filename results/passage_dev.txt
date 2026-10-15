@@ -1,0 +1,76 @@
+cortex /content/cx.brain.cx: 725317 words, 170762026 met in facts
+brain /content/cx.brain: 32488986 facts, 725317 words (loaded in 32.7 s)
+mc160.train.txt          280 q    56.52%   (episode weight 4.00)  197.0 ms/q
+RESULT bgpass file=mc160.train.txt n=280 acc=56.52 epw=4.00
+mc160.dev.txt            120 q    47.78%   (episode weight 4.00)  228.4 ms/q
+RESULT bgpass file=mc160.dev.txt n=120 acc=47.78 epw=4.00
+mc500.train.txt         1200 q    49.29%   (episode weight 4.00)  183.9 ms/q
+RESULT bgpass file=mc500.train.txt n=1200 acc=49.29 epw=4.00
+mc500.dev.txt            200 q    41.25%   (episode weight 4.00)  174.6 ms/q
+RESULT bgpass file=mc500.dev.txt n=200 acc=41.25 epw=4.00
+dev_middle.txt          1436 q    37.97%   (episode weight 4.00)  299.2 ms/q
+RESULT bgpass file=dev_middle.txt n=1436 acc=37.97 epw=4.00
+cortex /content/cx.brain.cx: 725317 words, 170762026 met in facts
+brain /content/cx.brain: 32488986 facts, 725317 words (loaded in 42.1 s)
+mc160.train.txt          280 q    56.52%   (episode weight 4.00)  167.2 ms/q
+RESULT bgpass file=mc160.train.txt n=280 acc=56.52 epw=4.00
+mc160.dev.txt            120 q    47.78%   (episode weight 4.00)  210.6 ms/q
+RESULT bgpass file=mc160.dev.txt n=120 acc=47.78 epw=4.00
+mc500.train.txt         1200 q    49.29%   (episode weight 4.00)  168.5 ms/q
+RESULT bgpass file=mc500.train.txt n=1200 acc=49.29 epw=4.00
+mc500.dev.txt            200 q    41.25%   (episode weight 4.00)  171.4 ms/q
+RESULT bgpass file=mc500.dev.txt n=200 acc=41.25 epw=4.00
+dev_middle.txt          1436 q    37.97%   (episode weight 4.00)  298.8 ms/q
+RESULT bgpass file=dev_middle.txt n=1436 acc=37.97 epw=4.00
+=== U0 EA 1.00 SW 0.00: dev_middle=37.97 mc160=53.90 mc500=48.14 mean 46.67
+=== U1 EA 0.00 SW 0.00: dev_middle=39.12 mc160=57.35 mc500=51.30 mean 49.26
+=== U1 EA 0.25 SW 0.00: dev_middle=38.28 mc160=56.40 mc500=50.29 mean 48.32
+=== U1 EA 0.50 SW 0.00: dev_middle=37.94 mc160=55.15 mc500=49.14 mean 47.41
+=== U2 EA 0.00 SW 1.00: dev_middle=39.01 mc160=56.98 mc500=51.93 mean 49.31
+=== U2 EA 0.00 SW 2.00: dev_middle=39.15 mc160=57.73 mc500=51.97 mean 49.62
+=== U2 EA 0.00 SW 4.00: dev_middle=39.08 mc160=56.40 mc500=52.11 mean 49.20
+=== U3 EA 0.00 SW 1.00: dev_middle=39.01 mc160=56.98 mc500=52.01 mean 49.33
+=== U3 EA 0.00 SW 2.00: dev_middle=39.15 mc160=57.73 mc500=52.18 mean 49.69
+=== U3 EA 0.00 SW 4.00: dev_middle=39.08 mc160=56.40 mc500=52.33 mean 49.27
+=== chosen: EA=0 (mean 49.26; U0 46.67)
+cortex /content/cx.brain.cx: 725317 words, 170762026 met in facts
+brain /content/cx.brain: 32488986 facts, 725317 words (loaded in 35.9 s)
+  single	Who built the clock in the tower?	pick=Imra Batsho	right=Imra Batsho	OK
+  single	What kind of animal is Pell?	pick=an owl	right=an owl	OK
+  single	What does Pell eat?	pick=mice	right=beetles	WRONG
+  single	What does Dumi oil the gears with?	pick=goose fat	right=goose fat	OK
+  single	Why does Imra use goose fat on the gears?	pick=it does not freeze in winter	right=it does not freeze in winter	OK
+  single	What stopped the clock?	pick=a walnut jammed the gear	right=a walnut jammed the gear	OK
+  single	Who hid the walnut in the clock?	pick=a red squirrel	right=a red squirrel	OK
+  single	What did the mayor want to do with the clock?	pick=move it to the school	right=pull it down	WRONG
+  single	How many times did Dumi turn the big key?	pick=forty	right=forty	OK
+  single	What did Imra give Dumi?	pick=her brass screwdriver	right=her brass screwdriver	OK
+clock_dev.txt             10 q    80.00%   (episode weight 4.00)  111.1 ms/q
+RESULT bgpass file=clock_dev.txt n=10 acc=80.00 epw=4.00
+cortex /content/cx.brain.cx: 725317 words, 170762026 met in facts
+brain /content/cx.brain: 32488986 facts, 725317 words (loaded in 31.6 s)
+  single	Who built the clock in the tower?	pick=Imra Batsho	right=Imra Batsho	OK
+  single	What kind of animal is Pell?	pick=an owl	right=an owl	OK
+  single	What does Pell eat?	pick=mice	right=beetles	WRONG
+  single	What does Dumi oil the gears with?	pick=goose fat	right=goose fat	OK
+  single	Why does Imra use goose fat on the gears?	pick=it does not freeze in winter	right=it does not freeze in winter	OK
+  single	What stopped the clock?	pick=a walnut jammed the gear	right=a walnut jammed the gear	OK
+  single	Who hid the walnut in the clock?	pick=a red squirrel	right=a red squirrel	OK
+  single	What did the mayor want to do with the clock?	pick=move it to the school	right=pull it down	WRONG
+  single	How many times did Dumi turn the big key?	pick=forty	right=forty	OK
+  single	What did Imra give Dumi?	pick=her brass screwdriver	right=her brass screwdriver	OK
+clock_dev.txt             10 q    85.00%   (episode weight 4.00)  87.4 ms/q
+RESULT bgpass file=clock_dev.txt n=10 acc=85.00 epw=4.00
+=== general dev sets, no episode (must be 47.81 20.01 25.25 29.32 31.55)
+cortex /content/cx.brain.cx: 725317 words, 170762026 met in facts
+brain /content/cx.brain: 32488986 facts, 725317 words (loaded in 32.3 s)
+easy_dev.tsv             570 q    47.81%   (alone: fact 31.97  joint 32.91  open 43.96  meaning 35.83)  162.0 ms/q
+RESULT bgarc file=easy_dev.tsv n=570 acc=47.81 facts=32488986
+challenge_dev.tsv        299 q    20.01%   (alone: fact 23.90  joint 19.84  open 20.29  meaning 22.85)  182.0 ms/q
+RESULT bgarc file=challenge_dev.tsv n=299 acc=20.01 facts=32488986
+obqa_dev.tsv             500 q    25.25%   (alone: fact 24.00  joint 16.45  open 21.07  meaning 24.40)  165.0 ms/q
+RESULT bgarc file=obqa_dev.tsv n=500 acc=25.25 facts=32488986
+mmlu_hs_dev.tsv          370 q    29.32%   (alone: fact 23.33  joint 26.55  open 30.41  meaning 29.39)  279.0 ms/q
+RESULT bgarc file=mmlu_hs_dev.tsv n=370 acc=29.32 facts=32488986
+csqa_traindev.tsv       1000 q    31.55%   (alone: fact 21.83  joint 20.65  open 27.58  meaning 24.90)  179.8 ms/q
+RESULT bgarc file=csqa_traindev.tsv n=1000 acc=31.55 facts=32488986

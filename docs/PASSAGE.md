@@ -65,3 +65,20 @@ sets must give the same numbers).
   episode nothing changes (droplet checks).
 * The brain is kept as a GitHub release `brain-school-cx` (`tools/brain_release.py`) when the
   owner's `GH_TOKEN` is in Colab Secrets; else rebuilt in the session.
+
+## Dev results (2026-10-15, Colab; `results/passage_dev.txt`)
+
+The brain rebuilt in the session: 32,488,986 facts, the same as EPISODE's (U0 gives EPISODE's
+dev numbers exactly). Means of MC160 (train + dev), MC500 (train + dev), RACE-Middle dev:
+
+| cell | settings | mean |
+|---|---|---|
+| **U0** (now) | | 46.67 |
+| **U1** | EA 0 (association parts off inside the episode) | **49.26** (MC160 57.35, MC500 51.30, RACE-M 39.12) |
+| | EA 0.25 / 0.5 | 48.32 / 47.41 |
+| U2 | EA 0 + slot, SW 1 / **2** / 4 | 49.31 / **49.62** / 49.20 |
+| U3 | EA 0 + slot and polarity, SW 1 / **2** / 4 | 49.33 / **49.69** / 49.27 |
+
+**Chosen: U1, EA 0 (+2.6).** The slot (+0.4) and polarity (+0.1 more) help a little but
+less than the 1 point a step needs, so they are not kept. Frozen in `tools/passage_choice.env`.
+Clock story: 8/10 → 8.5/10 (a tie). General dev sets with no episode: unchanged.
