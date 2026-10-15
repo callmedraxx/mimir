@@ -191,7 +191,7 @@ def vital_titles():
         except KeyError: continue
         for l in links:
             t = l["*"]
-            if l["ns"] == 0 and l.get("exists") is not None: titles.add(t)
+            if l["ns"] == 0 and "missing" not in l: titles.add(t)     # (the API no longer marks links "exists"; titles not in the dump never match)
             elif l["ns"] == 4 and t.startswith(("Wikipedia:Vital articles/Level 4/", "Wikipedia:Vital articles/Level/4/")): todo.append(t)
     print("  vital articles, level 4:", len(titles), "from", len(done), "list pages", flush=True); return titles
 def vital():
@@ -212,4 +212,6 @@ for name, make in [("01_babylm.txt", babylm), ("02_children.txt", children), ("0
                    ("05_textbooks.txt", textbooks), ("06_wikibooks.txt", wikibooks), ("07_vital.txt", vital)]:
     stage(name, make)
 for p in glob.glob(os.path.join(RAW, "*")): os.remove(p)
+empty = [p for p in sorted(glob.glob(os.path.join(OUT, "0*.txt"))) if os.path.getsize(p) == 0]
+if empty: raise SystemExit("empty shelf files (a source failed): %s" % ", ".join(empty))
 print("shelf ready:", sum(os.path.getsize(p) for p in glob.glob(os.path.join(OUT, "0*.txt"))) / 1e6, "MB", flush=True)

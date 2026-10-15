@@ -5,3 +5,5 @@ tag: brain-school-cx2
 env: RD=1
 build 4: the shelf published with the brain (open book needs it; COMPREHEND tests ran without it) (2026-10-15)
 tag: brain-school-cx2
+build 5: vital articles again (the Wikipedia API dropped "exists"; build 4 had none) (2026-10-15)
+tag: brain-school-cx2
