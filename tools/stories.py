@@ -3,6 +3,8 @@
 import os, sys
 SETS = {"clock": ("clock_questions.tsv", ["clock"]),
         "dev_stories": ("passage_tests.tsv", ["bicycle", "stoneowl", "swim"]),          # PASSAGE's test; dev since COMPREHEND
+        "bakery": ("bakery_questions.tsv", ["bakery"]),                                  # dev (READ2)
+        "read2_tests": ("read2_tests.tsv", ["orchard", "lantern", "ferry"]),
         "comprehend_tests": ("comprehend_tests.tsv", ["lighthouse", "dragon", "nightbus"]),
         "episode_tests": ("episode_tests.tsv", ["salt", "train", "kite"]),
         "story_tests": ("story_tests.tsv", ["harbor", "garden", "snow"])}
