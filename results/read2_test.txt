@@ -1,0 +1,30 @@
+# docs/READ2.md test, Colab 2026-10-15 (finished 19:22 UTC), once, frozen at S2=31 (commit bf6a421).
+# S2 on brain-school-cx3 (the shelf read by the S2 reader, 32,964,286 facts); S0 on brain-school-cx2 for the new stories.
+# Summary lines of /content/read2_test.txt; the misses on the story tests follow.
+=== choice: S2=31 (frozen; docs/READ2.md)
+=== S0 new stories (brain-school-cx2)
+RESULT bgpass file=read2_tests.txt n=30 acc=83.33 epw=4.00
+=== S2 passages (brain-school-cx3)
+RESULT bgpass file=mc160.test.txt n=240 acc=54.48 epw=4.00
+RESULT bgpass file=mc500.test.txt n=600 acc=52.06 epw=4.00
+RESULT bgpass file=test_middle.txt n=1436 acc=39.78 epw=4.00
+RESULT bgpass file=read2_tests.txt n=30 acc=90.00 epw=4.00
+RESULT bgpass file=comprehend_tests.txt n=30 acc=66.67 epw=4.00
+RESULT bgpass file=episode_tests.txt n=30 acc=76.67 epw=4.00
+RESULT bgpass file=story_tests.txt n=30 acc=93.33 epw=4.00
+=== general tests, once (S0 on brain-school-cx2 with its shelf: 26.56 31.08 46.09 21.98 24.20)
+=== general S2 (brain-school-cx3)
+RESULT bgarc file=mmlu_hs_test.tsv n=3420 acc=26.87 facts=32964286
+RESULT bgarc file=csqa_dev.tsv n=1221 acc=31.12 facts=32964286
+RESULT bgarc file=easy_test.tsv n=2376 acc=46.34 facts=32964286
+RESULT bgarc file=challenge_test.tsv n=1172 acc=22.00 facts=32964286
+RESULT bgarc file=obqa_test.tsv n=500 acc=24.20 facts=32964286
+=== misses on the story tests
+S0 new stories (5): orchard_3 who picks the apples -> Kemi; orchard_10 Kemi gave the neighbour -> a ladder; lantern_7 who won the prize -> the teacher;
+  lantern_8 how old is Zara -> twelve; ferry_7 on the front of the Duck -> a bell
+S2 new stories (3): orchard_3 who picks the apples -> Kemi; lantern_7 who won the prize -> the teacher; ferry_7 on the front of the Duck -> a bell
+S2 lighthouse / dragon / night bus (10; COMPREHEND had 9, the same without lighthouse_1): lighthouse_1 who is the keeper -> a cat; lighthouse_6 not take -> her coat;
+  dragon_3 made of -> plastic; dragon_4 where fly -> on the hill; dragon_8 prize -> a yellow hat; dragon_10 who got the book -> the judge;
+  nightbus_3 loud music -> only at night; nightbus_7 who was sick -> the children; nightbus_8 who is Mr. Bayo -> a doctor; nightbus_10 still sick -> he was in the bus all day
+S2 salt / train / kite (7, as before): salt_4, salt_5, train_2, train_9, kite_7, kite_9, kite_10
+S2 harbor / garden / snow (2, as before): garden_5, snow_2
