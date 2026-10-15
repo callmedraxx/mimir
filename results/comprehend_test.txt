@@ -1,0 +1,31 @@
+# docs/COMPREHEND.md tests, Colab 2026-10-15, once, frozen 24e3a3c (NW=2 RD=1). R0 on brain-school-cx, chosen on brain-school-cx2.
+=== choice: NW=2 RD=1
+=== R0
+RESULT bgpass file=mc160.test.txt n=240 acc=49.58
+RESULT bgpass file=mc500.test.txt n=600 acc=50.72
+RESULT bgpass file=test_middle.txt n=1436 acc=40.68
+RESULT bgpass file=comprehend_tests.txt n=30 acc=53.33
+RESULT bgpass file=episode_tests.txt n=30 acc=76.67
+RESULT bgpass file=story_tests.txt n=30 acc=96.67
+=== chosen
+RESULT bgpass file=mc160.test.txt n=240 acc=54.69
+RESULT bgpass file=mc500.test.txt n=600 acc=52.47
+RESULT bgpass file=test_middle.txt n=1436 acc=40.38
+RESULT bgpass file=comprehend_tests.txt n=30 acc=70.00
+RESULT bgpass file=episode_tests.txt n=30 acc=76.67
+RESULT bgpass file=story_tests.txt n=30 acc=93.33
+=== general tests, no episode (R0: 27.41 31.37 46.61 21.22 24.40)
+=== general chosen (brain-school-cx2)
+RESULT bgarc file=mmlu_hs_test.tsv n=3420 acc=26.32
+RESULT bgarc file=csqa_dev.tsv n=1221 acc=32.35
+RESULT bgarc file=easy_test.tsv n=2376 acc=43.04
+RESULT bgarc file=challenge_test.tsv n=1172 acc=23.71
+RESULT bgarc file=obqa_test.tsv n=500 acc=25.57
+=== new test stories, misses
+R0 (14): lighthouse_3 Pepper afraid of -> the sea; lighthouse_4 Marta eat fish -> yes, with potatoes; lighthouse_6 not take -> her coat;
+  lighthouse_9 Hale bring -> a fish; lighthouse_10 take the money -> yes; dragon_4 where fly -> on the hill; dragon_6 Ravi angry -> he cried;
+  dragon_8 prize -> a yellow hat; dragon_9 Asha's kite -> it won a prize; dragon_10 who got the book -> the judge; nightbus_3 loud music -> only at night;
+  nightbus_7 who was sick -> the children; nightbus_8 who is Mr. Bayo -> a doctor; nightbus_10 still sick -> he was in the bus all day
+chosen (9): lighthouse_6 not take -> her coat; dragon_3 made of -> plastic; dragon_4 where fly -> on the hill; dragon_8 prize -> a yellow hat;
+  dragon_10 who got the book -> the judge; nightbus_3 loud music -> only at night; nightbus_7 who was sick -> the children;
+  nightbus_8 who is Mr. Bayo -> a doctor; nightbus_10 still sick -> he was in the bus all day

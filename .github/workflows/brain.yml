@@ -1,7 +1,6 @@
-# Builds the school brain with its cortex (docs/CORTEX_LINK.md) and publishes it as the release brain-school-cx, so a Colab
-# session downloads it instead of rebuilding (tools/brain_release.py). Uses GitHub's own token for this job only; no key.
-# Runs when tools/brain_build.txt changes on the reader branch. Its last "tag: NAME" line names the release (default
-# brain-school-cx); its last "env: K=V ..." line is given to the reader (docs/COMPREHEND.md: "env: RD=1" for brain-school-cx2).
+# Builds the school brain with its cortex (docs/CORTEX_LINK.md) and publishes it as a release (now brain-school-cx2), so a
+# Colab session downloads it instead of rebuilding (tools/brain_release.py). Uses GitHub's own token for this job only; no key.
+# Runs when tools/brain_build.txt changes on the reader branch; its last "tag: NAME" line names the release.
 name: brain
 on:
   push:
@@ -25,9 +24,9 @@ jobs:
         run: pip install -q pyarrow && python3 tools/school_shelf.py && rm -rf data/school/raw && ls -l data/school/
       - name: read the shelf, file by file, the cortex learning from the facts
         run: |
-          B=$RUNNER_TEMP/cx.brain; RENV=$(grep '^env: ' tools/brain_build.txt | tail -1 | cut -c6-); echo "reader: $RENV"
+          B=$RUNNER_TEMP/cx.brain
           for f in $(ls data/school/0*.txt | sort); do
-            if [ -f $B ]; then env $RENV FROM=$B ./bg read $B 1000000000 $f; else env $RENV ./bg read $B 1000000000 $f; fi
+            if [ -f $B ]; then FROM=$B ./bg read $B 1000000000 $f; else ./bg read $B 1000000000 $f; fi
           done
           ls -l $B $B.cx
       - name: publish
@@ -38,8 +37,8 @@ jobs:
           gzip -1 -c cx.brain > school_cx.brain.gz && rm cx.brain
           gzip -1 -c cx.brain.cx > school_cx.brain.cx.gz && rm cx.brain.cx
           sha256sum school_cx.brain.gz school_cx.brain.cx.gz > SHA256SUMS
-          cd $GITHUB_WORKSPACE; TAG=$(grep '^tag: ' tools/brain_build.txt | tail -1 | cut -c6-); TAG=${TAG:-brain-school-cx}; RENV=$(grep '^env: ' tools/brain_build.txt | tail -1 | cut -c6-); cd $RUNNER_TEMP
+          cd $GITHUB_WORKSPACE; TAG=$(grep '^tag: ' tools/brain_build.txt | tail -1 | cut -c6-); TAG=${TAG:-brain-school-cx2}; cd $RUNNER_TEMP
           gh release delete $TAG --repo $GITHUB_REPOSITORY --yes --cleanup-tag 2>/dev/null || true
           gh release create $TAG --repo $GITHUB_REPOSITORY --target $GITHUB_SHA --title "School brain with its cortex ($TAG)" \
-            --notes "The school brain read with the cortex learning from its facts (docs/CORTEX_LINK.md), built by .github/workflows/brain.yml at $GITHUB_SHA; reader settings: ${RENV:-none}. BRAIN and BRAIN.cx gzipped; SHA256SUMS." \
+            --notes "The school brain read with the cortex learning from its facts (docs/CORTEX_LINK.md), built by .github/workflows/brain.yml at $GITHUB_SHA. BRAIN and BRAIN.cx gzipped; SHA256SUMS." \
             school_cx.brain.gz school_cx.brain.cx.gz SHA256SUMS

@@ -1,8 +1,9 @@
-# The school brain with its cortex, kept as the GitHub release brain-school-cx so a Colab session need not rebuild it.
+# The school brain with its cortex, kept as the GitHub release brain-school-cx2 (the shelf read by the reader of
+# docs/COMPREHEND.md) so a Colab session need not rebuild it.
 # Built and published by .github/workflows/brain.yml (GitHub's own token for that job; no key anywhere else).
 #   get(dst)   download it if the release exists (checked by SHA-256); True if it is there
 import os, subprocess
-REPO, TAG = "callmedraxx/mimir", "brain-school-cx"
+REPO, TAG = "callmedraxx/mimir", "brain-school-cx2"
 URL = "https://github.com/%s/releases/download/%s/" % (REPO, TAG)
 FILES = ("school_cx.brain.gz", "school_cx.brain.cx.gz")
 def sh(cmd): print("$", cmd, flush=True); subprocess.run(cmd, shell=True, check=True)

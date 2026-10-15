@@ -448,11 +448,11 @@ static double qcover(const QW *q, int nq, const QW *w, int nw) {
     double s = 0, d = 0; for (int i = 0; i < nq; i++) { double b = 0; for (int j = 0; j < nw; j++) { double y = qqsim(&q[i], &w[j]); if (y > b) b = y; } double wt = q[i].g == NONE ? log(nkf + 2.0) : gidf(q[i].g); s += wt * b; d += wt; }
     return d > 0 ? s / d : 0;
 }
-/* docs/COMPREHEND.md R1: a fact or sentence that says the opposite ("not") of the option counts against it, weighted NW
-   (0: as before, 30% for it) */
-static double NW = 0;
-/* a statement's fact (answering context ids) against a known fact, 0..1 (as know.c fact_sim); with NW, below 0 when it
-   matches but says the opposite */
+/* docs/COMPREHEND.md: a fact or sentence that says the opposite ("not") of the option counts against it, weighted NW
+   (chosen on dev from 0.5, 1, 2) */
+static const double NW = 2;
+/* a statement's fact (answering context ids) against a known fact, 0..1 (as know.c fact_sim); below 0 when it matches
+   but says the opposite */
 static float kfact_sim(Know *A, const Frame *h, const KF *f) {
     double num = 0, den = 0, vs = 1;
     if (h->verb != NONE) { int light = h->verb == A->R.w_be || h->verb == A->R.w_have || h->verb == A->R.w_do; double w = light ? 0.3 : 1.0;
@@ -463,7 +463,7 @@ static float kfact_sim(Know *A, const Frame *h, const KF *f) {
             double s = role_fit(&aa, &b) * fmax(qsim(&x, f->head[j]), f->mod[j] != NONE ? 0.6 * qsim(&x, f->mod[j]) : 0); if (s > best) best = s; }
         num += best; den += 1; }
     if (den <= 0) return 0;
-    double s = num / den; if ((h->flags & F_NEG) != (f->flags & F_NEG) && s > 0.5) s = NW > 0 && vs >= 0.5 ? -s : s * 0.3;   /* NW: it says the opposite (of the same doing) */
+    double s = num / den; if ((h->flags & F_NEG) != (f->flags & F_NEG) && s > 0.5) s = vs >= 0.5 ? -s : s * 0.3;   /* it says the opposite (of the same doing) */
     return (float)s;
 }
 static double conf(const KF *f) {
@@ -481,7 +481,7 @@ static int reread(Know *A, uint64_t ptr, QW *out, int max) {
         fseeko(fp[fid], (off_t)off, SEEK_SET); n = fread(s, 1, sizeof s - 1, fp[fid]); s[n] = 0; }
     char *e = strchr(s, '\n'); if (e) *e = 0;
     for (char *p = s; *p; p++) if ((*p == '.' || *p == '!' || *p == '?') && (p[1] == ' ' || !p[1])) {
-        if (RD && *p == '.') { char *b = p; while (b > s && isalpha((unsigned char)b[-1])) b--; char w[8]; size_t L = (size_t)(p - b); if (L < sizeof w) { memcpy(w, b, L); w[L] = 0; if (abbrev(w)) continue; } }
+        if (*p == '.') { char *b = p; while (b > s && isalpha((unsigned char)b[-1])) b--; char w[8]; size_t L = (size_t)(p - b); if (L < sizeof w) { memcpy(w, b, L); w[L] = 0; if (abbrev(w)) continue; } }
         p[1] = 0; break; }
     uint32_t w[256]; int nw; rr_nf = read_statement(A, s, rr_fr, 64, w, &nw, 256); if (nw > max) nw = max;
     return qwords(A, w, nw, out);
@@ -517,9 +517,9 @@ static void score_cands(Know *A, Frame *hf, int nh, int focus, const QW *Q, int 
     double fs = 0; int nfs = 0;
     for (int i = 0; i < nh; i++) { if (focus && !hf[i].tc) continue; double b = 0, bo = 0;
         for (int c = 0; c < nc; c++) { const KF *f = kf_at(cand[c]); double s = kfact_sim(A, &hf[i], f) * conf(f);
-            if (NW > 0 ? fabs(s) > fabs(b) : s > b) b = s;
-            if (NW > 0 && fabs(s) > fabs(bo)) { uint32_t w[8]; int n = kf_words(f, w), has = 0; for (int x = 0; x < n; x++) for (int y = 0; y < no; y++) has |= w[x] == O[y].g && w[x] != NONE; if (has) bo = s; } }
-        if (bo != 0) b = bo;       /* NW: the closest fact decides, for or against; among those holding the option's own words first */
+            if (fabs(s) > fabs(b)) b = s;
+            if (fabs(s) > fabs(bo)) { uint32_t w[8]; int n = kf_words(f, w), has = 0; for (int x = 0; x < n; x++) for (int y = 0; y < no; y++) has |= w[x] == O[y].g && w[x] != NONE; if (has) bo = s; } }
+        if (bo != 0) b = bo;       /* the closest fact decides, for or against; among those holding the option's own words first */
         fs += b < 0 ? NW * b : b; nfs++; }
     *fact = nfs ? fs / nfs : 0;
     enum { TOPMAX = 64 }; int64_t top[TOPMAX]; double tv[TOPMAX]; int K = NOPEN < 3 ? 3 : NOPEN > TOPMAX ? TOPMAX : NOPEN; for (int r = 0; r < K; r++) { top[r] = -1; tv[r] = -1; }
@@ -532,8 +532,8 @@ static void score_cands(Know *A, Frame *hf, int nh, int focus, const QW *Q, int 
         for (int p = 0; p < 2; p++) { uint64_t pt = kf_at((uint32_t)top[r])->ptr[p]; int dup = 0; for (int x = 0; x < nseen; x++) dup |= seen[x] == pt; if (dup || pt == ~0ull) continue; seen[nseen++] = pt;
             QW S[256]; int ns = reread(A, pt, S, 256); if (!ns) continue;
             double j = qcover(Q, nq, S, ns) + qcover(O, no, S, ns);
-            if (j > *open) { *open = j; *optr = pt; bopp = NW > 0 && opposes(A, hf, nh, focus, O, no); } } }
-    if (bopp) *open *= -NW;                  /* R1: the sentence that covers the question and option best says the opposite */
+            if (j > *open) { *open = j; *optr = pt; bopp = opposes(A, hf, nh, focus, O, no); } } }
+    if (bopp) *open *= -NW;                  /* the sentence that covers the question and option best says the opposite */
 }
 static int asks_opposite(const char *q);
 static void bg_option(Know *A, const char *q, const char *opt, BParts *P) {
@@ -543,10 +543,10 @@ static void bg_option(Know *A, const char *q, const char *opt, BParts *P) {
     QW Q[256], O[128]; qwords(A, qwl, nq, Q);
     int no = 0; for (int i = 0; i < now_; i++) { int inq = 0; for (int j = 0; j < nq; j++) inq |= qwl[j] == owl[i]; if (!inq) { const char *s = A->t.voc[owl[i]].word; O[no].g = lx_id(s, 0); O[no++].mid = wmid(s); } }
     memset(P, 0, sizeof *P); P->optr = ~0ull;
-    /* R1: a question that asks for what is NOT so ("What did Marta not take?") is read without its "not" and turned around
+    /* a question that asks for what is NOT so ("What did Marta not take?") is read without its "not" and turned around
        (scores): the option the facts say least, or say the opposite of ("without a candle"), wins */
-    if (NW > 0 && asks_opposite(q)) for (int i = 0; i < nh; i++) hf[i].flags &= (uint8_t)~F_NEG;   /* (not "why ... not": a reason is asked) */
-    if (NW > 0 && !no && (is_word_at(opt, "no") || is_word_at(opt, "yes") || strstr(opt, "not") || strstr(opt, "n't"))) {   /* "no, she was not sad": by its yes or no */
+    if (asks_opposite(q)) for (int i = 0; i < nh; i++) hf[i].flags &= (uint8_t)~F_NEG;   /* (not "why ... not": a reason is asked) */
+    if (!no && (is_word_at(opt, "no") || is_word_at(opt, "yes") || strstr(opt, "not") || strstr(opt, "n't"))) {   /* "no, she was not sad": by its yes or no */
         for (int i = 0; i < nq && i < 128; i++) O[no++] = Q[i]; }
     /* (d) how close in meaning the option's own words are to the question's */
     P->mean = no && nq ? qcover(O, no, Q, nq) : 0;
@@ -577,16 +577,16 @@ static void bg_option(Know *A, const char *q, const char *opt, BParts *P) {
         for (int i = 0; i < no; i++) active |= O[i].g != NONE && O[i].g < nepword && epword[O[i].g];
         if (active) { static uint32_t *ec; static uint32_t cap; if (cap < nep) { cap = nep; ec = realloc(ec, cap * 4); } for (uint32_t e = 0; e < nep; e++) ec[e] = e | 0x80000000u;
             score_cands(A, hf, nh, focus, Q, nq, O, no, ec, (int)nep, &P->efact, &P->ejoint, &P->eopen, &P->eptr);
-            if (EPW * P->efact > P->fact || (NW > 0 && P->efact < 0)) P->fact = EPW * P->efact;     /* R1: the passage saying the opposite decides */
+            if (EPW * P->efact > P->fact || P->efact < 0) P->fact = EPW * P->efact;     /* the passage saying the opposite decides */
             if (EPW * P->ejoint > P->joint) P->joint = EPW * P->ejoint;
-            if (EPW * P->eopen > P->open || (NW > 0 && P->eopen < 0)) { P->open = EPW * P->eopen; P->optr = P->eptr; }
+            if (EPW * P->eopen > P->open || P->eopen < 0) { P->open = EPW * P->eopen; P->optr = P->eptr; }
             P->active = 1; P->mean *= EA; P->fit *= EA; } }
 }
 
 static double bscore(const BParts *p) { return BW[0] * p->fact + BW[1] * p->joint + BW[2] * p->open + BW[3] * p->mean + BW[4] * p->fit; }
 /* the question asks for the option that is NOT so ("not", "least", "except", ...): support is turned around (docs/past/LAYA_LEVEL.md stage 2) */
 static int asks_opposite0(const char *q);
-static int asks_opposite(const char *q) { return asks_opposite0(q) && !(NW > 0 && (is_word_at(q, "why") || is_word_at(q, "how"))); }
+static int asks_opposite(const char *q) { return asks_opposite0(q) && !is_word_at(q, "why") && !is_word_at(q, "how"); }   /* "why ... not" asks a reason */
 static int asks_opposite0(const char *q) {
     static const char *W[] = { "not", "least", "except", "false", "unlikely", "cannot", "never", "incorrect", "untrue", "isn't", "doesn't", "can't", "won't", "wouldn't", "aren't", 0 };
     char w[32]; int n = 0;
@@ -769,7 +769,6 @@ int main(int argc, char **argv) {
     MM = &m;                          /* the old meaning table: only its list of glue words (the most common) is used now */
     if (getenv("NOPEN")) NOPEN = atoi(getenv("NOPEN"));
     if (getenv("CXTH")) CXTH = atof(getenv("CXTH")); if (getenv("CXMIN")) CXMIN = atoi(getenv("CXMIN")); if (getenv("CXFIT")) BW[4] = atof(getenv("CXFIT"));
-    if (getenv("RD")) RD = atoi(getenv("RD")); if (getenv("NW")) { NW = atof(getenv("NW")); SYN = NW > 0; }
     if (!strcmp(argv[1], "facts")) return run_facts();
     if (!strcmp(argv[1], "read") && argc >= 5) return run_read(argv[2], atof(argv[3]), argc - 4, argv + 4);
     double t0 = now(); if (brain_load(argv[2])) return 1;

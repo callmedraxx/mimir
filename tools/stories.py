@@ -2,7 +2,7 @@
 #   python3 tools/stories.py OUTDIR   writes OUTDIR/<set>.txt for each question file
 import os, sys
 SETS = {"clock": ("clock_questions.tsv", ["clock"]),
-        "dev_stories": ("passage_tests.tsv", ["bicycle", "stoneowl", "swim"]),          # dev since COMPREHEND
+        "dev_stories": ("passage_tests.tsv", ["bicycle", "stoneowl", "swim"]),          # PASSAGE's test; dev since COMPREHEND
         "comprehend_tests": ("comprehend_tests.tsv", ["lighthouse", "dragon", "nightbus"]),
         "episode_tests": ("episode_tests.tsv", ["salt", "train", "kite"]),
         "story_tests": ("story_tests.tsv", ["harbor", "garden", "snow"])}

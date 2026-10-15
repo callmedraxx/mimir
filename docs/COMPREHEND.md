@@ -122,3 +122,34 @@ General dev sets with no episode: 43.68 / 20.04 / 24.25 / 28.24 / 29.40 (R0 43.6
 (PASSAGE's U1 39.12, same code; MC160 and MC500 identical) — a small run-to-run difference.
 Frozen in `tools/comprehend_choice.env`. The tests use `brain-school-cx2` (the shelf read by the new
 reader, built by GitHub Actions from 402003d: 32,484,331 facts, 753,686 words).
+
+## Test results (2026-10-15, Colab, once, frozen 24e3a3c; `results/comprehend_test.txt`)
+
+R0 on `brain-school-cx`; R2 (NW 2) on `brain-school-cx2`, the shelf read by the new reader.
+
+| test | **R0** | **R2** | change |
+|---|---|---|---|
+| MCTest MC160 test (240) | 49.58 | **54.69** | +5.1 better |
+| MCTest MC500 test (600) | 50.72 | **52.47** | +1.8 better |
+| RACE-Middle test (1,436) | 40.68 | 40.38 | tie |
+| new stories: lighthouse, paper dragon, night bus (30) | 16 / 30 | **21 / 30** | +5 better |
+| salt, train, kite (30) | 23 / 30 | 23 / 30 | tie |
+| harbor, garden, snow (30) | 29 / 30 | 28 / 30 | −1 question, worse |
+| MMLU-HS | 27.41 | 26.32 | −1.1 worse |
+| CommonsenseQA | 31.37 | 32.35 | tie (+1.0) |
+| ARC-Easy | 46.61 | 43.04 | −3.6 worse |
+| ARC-Challenge | 21.22 | **23.71** | +2.5 better |
+| OpenBookQA | 24.40 | **25.57** | +1.2 better |
+
+**Count: better 5, tie 3, worse 3** (general mean 30.20 both). Mixed; the owner chose: **adopted**
+("okay let's adopt it"). On dev the new question reading with the old shelf left the general dev
+sets unchanged, so the ARC-Easy and MMLU losses most likely come from the shelf being re-read by the
+new reader; that is the next thing to look at, on dev.
+
+Still missed in the new stories: "What did Marta not take?" (a candle), "What is the kite made
+of?" (red paper and bamboo), where they flew the kite, the prize, who got the book, "Does Tomas
+like loud music?", who was sick, "Who is Mr. Bayo?" (apposition at the end of a sentence), "was no
+longer sick".
+
+Losers deleted: the switches `NW` and `RD` (the old reading and answering are gone; NW is 2).
+`brain-school-cx2` is now the brain (`tools/brain_release.py`).
