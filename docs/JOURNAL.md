@@ -128,10 +128,10 @@ Lessons that keep coming back:
 
 ## Open
 
-* **Now: READ2 S2** (docs/READ2.md): step 0 done (the reader does not cost ARC-Easy: −0.5, mean −0.2;
-  step 1 / S1 dropped). Next the misses left in reading, developed on the bakery and other dev
-  stories: "no longer" as "not", a name at the end of a sentence ("…, Mr. Eze."), "made of X and Y",
-  "he/she" to the right person.
+* **Now: READ2 S2** (docs/READ2.md): dev done and frozen at S2=31 (he/she by sex and recency, apposition,
+  lists and "made of", the main character, yes/no judged whole): dev stories 43 → 45 of 50, passage mean
+  51.40 → 51.65, general dev unchanged. `brain-school-cx3` = the shelf read by the S2 reader (32,964,286
+  facts). The test runs once; then adopt or not, delete the loser.
 * Then: sentences, not just words: pronouns ("He" = Dumi), "an owl named Pell", negation,
   relations (cause, kind of, part of).
 * Size (owner 2026-10-15: "let's first make it smart then we begin to prune later"): today ~2.8 GB on disk + 2.2 GB shelf, ~5 GB in memory (facts 80 B each = 2.6 GB, cortex 1.7 GB float32, cue lists) against Laya 846 MB, GPT-2 XL 3.1 GB. Pruning comes after the smartness steps: cortex to the ~50k words met often, 8-bit (~30-60 MB); facts packed (~25-30 B); weak facts let go; shelf compressed.
@@ -139,6 +139,11 @@ Lessons that keep coming back:
   is kept for good; the GPT-2 vs Mimir chat page (half built).
 
 ## Log
+
+**2026-10-15 (night, later)**
+* READ2 S2 built (switch `S2`, S2=0 identical) and dev-run on the school brain: S2 31 wins by the rule
+  (45 vs 43 dev-story questions, passage mean +0.25, general dev identical). Frozen; build 6 published
+  `brain-school-cx3` (S2 reader on the shelf, 32.96M facts, 761k words). Test started in Colab.
 
 **2026-10-15 (night)**
 * READ2 step 0: the general tests rerun on `brain-school-cx2` with its shelf: 26.56 / 31.08 / 46.09 /
