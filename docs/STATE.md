@@ -13,7 +13,7 @@ is the football?": Mary took it, Mary went to the kitchen), and the FOLLOW misse
 now?", "Does Tayo like the parrot now?", "What was the roof made of long ago?". A human keeps one current
 state per thing and remembers the earlier ones as "before".
 
-## Steps (switch `S4`: 1 S1, 2 S2, 4 S3; `S4=0` identical to the adopted reader)
+## Steps (switch `S4`: 1 S1 the latest supersedes, 2 S2 derived states, 4 S3 the holder's place, 8 S2's "is in" statement, 16 S1b a superseded state is the opposite now; `S4=0` identical to the adopted reader)
 
 **S1. One state per slot: the latest supersedes.** Inside an episode, facts about the same subject that
 fill the same slot with a different value are one *state*: motion verbs with "to" (go, move, travel, journey,
@@ -38,7 +38,36 @@ take / pick up Y" → "have who=X what=Y" and "give Y to Z" → "have who=Z what
 who=mary": the answer is Mary's current place, as a derived fact "be who=football pp:in=<Mary's place>" kept
 in step with Mary's moves while she holds it, and fixed where she dropped it when she does (bAbI tasks 2, 3).
 
+**S1b. A superseded state is the opposite now.** For a statement in the present tense about a state ("Sandra is
+in the hallway", "Ruth has the key") a superseded fact does not just count less: it counts as the opposite (the
+fact's "not" toggled), so "Is Sandra in the hallway?" → no, and "Where is Mary?" → not the bathroom she left.
+Without a tense the superseded fact counts SUPW; in the past tense it counts whole.
+
+Only statements that *state* a state (be + place, have, made of) meet derived and superseded facts this way;
+"Who took one basket home?" asks about an event and sees the text's facts as before. Derived facts answer the
+fact part only (they have no sentence to re-read, so no joint or open-book part), and a thing's holder is a
+state only for things the text has someone take, give, drop or put somewhere.
+
 Each step is a bit of `S4`; bits that lose on the tiny brain are dropped before Colab.
+
+## How it was built (tiny brain, 2026-10-16)
+
+| S4 | bAbI train 1,2,3,6,9,11,13 (200 each) | by task | dev stories wrong of 70 | MC160 / MC500 dev |
+|---|---|---|---|---|
+| 0 | 33.7 | 64 22 26 50 60 3 10 | 6 | 52.36 / 56.88 |
+| 1 | 39.9 | 100 23 26 52 62 3 15 | 7 | 52.36 / 56.88 |
+| 15 (S1, S2, S3, "is in") | 50.9 | 99 76 34 48 57 15 26 | 7 | 52.36 / 54.38 |
+| **31 (all)** | **67.5** | 99 76 34 52 59 72 80 | **6** | 52.36 / **57.38** |
+
+On the way: the holder's-place loop skipped every other move (task 2 at 32 → 76); a "last year" fact said after a
+"now" fact superseded it (market_2) → a past fact never supersedes a present one; untensed statements ("Sally do
+this summer") were flipped → the flip needs "is"; generic "have" facts made holder states of every noun (MC160 −2)
+→ only things taken, given, dropped or put; derived facts fed joint and open book and broke ties (MC500 −2.5) →
+fact part only, and only for statements about a state; the state key was first built with the reader's word map,
+which corrupted it (everything fell) → a lookup-only map. Task 3 ("Where was the apple before the garden?") and
+task 6 (yes/no on a place) stay low: "before X" is not read, and the "no" statement needs the derived NOT facts
+to carry more. Colab dev next: `tools/state_colab.py dev` (S4 = 0, 25, 31 on `brain-school-cx4`).
+
 
 ## Rules
 
