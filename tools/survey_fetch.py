@@ -7,17 +7,35 @@ import json, os, random, re, sys, time, urllib.request, urllib.parse
 OUT = "data/understand/survey"; os.makedirs(OUT, exist_ok=True)
 CAP = int(os.environ.get("SURVEY_N", "0"))
 def clean(s): return re.sub(r"\s+", " ", str(s).replace("\t", " ")).strip()
+try: import pyarrow.parquet as pq
+except ImportError: pq = None
+def fetch(u, tries=8):
+    """GET with a long wait on 429 (HuggingFace's rate limit)"""
+    for attempt in range(tries):
+        try: return urllib.request.urlopen(u, timeout=300).read()
+        except urllib.error.HTTPError as e:
+            if e.code != 429 or attempt == tries - 1: raise
+            wait = int(e.headers.get("Retry-After") or 0) or 20 * (attempt + 1); print("  429, waiting %ds" % wait, flush=True); time.sleep(wait)
+        except Exception:
+            if attempt == tries - 1: raise
+            time.sleep(5 * (attempt + 1))
 def rows(ds, config, split, n):
-    """the first n rows of a HuggingFace dataset split through the rows API (100 a call)"""
-    n = min(n, CAP) if CAP else n; out, off = [], 0
+    """the first n rows of a HuggingFace dataset split: its parquet files when pyarrow is there (one download), else the
+    rows API (100 a call, rate-limited)"""
+    n = min(n, CAP) if CAP else n; out = []
+    if pq and not CAP:
+        try:
+            urls = json.loads(fetch("https://huggingface.co/api/datasets/%s/parquet/%s/%s" % (ds, config, split)))
+            for u in urls:
+                fn = "/tmp/survey_%s.parquet" % re.sub(r"\W", "_", u[-80:]); open(fn, "wb").write(fetch(u))
+                out += pq.read_table(fn).to_pylist(); os.remove(fn)
+                if len(out) >= n: break
+            return out[:n]
+        except Exception as e: print("  parquet failed (%s), rows API" % e, flush=True); out = []
+    off = 0
     while len(out) < n:
         u = "https://datasets-server.huggingface.co/rows?dataset=%s&config=%s&split=%s&offset=%d&length=%d" % (urllib.parse.quote(ds, safe=""), config, split, off, min(100, n - len(out)))
-        for attempt in range(6):
-            try: d = json.load(urllib.request.urlopen(u, timeout=120)); break
-            except Exception as e:
-                if attempt == 5: raise
-                time.sleep(3 * (attempt + 1))
-        got = [r["row"] for r in d.get("rows", [])]
+        d = json.loads(fetch(u)); got = [r["row"] for r in d.get("rows", [])]
         if not got: break
         out += got; off += len(got)
         if off >= d.get("num_rows_total", off): break
@@ -83,7 +101,7 @@ def cosmos():
         w.q("cosmos_%d" % i, r["question"], [r["answer%d" % k] for k in range(4)], int(r["label"]))
     w.done()
 def dream():
-    w = W("dream"); d = json.load(urllib.request.urlopen("https://raw.githubusercontent.com/nlpdata/dream/master/data/test.json", timeout=120))
+    w = W("dream"); d = json.loads(fetch("https://raw.githubusercontent.com/nlpdata/dream/master/data/test.json"))
     n = 0
     for dlg, qs, did in d:
         text = " ".join(re.sub(r"^M:", "Man:", re.sub(r"^W:", "Woman:", re.sub(r"^F:", "Woman:", t.strip()))) for t in dlg)
@@ -159,7 +177,11 @@ def copy_local(name, src):
 ALL = [("wsc273", wsc), ("winogrande", winogrande), ("storycloze", storycloze), ("boolq", boolq), ("dream", dream), ("cosmosqa", cosmos), ("multirc", multirc), ("record", record), ("lambada", lambada), ("cbt", cbt), ("quality", quality), ("babi", babi)]
 if __name__ == "__main__":
     want = sys.argv[1:] or [n for n, _ in ALL] + ["race_high", "sciq"]
-    for name, fn in ALL:
-        if name in want: fn()
     if "race_high" in want: copy_local("race_high", "data/understand/race/test_high.txt")
     if "sciq" in want: copy_local("sciq", "data/understand/sciq/test.txt")
+    failed = []
+    for name, fn in ALL:
+        if name not in want: continue
+        try: fn()
+        except Exception as e: print("%-14s FAILED: %s" % (name, e), flush=True); failed.append(name)
+    if failed: print("failed:", " ".join(failed)); sys.exit(1)

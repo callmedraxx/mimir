@@ -14,13 +14,15 @@ def sh(cmd, log=None):
     return r
 sh("nproc && free -g | head -2")
 sh("gcc -O3 -march=native -std=gnu11 -D_GNU_SOURCE -w -o bg sandbox/brain/bg.c src/meaning.c src/reader.c -Isrc -lm -fopenmp -lpthread")
+os.makedirs("data/understand", exist_ok=True)
 if not os.path.exists("data/understand/wordclass.tsv"):
     sh("curl -sL https://github.com/callmedraxx/mimir/releases/download/brain-E/wordclass.tsv.gz | gunzip > data/understand/wordclass.tsv")
 BRAIN = "/content/cx4.brain"
 if not os.path.exists(BRAIN): brain_release.get(BRAIN)
 if not os.path.exists("data/understand/race/test_high.txt"): sh("python3 tools/race_fetch.py")
 if not os.path.exists("data/understand/babi/qa1_test.txt"): sh("python3 -c \"import sys; sys.path.insert(0, 'tools'); import understand_fetch as u; u.babi()\"")
-sh("python3 tools/survey_fetch.py", OUT)
+for attempt in range(3):
+    if sh("python3 tools/survey_fetch.py", OUT).returncode == 0: break
 ORDER = ["wsc273", "winogrande", "storycloze", "sciq", "dream", "boolq", "cosmosqa", "race_high", "multirc", "record", "lambada", "cbt_ne", "cbt_cn", "cbt_v", "cbt_p", "babi", "quality"]
 for t in ORDER:
     f = "data/understand/survey/%s.txt" % t
