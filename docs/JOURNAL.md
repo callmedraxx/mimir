@@ -76,6 +76,12 @@ uses them; say if they should go too.
 | Laya (421M) | 33.2 | 44.7 | 50.1 | 30.5 | 40.0 |
 | chance | 25 | 20 | 25 | 25 | 25 |
 
+The standard reading tests, once (docs/SURVEY.md, 2026-10-16, `brain-school-cx4`; chance in brackets): SciQ 89.5 (25),
+MultiRC 59.5 (~40), Story Cloze 55.5 (50), Winograd 49.6 (50), WinoGrande 50.4 (50), BoolQ 46.7 (50), DREAM 43.0 (33),
+bAbI choice version 42.8 (task 1 "where is" 66, he/they 8-10, deduction 0; 94 in words on 10-12), CBT names 31.7 /
+nouns 29.5 / verbs 16.5 / prepositions 4.3 (10), RACE-High 30.7 (25), QuALITY 23.4 (25), ReCoRD 23.1 (~8), CosmosQA
+18.6 (25), LAMBADA 10-choice 16.0 (10). Not run: SQuAD, CoQA, QuAC, DROP, NarrativeQA (an answer must be written out).
+
 Reading a passage and answering about it (`bg passages`, with the episode):
 
 | | MC160 | MC500 | RACE-Middle | new stories (30) | harbor/garden/snow (30) |
@@ -133,7 +139,16 @@ Lessons that keep coming back:
 
 ## Open
 
-* **Now: following a story on stories it has not seen.** FOLLOW's dev gain (60 → 67 of 70) became +0.5 on the three
+* **Now: a state that changes over the text** (docs/SURVEY.md): "Where is Sandra?" after three moves (bAbI task 1,
+  66%), "What is the stall made of now?", "Does Tayo like the parrot now?": every change is a fact, the latest does
+  not beat the earlier ones, and "is" does not match "go". bAbI train (1,000 a task) is the dev set, bAbI test and the
+  stories' "now" questions the test.
+* From the survey, after that: an inference said in other words (CosmosQA 18.6 below chance, Story Cloze 55.5, DREAM
+  43.0, QuALITY 23.4: the wrong options reuse the passage's words and win); knowledge of the world joined to one
+  sentence (Winograd / WinoGrande at chance; bAbI deduction 0); yes/no with thin support says "no" (BoolQ 46.7, "no"
+  70% of picks, yes right 62%); a verb or a function word as the answer (CBT-V 16.5, CBT-P 4.3); answers that must be
+  written out (SQuAD, CoQA, QuAC, DROP, NarrativeQA: not runnable yet).
+* Following a story on stories it has not seen. FOLLOW's dev gain (60 → 67 of 70) became +0.5 on the three
   unseen stories (well / bridge / parrot, 21 of 30): "What was the roof made of long ago?" → tin (the "now" roof),
   "Who did not get a fish?" → Zainab, "Who does not like the parrot?" → Mrs. Bello, "Who is Mr. Audu?" → a parrot,
   "Does Tayo like the parrot now?" → yes (lost), what Mr. Audu said / who brought the parrot down. The rules fit
@@ -153,6 +168,11 @@ Lessons that keep coming back:
 
 ## Log
 
+* 2026-10-16: SURVEY (docs/SURVEY.md): the adopted reader on 17 standard reading tests, once, in Colab on
+  brain-school-cx4 (results/survey.txt). Strong only where the passage states the answer (SciQ 89.5, MultiRC 59.5);
+  chance or below on changed state (bAbI 42.8), inference in other words (CosmosQA 18.6), pronouns needing world
+  knowledge (Winograd 49.6), verbs / prepositions (CBT 16.5 / 4.3), yes/no (BoolQ 46.7). Harness: 2-24 options and
+  several right letters (byte-identical with four). Owner: "ok let's improve mimir" → next step: state over time.
 * 2026-10-16: FOLLOW adopted by the owner ("ok adopt FOLLOW"): switch S3 and FDBG traces removed (byte-identical
   to S3=31 on the tiny brain), brain-school-cx4 is the brain (brain_release.py, brain.yml), follow_colab.py deleted,
   brain_build.txt notes the adoption (rebuilds cx4 with the switch-free reader, as READ2 did); brain-school-cx3
