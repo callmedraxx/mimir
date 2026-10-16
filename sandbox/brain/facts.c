@@ -17,6 +17,8 @@
 #include "../../src/text.c"
 #undef vocab_id
 
+/* docs/FOLLOW.md: the switch S3 (1 polarity, 2 tense, 4 a clause after "but", 8 who is who, 16 an exact fact first) */
+static int S3 = -1; static int s3(int bit) { if (S3 < 0) { const char *e = getenv("S3"); S3 = e ? atoi(e) : 0; } return S3 & bit; }
 static double now(void) { struct timespec t; clock_gettime(CLOCK_MONOTONIC, &t); return t.tv_sec + t.tv_nsec * 1e-9; }
 static inline int vput(uint8_t *p, uint32_t v) { int n = 0; while (v >= 128) { p[n++] = (v & 127) | 128; v >>= 7; } p[n++] = v; return n; }
 
@@ -96,20 +98,22 @@ enum { A_AGENT, A_PAT, A_ATTR, A_PP };
 #define K_KIND 1          /* an attribute said with a/an: "Lily is a frog" */
 typedef struct { uint8_t role, k; uint32_t prep, head, mod; } Arg;
 #define MAXARG 8
-enum { F_NEG = 1, F_EITHER = 2, F_FUT = 4, F_Q = 8, F_PASS = 16 };
+enum { F_NEG = 1, F_EITHER = 2, F_FUT = 4, F_Q = 8, F_PASS = 16, F_PAST = 32, F_PRES = 64 };   /* F_PAST / F_PRES: docs/FOLLOW.md F2 */
+#define F_TENSE (F_PAST | F_PRES)
 typedef struct { uint32_t verb, part; uint8_t flags, tc, narg; Arg a[MAXARG]; uint32_t when; int ev; } Frame;
 
 typedef struct {                       /* what the reader carries from sentence to sentence (counted) */
     uint32_t single, group[4]; int ngroup;
     uint32_t person, thing;            /* reader 2: the latest named person, the latest thing */
     uint32_t ppl[8]; int nppl; uint32_t cnt[8];   /* the people mentioned, the latest first, and how often */
+    uint32_t plthing, plat;            /* F4: the latest plural thing ("three baskets") and the sentence it was in */
 } Refs;
 
 typedef struct { uint32_t head, mod, grp[4]; int ngrp; uint8_t det, pron, obj; } NP;
 typedef struct { uint32_t h, hm, k, km; } NameF;      /* "h (hm) is a k (km)", read from a name */
 static NameF nmf[16]; static int nnmf;
 enum { CH_NP, CH_PP, CH_VG, CH_ADJ, CH_WH, CH_AND, CH_OR, CH_SUB, CH_REL, CH_TIME, CH_NEG, CH_EITHER, CH_COMMA, CH_BEFORE };
-typedef struct { uint8_t type; NP np; uint32_t prep, verb, part, wtype; uint8_t aux, fut, neg, wh, dangling, tc, nt, be, infl; } Chunk;
+typedef struct { uint8_t type; NP np; uint32_t prep, verb, part, wtype; uint8_t aux, fut, neg, wh, dangling, tc, nt, be, infl, but, tense; } Chunk;   /* but: "but" (F3); tense: 1 past, 2 present (F2) */
 
 typedef struct {
     TextContext *t; WMap *wm; Refs refs; int question;
@@ -206,6 +210,21 @@ static int expand(Reader2 *R, const TextToken *tok, uint32_t a, uint32_t b, Tk *
 }
 
 /* rule 8's relation words: never part of a compound noun ("the kitchen | south of") */
+static int timeword(TextContext *t, uint32_t id) { static const char *X[] = { "time", "day", "year", "month", "week", "morning", "afternoon", "evening", "night", "hour", "minute", "moment", "while", "saturday", "sunday", "monday", "tuesday", "wednesday", "thursday", "friday", 0 };
+    if (id >= OPEN) return 0; for (int i = 0; X[i]; i++) if (!strcmp(t->voc[id].word, X[i])) return 1; return 0; }
+static int reporting(TextContext *t, uint32_t id) { static const char *X[] = { "say", "tell", "think", "know", "believe", "hear", "see", "find", "notice", "hope", "feel", "learn", "remember", "forget", "decide", "explain", "promise", "fear", "guess", "wish", "realize", "realise", "discover", "show", "prove", "admit", "agree", "answer", "reply", "shout", "whisper", "write", "read", 0 };
+    if (id >= OPEN) return 0; for (int i = 0; X[i]; i++) if (!strcmp(t->voc[id].word, X[i])) return 1; return 0; }
+/* F2: a time word in the sentence says past ("last year", "long ago") or present ("now", "today", "still", "these days") */
+static int sent_time(Reader2 *R, const Tk *k, int n) {
+    for (int i = 0; i < n; i++) { if (k[i].id >= OPEN) continue; const char *w = R->t->voc[k[i].id].word;
+        if (!strcmp(w, "ago") || !strcmp(w, "once") || !strcmp(w, "formerly") || !strcmp(w, "previously")) return 1;
+        if (!strcmp(w, "now") || !strcmp(w, "today") || !strcmp(w, "nowadays") || !strcmp(w, "still") || !strcmp(w, "anymore")) return 2;
+        if (!strcmp(w, "last") && i + 1 < n && timeword(R->t, k[i + 1].nb)) return 1;
+        if (!strcmp(w, "these") && i + 1 < n && k[i + 1].nb < OPEN && !strcmp(R->t->voc[k[i + 1].nb].word, "day")) return 2; }
+    return 0;
+}
+static int partitive(TextContext *t, uint32_t id) { static const char *X[] = { "part", "piece", "some", "all", "most", "half", "rest", "none", "bit", "lot", "lots", "plenty", "few", "many", "much", "each", "both", "either", "neither", "any", "one", 0 };
+    if (id >= OPEN) return 0; for (int i = 0; X[i]; i++) if (!strcmp(t->voc[id].word, X[i])) return 1; return 0; }
 static int relword(TextContext *t, uint32_t id) { static const char *X[] = { "east", "west", "north", "south", "left", "right", "above", "below", 0 }; for (int i = 0; X[i]; i++) if (!strcmp(t->voc[id].word, X[i])) return 1; return 0; }
 static int spw(TextContext *t, uint32_t id) { return id >= OPEN ? SP_NONE : special(t->voc[id].word); }
 static int is_nounish(const Tk *k) { return k->c == 'N' || k->c == 'P' || k->c == 'Q'; }
@@ -249,6 +268,7 @@ static int chunk(Reader2 *R, Tk *k, int n, Chunk *ch, int max) {
     /* a noun or adjective that can be a verb is the verb when a subject came before and no verb yet */
     { int sawverb = 0, sawnp = 0;
       for (int i = 0; i < n; i++) {
+        if (k[i].sp == SP_AND && sawverb && s3(8) && i + 2 < n && k[i + 1].c == 'N' && k[i + 1].vb != k[i + 1].id && (k[i + 2].c == 'I' || k[i + 2].sp == SP_TO)) { k[i + 1].c = 'V'; i++; sawverb = 1; continue; }   /* F4g: "keeps the money and talks to" */
         if (k[i].c == ',' || k[i].sp == SP_AND || k[i].c == 'S' || k[i].sp == SP_REL || k[i].sp == SP_SUB) { sawverb = 0; sawnp = 0; continue; }
         if (is_verbish(&k[i])) { sawverb = 1; continue; }
         if (!sawverb && sawnp && k[i].v && (k[i].c == 'N' || k[i].c == 'J') && !(i && (k[i - 1].c == 'D' || k[i - 1].poss))) { k[i].c = 'V'; sawverb = 1; continue; }
@@ -269,7 +289,7 @@ static int chunk(Reader2 *R, Tk *k, int n, Chunk *ch, int max) {
         }
         if (x->sp == SP_EITHER) { c.type = CH_EITHER; ch[m++] = c; i++; continue; }
         if (x->sp == SP_OR) { c.type = CH_OR; ch[m++] = c; i++; continue; }
-        if (x->sp == SP_AND || x->sp == SP_BUT) { c.type = CH_AND; ch[m++] = c; i++; continue; }
+        if (x->sp == SP_AND || x->sp == SP_BUT) { c.type = CH_AND; c.but = x->sp == SP_BUT; ch[m++] = c; i++; continue; }
         if (x->sp == SP_THEN) { i++; if (i < n && k[i].sp == SP_REL) i++; continue; }
         if (x->sp == SP_YESTERDAY) { c.type = CH_TIME; c.tc = 1; ch[m++] = c; i++; continue; }
         if (x->sp == SP_THIS && i + 1 < n && (k[i + 1].sp == SP_MORNING || k[i + 1].sp == SP_AFTERNOON || k[i + 1].sp == SP_EVENING)) {
@@ -287,7 +307,7 @@ static int chunk(Reader2 *R, Tk *k, int n, Chunk *ch, int max) {
                 /* phrase from i to its last noun */
                 int det = 0; uint32_t mod = NONE; int h = j;
                 for (int q = i; q < j; q++) { if (k[q].sp == SP_A) det = 1; if (k[q].c == 'J' || k[q].poss || k[q].c == 'Q') mod = k[q].poss ? k[q].nb : k[q].id; }
-                while (h + 1 < n && (is_nounish(&k[h + 1])) && !k[h].poss && !relword(R->t, k[h + 1].id)) { mod = k[h].nb; h++; }
+                while (h + 1 < n && (is_nounish(&k[h + 1])) && !k[h].poss && !relword(R->t, k[h + 1].id) && !(s3(8) && timeword(R->t, k[h].nb) && r2_is_name(R, k[h + 1].id))) { mod = k[h].nb; h++; }   /* F4f: "for a long time Ada" */
                 c.np.head = k[h].c == 'O' || k[h].sp == SP_I ? k[h].id : k[h].nb; c.np.mod = mod; c.np.det = (uint8_t)det; c.np.pron = k[h].sp == SP_HE || k[h].sp == SP_THEY || (k[h].sp == SP_HER && k[h].c == 'O');
                 c.np.obj = k[h].c == 'O';
                 if (c.np.pron) c.np.head = k[h].id;
@@ -304,11 +324,15 @@ static int chunk(Reader2 *R, Tk *k, int n, Chunk *ch, int max) {
                 if (k[i].c == 'V' && lastv != NONE && k[i].nb != k[i].id) { k[i].c = 'N'; break; }   /* "brought presents": a verb, then a noun */
                 if (k[i].c == 'G') c.neg = 1;
                 else if (k[i].c == 'V') { lastv = k[i].vb; lastvi = i; }
-                else if (k[i].c == 'X' || k[i].c == 'M') { lastx = k[i].vb; if (k[i].sp == SP_WILL) c.fut = 1; if (k[i].vb == R->w_be) c.be = 1; }
+                else if (k[i].c == 'X' || k[i].c == 'M') { lastx = k[i].vb; if (k[i].sp == SP_WILL) c.fut = 1; if (k[i].vb == R->w_be) c.be = 1;
+                    if (!c.tense && k[i].id < OPEN) { const char *w = R->t->voc[k[i].id].word;      /* F2: the tense from the auxiliary */
+                        static const char *PA[] = { "was", "were", "had", "did", 0 }, *PR[] = { "is", "are", "am", "has", "have", "does", "do", 0 };
+                        for (int z = 0; PA[z]; z++) if (!strcmp(w, PA[z])) c.tense = 1; for (int z = 0; PR[z]; z++) if (!strcmp(w, PR[z])) c.tense = 2; } }
                 c.nt++; i++;
             }
             if (lastvi >= 0) { const char *w = R->t->voc[k[lastvi].id].word; size_t L = strlen(w);     /* "made", "called": not "makes", "making" */
-                c.infl = k[lastvi].id != k[lastvi].vb && !(L > 3 && !strcmp(w + L - 3, "ing")) && w[L - 1] != 's'; }
+                c.infl = k[lastvi].id != k[lastvi].vb && !(L > 3 && !strcmp(w + L - 3, "ing")) && w[L - 1] != 's';
+                if (!c.tense && lastx == NONE) c.tense = c.infl ? 1 : k[lastvi].id != k[lastvi].vb && w[L - 1] == 's' && !(L > 3 && !strcmp(w + L - 3, "ing")) ? 2 : 0; }   /* F2: "laughed" past, "laughs" present; "laugh" (they laugh, did ... laugh) unknown */
             c.verb = lastv != NONE ? lastv : lastx; c.aux = lastv == NONE;
             if (c.aux && lastx == R->w_do) c.aux = 2;        /* do as an auxiliary: waits for its verb */
             while (i < n && (k[i].c == 'T' || (k[i].c == 'R' && k[i].sp == SP_BACK))) { if (k[i].c == 'T') c.part = k[i].id; i++; }
@@ -322,7 +346,7 @@ static int chunk(Reader2 *R, Tk *k, int n, Chunk *ch, int max) {
                 if (k[j].sp == SP_A) det = 1; if (k[j].sp == SP_HER || k[j].sp == SP_POSS) mod = R->refs.single;
                 if (k[j].c == 'J' || k[j].c == 'Q') mod = k[j].id; if (k[j].poss) mod = k[j].nb; j++; }
             if (j < n && (is_nounish(&k[j]) || k[j].c == 'O' || k[j].sp == SP_I)) {
-                int h = j; while (h + 1 < n && is_nounish(&k[h + 1]) && !k[h].poss && k[h].c != 'O' && !relword(R->t, k[h + 1].id)) { mod = k[h].nb; h++; }
+                int h = j; while (h + 1 < n && is_nounish(&k[h + 1]) && !k[h].poss && k[h].c != 'O' && !relword(R->t, k[h + 1].id) && !(s3(8) && timeword(R->t, k[h].nb) && r2_is_name(R, k[h + 1].id))) { mod = k[h].nb; h++; }
                 if (k[h].poss && h + 1 < n && is_nounish(&k[h + 1])) { mod = k[h].nb; h++; }
                 c.type = CH_NP; c.np.det = (uint8_t)det; c.np.mod = mod;
                 c.np.pron = k[h].sp == SP_HE || k[h].sp == SP_THEY || (k[h].sp == SP_HER && k[h].c == 'O');
@@ -349,6 +373,7 @@ static int find_arg(const Frame *f, int role) { for (int i = 0; i < f->narg; i++
 static int resolve(Reader2 *R, NP *np, uint32_t *out) {
     if (!np->pron) { if (np->ngrp) { for (int i = 0; i < np->ngrp; i++) out[i] = np->grp[i]; return np->ngrp; } out[0] = np->head; return 1; }
     int sp = special(R->t->voc[np->head].word);
+    if (sp == SP_THEY && s3(8) && np->obj && R->refs.plthing != NONE && R->nsent + 1 - R->refs.plat <= 2) { out[0] = R->refs.plthing; return 1; }   /* F4d: "gave them to Ada": the baskets */
     if (sp == SP_THEY && R->refs.ngroup) { for (int i = 0; i < R->refs.ngroup; i++) out[i] = R->refs.group[i]; return R->refs.ngroup; }
     if (sp == SP_HE || sp == SP_HER) {          /* he / she / him / her: the latest person named; it: the latest thing */
         int it = !strcmp(R->t->voc[np->head].word, "it");
@@ -357,6 +382,7 @@ static int resolve(Reader2 *R, NP *np, uint32_t *out) {
             for (int i = 0; i < R->refs.nppl; i++) { uint32_t p = R->refs.ppl[i]; if (np->obj && p == R->subj) continue;
                 int sx = sex_get(R, p); if (sx && sx != want) continue;
                 if (pick < 0) pick = i; else if (seen < 3 && R->refs.cnt[i] > 2 * R->refs.cnt[pick]) pick = i;   /* the main character over a passer-by */
+                else if (seen < 3 && s3(8) && sx == want && !sex_get(R, R->refs.ppl[pick])) pick = i;              /* F4a: a known man over someone who might be one */
                 if (++seen >= 3) break; }
             if (pick >= 0) { uint32_t p = R->refs.ppl[pick]; if (!sex_get(R, p)) sex_set(R, p, want); if (R->npres < 16) R->pres[R->npres++] = p;
                 if (getenv("PRDBG")) { fprintf(stderr, "    [%s -> %s |", R->t->voc[np->head].word, R->t->voc[p].word); for (int i = 0; i < R->refs.nppl; i++) fprintf(stderr, " %s:%d/%u", R->t->voc[R->refs.ppl[i]].word, sex_get(R, R->refs.ppl[i]), R->refs.cnt[i]); fprintf(stderr, "]\n"); }
@@ -416,9 +442,19 @@ static int names_pass(Reader2 *R, Chunk *ch, int m) {
     return m;
 }
 
+/* F4c: the latest thing, from the frames read so far (at a clause boundary and at the end of the sentence) */
+static void note_things(Reader2 *R, const Frame *out, int from, int nf) {
+    for (int q = from; q < nf; q++) for (int a = 0; a < out[q].narg; a++) {
+        uint32_t h = out[q].a[a].head; if (h >= OPEN || special(R->t->voc[h].word) != SP_NONE) continue;
+        WC *c = wc_of(R->wm, R->t, h); const Arg *x = &out[q].a[a]; int isbe = out[q].verb == R->w_be, pas = (out[q].flags & F_PASS) && x->role == A_AGENT;   /* mid-sentence a passive's subject is still its agent */
+        if ((c->c == 'N' || r2_is_name(R, h)) && (isbe ? x->role == A_AGENT && !person_word(R, h) : x->role == A_PAT || pas)) R->refs.thing = h;
+    }
+}
 /* one sentence → frames. Returns how many written to out. */
 static int read_sentence(Reader2 *R, Tk *k, int n, Frame *out, int max, int *whslot) {
     static Chunk ch[512]; int m = chunk(R, k, n, ch, 512), nf = 0;
+    int stime = s3(2) ? sent_time(R, k, n) : 0; uint8_t tense = 0;        /* F2: the sentence's time word; the verb group's tense */
+#define TENSE_OF(c) ((uint8_t)(s3(2) ? ((c)->tense == 1 ? F_PAST : (c)->tense == 2 ? F_PRES : 0) : 0))
     R->npres = R->nplur = 0; for (int i = 0; i < n && R->nplur < 32; i++) if (k[i].c == 'N' && k[i].nb != k[i].id && k[i].id < OPEN) R->plur[R->nplur++] = k[i].nb;
     nnmf = 0; m = names_pass(R, ch, m); R->nsent++; R->subj = NONE;
     NP pend[4]; int npend = 0, pend_and = 0, cur = -1, curn = 0;    /* cur: first of the frames being filled (one per agent) */
@@ -431,7 +467,7 @@ static int read_sentence(Reader2 *R, Tk *k, int n, Frame *out, int max, int *whs
         case CH_NEG:
             if (cur >= 0 && out[cur].verb != NONE && i && (ch[i - 1].type == CH_COMMA || ch[i - 1].type == CH_AND) && i + 1 < m && (ch[i + 1].type == CH_NP || ch[i + 1].type == CH_PP)) {
                 int base = cur, bn = curn; cur = nf;            /* "eats beetles, not mice": the "not" is for what follows only */
-                for (int q = 0; q < bn && nf < max; q++) { Frame *f = &out[nf++]; memset(f, 0, sizeof *f); f->verb = out[base + q].verb; f->part = out[base + q].part; f->tc = out[base + q].tc; f->flags = F_NEG;
+                for (int q = 0; q < bn && nf < max; q++) { Frame *f = &out[nf++]; memset(f, 0, sizeof *f); f->verb = out[base + q].verb; f->part = out[base + q].part; f->tc = out[base + q].tc; f->flags = F_NEG | (out[base + q].flags & F_TENSE);
                     int ag = find_arg(&out[base + q], A_AGENT); if (ag >= 0) frame_arg(f, A_AGENT, NONE, out[base + q].a[ag].head, out[base + q].a[ag].mod, 0); }
                 curn = bn; break;
             }
@@ -439,7 +475,10 @@ static int read_sentence(Reader2 *R, Tk *k, int n, Frame *out, int max, int *whs
         case CH_EITHER: either = 1; break;
         case CH_COMMA: case CH_AND:
             if (c->type == CH_AND) pend_and = 1;
-            if (cur >= 0 && out[cur].verb != NONE && out[cur].narg && out[cur].a[out[cur].narg - 1].role != A_AGENT) {
+            if (s3(4) && cur >= 0) {                                 /* F3: a noun phrase, prepositional phrases, a verb: a new clause ("but the table on it is made of iron") */
+                int j = i + 1; if (j < m && ch[j].type == CH_NP) { j++; while (j < m && ch[j].type == CH_PP) j++;
+                    if (j < m && ch[j].type == CH_VG && (c->but || j > i + 2)) { note_things(R, out, 0, nf); R->subj = NONE; cur = -1; curn = 0; npend = 0; pend_and = c->type == CH_AND; break; } } }
+            if (cur >= 0 && out[cur].verb != NONE && out[cur].narg && out[cur].a[out[cur].narg - 1].role != A_AGENT && !(s3(4) && c->but)) {
                 /* "made of flour, water and salt", "eggs and sugar": more of the last part, unless a new clause follows the list */
                 int k = i, cnt = 0, nxt = -1;
                 while (k + 1 < m && ch[k + 1].type == CH_NP && !ch[k + 1].np.pron && ch[k + 1].np.head < OPEN) { cnt++; k += 2;
@@ -450,8 +489,8 @@ static int read_sentence(Reader2 *R, Tk *k, int n, Frame *out, int max, int *whs
                     i = nxt - 1; break;
                 }
             }
-            if (cur >= 0 && i + 2 < m && ch[i + 1].type == CH_NP && ch[i + 2].type == CH_VG) { cur = -1; curn = 0; npend = 0; pend_and = 0; }
-            else if (cur >= 0 && i + 3 < m && ch[i + 1].type == CH_NP && ch[i + 2].type == CH_AND && ch[i + 3].type == CH_NP) { cur = -1; curn = 0; npend = 0; pend_and = 0; }
+            if (cur >= 0 && i + 2 < m && ch[i + 1].type == CH_NP && ch[i + 2].type == CH_VG) { if (s3(8)) { note_things(R, out, 0, nf); R->subj = NONE; } cur = -1; curn = 0; npend = 0; pend_and = 0; }
+            else if (cur >= 0 && i + 3 < m && ch[i + 1].type == CH_NP && ch[i + 2].type == CH_AND && ch[i + 3].type == CH_NP) { if (s3(8)) { note_things(R, out, 0, nf); R->subj = NONE; } cur = -1; curn = 0; npend = 0; pend_and = 0; }
             break;
         case CH_OR:
             if (cur >= 0 && i + 1 < m && (ch[i + 1].type == CH_NP || ch[i + 1].type == CH_PP)) {
@@ -467,6 +506,7 @@ static int read_sentence(Reader2 *R, Tk *k, int n, Frame *out, int max, int *whs
                 Frame *f = &out[cur]; int last = f->narg - 1;
                 if (last >= 0 && f->a[last].role != A_ATTR) { pend[0] = (NP){ .head = f->a[last].head, .mod = f->a[last].mod }; npend = 1; }
             }
+            if (s3(8)) { note_things(R, out, 0, nf); R->subj = NONE; }
             cur = -1; curn = 0; pend_and = 0; sub = 1; break;
         case CH_NP: case CH_ADJ: {
             uint32_t who[4]; int nw = 1;
@@ -486,7 +526,8 @@ static int read_sentence(Reader2 *R, Tk *k, int n, Frame *out, int max, int *whs
                 Frame *f = &out[q];
                 int isbe = f->verb == R->w_be;
                 if (c->type == CH_ADJ || isbe) frame_arg(f, A_ATTR, NONE, who[0], c->np.mod, c->np.det == 1);
-                else if (find_arg(f, A_PAT) < 0 || (i && ch[i - 1].type != CH_NP)) for (int w = 0; w < nw; w++) frame_arg(f, A_PAT, NONE, who[w], c->np.mod, 0);
+                else if (find_arg(f, A_PAT) < 0 || (i && ch[i - 1].type != CH_NP)) { for (int w = 0; w < nw; w++) frame_arg(f, A_PAT, NONE, who[w], c->np.mod, 0);
+                    if (s3(8) && !c->np.pron && who[0] < OPEN) for (int z = 0; z < R->nplur; z++) if (R->plur[z] == who[0]) { R->refs.plthing = who[0]; R->refs.plat = R->nsent; } }   /* F4d: "three baskets" */
                 else if (naming(R, f->verb)) {                /* "call it Old Watch", "named the kite Ember" */
                     int p = find_arg(f, A_PAT); if (q == cur && nnmf < 16) nmf[nnmf++] = (NameF){ who[0], c->np.mod, f->a[p].head, f->a[p].mod }; }
                 else { int p = find_arg(f, A_PAT); Arg old = f->a[p];   /* two objects: the first is the one it went to */
@@ -494,19 +535,26 @@ static int read_sentence(Reader2 *R, Tk *k, int n, Frame *out, int max, int *whs
             }
             break; }
         case CH_PP: {
-            uint32_t who[4]; int nw = c->np.head == OPEN || c->np.head == NONE ? (who[0] = c->np.head, 1) : resolve(R, &c->np, who);
+            uint32_t who[4]; int nw = 1, par = 0;
+            if (s3(8) && c->np.pron && cur >= 0 && is_w(R, c->np.head, "it")) {     /* F4i: "afraid of the goat, but she is no longer afraid of it": the same slot of the same saying, earlier in the sentence */
+                int la = out[cur].narg - 1; uint32_t wp = c->prep;                     /* "afraid of": the slot is kept as afraid=goat */
+                if (la >= 0 && out[cur].a[la].role == A_ATTR && spw(R->t, c->prep) == SP_OF && out[cur].a[la].head < OPEN) wp = out[cur].a[la].head;
+                for (int q = 0; q < cur && !par; q++) { if (out[q].verb != out[cur].verb) continue;
+                    for (int a = 0; a < out[q].narg; a++) if (out[q].a[a].role == A_PP && (out[q].a[a].prep == c->prep || out[q].a[a].prep == wp) && out[q].a[a].head < OPEN && !(special(R->t->voc[out[q].a[a].head].word) != SP_NONE)) { who[0] = out[q].a[a].head; par = 1; break; } } }
+            if (!par) nw = c->np.head == OPEN || c->np.head == NONE ? (who[0] = c->np.head, 1) : resolve(R, &c->np, who);
             if (cur < 0 || out[cur].verb == NONE) {
                 if (npend && spw(R->t, c->prep) == SP_OF) { pend[npend - 1].mod = who[0]; break; }   /* "the box of chocolates" */
                 if (npend && !c->dangling) { pend[npend - 1].mod = pend[npend - 1].mod == NONE ? who[0] : pend[npend - 1].mod; break; }
                 break;
             }
             if (is_w(R, c->prep, "without") && who[0] < OPEN) {   /* "got on without a ticket": did not have a ticket */
-                for (int q = cur; q < cur + curn && nf < max; q++) { int ag = find_arg(&out[q], A_AGENT); Frame *f = &out[nf++]; memset(f, 0, sizeof *f); f->verb = R->w_have; f->part = NONE; f->tc = tc; f->flags = F_NEG;
+                for (int q = cur; q < cur + curn && nf < max; q++) { int ag = find_arg(&out[q], A_AGENT); Frame *f = &out[nf++]; memset(f, 0, sizeof *f); f->verb = R->w_have; f->part = NONE; f->tc = tc; f->flags = F_NEG | (out[q].flags & F_TENSE);
                     if (ag >= 0) frame_arg(f, A_AGENT, NONE, out[q].a[ag].head, out[q].a[ag].mod, 0); frame_arg(f, A_PAT, NONE, who[0], c->np.mod, 0); }
                 break;
             }
             for (int q = cur; q < cur + curn; q++) {
                 Frame *f = &out[q]; int last = f->narg - 1, sp = spw(R->t, c->prep);
+                if (s3(8) && last >= 0 && sp == SP_OF && who[0] < OPEN && partitive(R->t, f->a[last].head) && f->a[last].role != A_AGENT) { f->a[last].head = who[0]; f->a[last].mod = c->np.mod; continue; }   /* F4j: "ate part of it": the thing itself */
                 /* "east of the hallway", "to the left of the square", "afraid of wolves", "bigger than the box": a relation */
                 if (last >= 0 && sp == SP_OF && (f->a[last].role == A_AGENT || (f->a[last].role == A_PP && spw(R->t, f->a[last].prep) != SP_TO)) && f->a[last].mod == NONE
                     && !((f->flags & F_PASS))) {                 /* "is made of flour": what it is made of, not "the flour's bread" */
@@ -524,7 +572,7 @@ static int read_sentence(Reader2 *R, Tk *k, int n, Frame *out, int max, int *whs
             if (c->nt == 1 && !c->aux && c->infl && cur >= 0 && out[cur].verb != NONE && npend == 0 && !sub && i && (ch[i - 1].type == CH_NP || ch[i - 1].type == CH_PP)
                 && (i + 1 >= m || ch[i + 1].type == CH_PP || ch[i + 1].type == CH_COMMA) && out[cur].narg && out[cur].a[out[cur].narg - 1].head < OPEN) {
                 Arg x = out[cur].a[out[cur].narg - 1];          /* "an owl made of stone", "a kite shaped like a dragon" */
-                Frame *f = &out[nf]; memset(f, 0, sizeof *f); f->verb = c->verb; f->part = c->part; f->tc = tc; frame_arg(f, A_PAT, NONE, x.head, x.mod, 0);
+                Frame *f = &out[nf]; memset(f, 0, sizeof *f); f->verb = c->verb; f->part = c->part; f->tc = tc; f->flags = TENSE_OF(c); frame_arg(f, A_PAT, NONE, x.head, x.mod, 0);
                 cur = nf++; curn = 1; break;
             }
             if (cur >= 0 && out[cur].verb != NONE && npend == 0 && !sub && (inverted == 2 || 1)) {
@@ -533,9 +581,16 @@ static int read_sentence(Reader2 *R, Tk *k, int n, Frame *out, int max, int *whs
                     for (int q = cur; q < cur + curn; q++) { out[q].verb = c->verb; out[q].part = c->part; if (c->fut) out[q].flags |= F_FUT; if (c->neg) out[q].flags |= F_NEG; }
                     break;
                 }
+                if (s3(8) && i && ch[i - 1].type == CH_NP && reporting(R->t, out[cur].verb) && out[cur].narg && out[cur].a[out[cur].narg - 1].role == A_PAT) {
+                    /* F4e: "He said it was not silver", "said the coin was older": what was said is a clause with that phrase as subject */
+                    Arg x = out[cur].a[out[cur].narg - 1]; Frame *f = &out[nf]; memset(f, 0, sizeof *f); f->verb = c->verb; f->part = c->part; f->tc = tc; f->flags = TENSE_OF(c);
+                    frame_arg(f, A_AGENT, NONE, x.head, x.mod, 0); R->subj = x.head;
+                    if (c->neg) f->flags |= F_NEG; if (c->fut) f->flags |= F_FUT; if (c->be && c->infl) f->flags |= F_PASS;
+                    cur = nf++; curn = 1; break;
+                }
                 /* "took the milk and went to the hall": the same agents, a new frame */
                 int base = cur, bn = curn; cur = nf;
-                for (int q = 0; q < bn && nf < max; q++) { Frame *f = &out[nf++]; memset(f, 0, sizeof *f); f->verb = c->verb; f->part = c->part; f->tc = tc;
+                for (int q = 0; q < bn && nf < max; q++) { Frame *f = &out[nf++]; memset(f, 0, sizeof *f); f->verb = c->verb; f->part = c->part; f->tc = tc; f->flags = TENSE_OF(c);
                     int ag = find_arg(&out[base + q], A_AGENT); if (ag >= 0) frame_arg(f, A_AGENT, NONE, out[base + q].a[ag].head, out[base + q].a[ag].mod, 0);
                     if (c->neg) f->flags |= F_NEG; if (c->fut) f->flags |= F_FUT; if (c->be && c->infl) f->flags |= F_PASS; }
                 curn = bn; break;
@@ -554,13 +609,13 @@ static int read_sentence(Reader2 *R, Tk *k, int n, Frame *out, int max, int *whs
                         frame_arg(f, A_PP, ch[i + 1].np.head, ch[i + 2].np.head, ch[i + 2].np.mod, 0); curn = 1; i += 2; wh_open_agent = 1; break;
                     }
                     inverted = 1;
-                    Frame *f = &out[nf++]; memset(f, 0, sizeof *f); f->verb = c->verb; f->part = c->part; f->tc = tc; f->narg = 0;
+                    Frame *f = &out[nf++]; memset(f, 0, sizeof *f); f->verb = c->verb; f->part = c->part; f->tc = tc; f->narg = 0; f->flags = TENSE_OF(c);
                     if (c->fut) f->flags |= F_FUT; if (c->neg || negnext) f->flags |= F_NEG; curn = 1; break;
                 }
                 else { who[0] = NONE; nw = 1; }
             }
             for (int w = 0; w < nw && nf < max; w++) {
-                Frame *f = &out[nf++]; memset(f, 0, sizeof *f); f->verb = c->verb; f->part = c->part; f->tc = tc;
+                Frame *f = &out[nf++]; memset(f, 0, sizeof *f); f->verb = c->verb; f->part = c->part; f->tc = tc; f->flags = TENSE_OF(c);
                 if (who[w] != NONE) frame_arg(f, A_AGENT, NONE, who[w], npend == 1 && !pend[0].pron ? pend[0].mod : NONE, 0);
                 if (!w) R->subj = who[w];
                 if (c->neg || negnext) f->flags |= F_NEG; if (c->fut) f->flags |= F_FUT; if (c->be && c->infl) f->flags |= F_PASS; curn++;
@@ -570,6 +625,7 @@ static int read_sentence(Reader2 *R, Tk *k, int n, Frame *out, int max, int *whs
         }
     }
     if (either) for (int q = 0; q < nf; q++) out[q].flags |= F_EITHER;
+    if (stime) for (int q = 0; q < nf; q++) out[q].flags = (uint8_t)((out[q].flags & ~F_TENSE) | (stime == 1 ? F_PAST : F_PRES));   /* F2: "last year the stall was", "now she lives" */
     for (int q = 0; q < nf; q++) { if (tc && !out[q].tc) out[q].tc = tc; if (out[q].part == 0) out[q].part = NONE; }
     /* the asked slot */
     if (whslot) {
@@ -600,6 +656,11 @@ static int read_sentence(Reader2 *R, Tk *k, int n, Frame *out, int max, int *whs
         uint32_t h = out[q].a[a].head; if (h >= OPEN || special(R->t->voc[h].word) != SP_NONE) continue;
         WC *c = wc_of(R->wm, R->t, h); const Arg *x = &out[q].a[a];
         if (c->c == 'P') R->refs.person = h;
+        if (s3(8)) {                                            /* F4c: for "be" the subject is the thing, not what it is ("it was not silver"); F4d: a plural object */
+            int isbe = out[q].verb == R->w_be;
+            if ((c->c == 'N' || r2_is_name(R, h)) && (isbe ? x->role == A_AGENT && !person_word(R, h) : x->role == A_PAT)) R->refs.thing = h;
+            if (c->c == 'N' && x->role == A_PAT && !isbe) for (int z = 0; z < R->nplur; z++) if (R->plur[z] == h) { R->refs.plthing = h; R->refs.plat = R->nsent; }
+            continue; }
         if ((c->c == 'N' || r2_is_name(R, h)) && (x->role == A_PAT || x->role == A_ATTR)) R->refs.thing = h;   /* a thing is what is done or is, not a place */
     }
     for (int q = 0; q < nf; q++) { Frame *f = &out[q]; if (!(f->flags & F_PASS)) continue;
@@ -614,7 +675,8 @@ static int read_sentence(Reader2 *R, Tk *k, int n, Frame *out, int max, int *whs
     for (int x = 0; x < nnmf && nf < max; x++) { if (nmf[x].h >= OPEN || nmf[x].k >= OPEN) continue;
         Frame *f = &out[nf++]; memset(f, 0, sizeof *f); f->verb = R->w_be; f->part = NONE;
         frame_arg(f, A_AGENT, NONE, nmf[x].h, nmf[x].hm, 0); frame_arg(f, A_ATTR, NONE, nmf[x].k, nmf[x].km, K_KIND); }
-    for (int i = 0; i < m; i++) if ((ch[i].type == CH_NP || ch[i].type == CH_PP) && !ch[i].np.pron && ch[i].np.head < OPEN && ch[i].np.mod < OPEN && !sex_get(R, ch[i].np.head))
+    for (int i = 0; i < m; i++) if ((ch[i].type == CH_NP || ch[i].type == CH_PP) && !ch[i].np.pron && ch[i].np.head < OPEN && ch[i].np.mod < OPEN && !sex_get(R, ch[i].np.head)
+        && (!s3(8) || person_word(R, ch[i].np.head)))
         sex_set(R, ch[i].np.head, sex_get(R, ch[i].np.mod));                                       /* "her brother Tunde", "his wife Bisi" */
     for (int pass = 0; pass < 2; pass++) for (int q = 0; q < nf; q++) {   /* the people in this sentence (the subject last: the latest), and their sex */
         int ag = find_arg(&out[q], A_AGENT);
@@ -622,7 +684,8 @@ static int read_sentence(Reader2 *R, Tk *k, int n, Frame *out, int max, int *whs
             if (out[q].a[a].role == A_ATTR && (out[q].a[a].k & K_KIND) && !sex_get(R, out[q].a[ag].head)) { int sx = sex_get(R, out[q].a[a].head); if (!sx) sx = sex_get(R, out[q].a[a].mod); sex_set(R, out[q].a[ag].head, sx); }
         for (int a = 0; a < out[q].narg; a++) {
             const Arg *x = &out[q].a[a]; if ((x->role == A_AGENT) != pass || x->head >= OPEN || special(R->t->voc[x->head].word) != SP_NONE) continue;
-            if (x->mod < OPEN && !sex_get(R, x->head)) sex_set(R, x->head, sex_get(R, x->mod));                 /* "his wife Bisi", "Mr. Sola", "a boy named Leke" */
+            if (x->mod < OPEN && !sex_get(R, x->head) && (!s3(8) || person_word(R, x->head))) sex_set(R, x->head, sex_get(R, x->mod));   /* "his wife Bisi", "Mr. Sola", "a boy named Leke" */
+            if (s3(8) && x->role == A_ATTR && out[q].verb == R->w_be) continue;        /* F4h: "Ada is the younger sister": not a second person */
             if (q < nf0 && person_word(R, x->head)) { int pl = 0, pr = 0; for (int z = 0; z < R->nplur; z++) pl |= R->plur[z] == x->head; for (int z = 0; z < R->npres; z++) pr |= R->pres[z] == x->head;
                 if (!pl) ppl_note(&R->refs, x->head, !pr); }
         }
@@ -642,7 +705,7 @@ static int read_span(Reader2 *R, const TextToken *tok, uint32_t a, uint32_t b, F
 }
 
 static void r2_init(Reader2 *R, TextContext *t, WMap *wm) {
-    memset(R, 0, sizeof *R); R->t = t; R->wm = wm; R->refs.single = NONE; R->refs.person = R->refs.thing = NONE;
+    memset(R, 0, sizeof *R); R->t = t; R->wm = wm; R->refs.single = NONE; R->refs.person = R->refs.thing = R->refs.plthing = NONE;
     R->w_be = vid(t, "be"); R->w_have = vid(t, "have"); R->w_do = vid(t, "do"); R->w_not = vid(t, "not"); R->w_you = vid(t, "you");
 }
 
@@ -726,7 +789,8 @@ static int yesno_statement(const char *q, const char *opt, char *out, size_t cap
     if (!*p || *p == '?') return 0;
     int no = is_word_at(opt, "no"), yes = is_word_at(opt, "yes"); const char *rest = opt;
     if (no || yes) { rest += no ? 2 : 3; while (*rest == ',' || *rest == ' ') rest++; }
-    snprintf(out, cap, "%.*s %s%s %s. %s", (int)(p - r), r, AUX[a], no ? " not" : "", p, rest);
+    char body[1024]; snprintf(body, sizeof body, "%s", p); if (s3(1)) for (char *e = body + strlen(body); e > body && (e[-1] == '?' || e[-1] == ' '); ) *--e = 0;   /* F1: "goat?" + "." made "goat..", one sentence of the two */
+    snprintf(out, cap, "%.*s %s%s %s. %s", (int)(p - r), r, AUX[a], no ? " not" : "", body, rest);
     return 1;
 }
 /* the statement an option makes: the option put where the question asks */
@@ -753,6 +817,11 @@ static void statement(const char *q, const char *opt, char *out, size_t cap) {
                 char x[1024]; snprintf(x, sizeof x, "%s", r + strlen(AUX[a])); char *x0 = x; while (*x0 == ' ') x0++;
                 for (char *e = x0 + strlen(x0); e > x0 && (e[-1] == '?' || e[-1] == ' '); ) *--e = 0;   /* "Pell eat mice", not "Pell eat? mice" */
                 size_t L = strlen(x0); int be = a >= 3 && a <= 6;
+                if (s3(1) && a <= 2 && (w <= 2)) {                    /* F1: "who did not laugh", "what does float": no phrase between "did" and its verb: the option is the subject */
+                    const char *v = x0; if (is_word_at(v, "not")) { v += 3; while (*v == ' ') v++; } const char *e = v; while (*e && *e != ' ') e++;
+                    char c = e > v ? wclass(v, (size_t)(e - v)) : 'N'; char b[64]; size_t L2 = (size_t)(e - v) < 63 ? (size_t)(e - v) : 63; for (size_t z = 0; z < L2; z++) b[z] = (char)tolower((unsigned char)v[z]); b[L2] = 0;
+                    const LexE *le = lex_get(b); int canv = le && le->v;
+                    if (c == 'V' || c == 'X' || canv) { snprintf(out, cap, "%s %s %s", opt, AUX[a], x0); goto done; } }
                 if (be && !strncasecmp(x0, "the name of ", 12)) snprintf(out, cap, "%s %s named %s", x0 + 12, AUX[a], opt);           /* "what was the name of the cat" */
                 else if (be && L > 7 && !strcasecmp(x0 + L - 7, "'s name")) snprintf(out, cap, "%.*s %s named %s", (int)(L - 7), x0, AUX[a], opt);   /* "the cat's name" */
                 else if (be && !strcasestr(x0, "not") && !strstr(x0, "n't")) be_statement(x0, AUX[a], opt, out, cap);

@@ -77,3 +77,37 @@ the switch is removed on adoption and the brain rebuilt (`brain-school-cx4`) if 
   older test stories.
 * All runs in Colab, each runtime deleted after; droplet for code and the tiny brain only. Reported as they
   come; journal updated; losers' code deleted. Size is not a goal (owner: smart first, prune later).
+
+## How it was built (2026-10-16, tiny droplet brain, before any school-brain result)
+
+Switch `S3` in facts.c / bg.c; `S3=0` byte-identical to the adopted reader on the answer dumps of the dev
+stories and MC160 dev. What the market stall taught on the way, beyond the five steps:
+
+* The passage files carried the story title as text ("The Market Stall …"), so "Stall" and "Market" were names
+  for 50 sentences and "she" pointed at the stall. `tools/stories.py` now leaves the title out (all sets).
+* A yes/no option's statement ended "goat.. she is …": the question's "?" plus the added "." made one sentence
+  of the two, and "she" became an argument of the first frame (COMPREHEND's yes/no had this all along). F1 fixes it.
+* A yes/no option is judged by the facts holding its *own* extra words ("the man" in "yes, she is afraid of the
+  man"), so the exact opposite fact was never the one that decided. F1: inside an episode a yes/no option is about
+  the question's words, and a closest fact that says the opposite is not overridden by a weaker option-word match.
+* "was afraid" (past) and "is no longer afraid" (present) are equally close to "Ada is not afraid"; the earlier
+  one won every tie. F2: the tense of a frame counts (TENSEW 0.5), and of two episode facts equally close the
+  later one decides; the re-read sentence check keeps tense too.
+* A base-form verb ("the man pay with the coin Ada", built from "What did the man pay…") is not present tense:
+  its tense is unknown. Only -s is present, -ed / irregular past.
+* "talks" is a noun in the word table with the verb base "talk": after "and", an inflected noun with a verb base
+  before a preposition or "to" is the verb.
+* F4 grew: "it" in a repeated slot ("afraid of the goat … afraid of it"), partitives ("part of it" is the thing),
+  the latest thing updated at clause boundaries (a passive's subject counts), "Ada is the younger sister" not a
+  second person, the clause subject reset after "but" (S2's "an object pronoun is never the clause subject"
+  applied to subject "she", whose word class is O).
+* The "Who did not laugh?" statement was "not laugh Ada" (no frame at all): with no phrase between "did" and its
+  verb the option is the subject, "Ada did not laugh".
+
+Tiny brain, dev (guidance only; `S3=0` → `S3=31`): red boat + market stall 15 → **20** of 20, dev stories
+24 → 27 of 30, clock 10 → 10, bakery 6 → 7: **55 → 64 of 70**. MC160 dev 49.44 → 52.36, MC500 dev 53.38 →
+56.88. General dev subsets (80 each): ARC-E, OBQA, MMLU the same; CSQA −1 question (bit 8, how questions are
+read). Knobs on the tiny brain: TENSEW 0.3 / 0.7, FX 0.75, FO 0 / 0.5 each moved one set up and another down;
+kept at 0.5 / 0.85 / 0.25. Not fixed: bicycle_10, stoneowl_3, swim_8, bakery_7 / 9 / 10 (other causes).
+
+Colab dev next: `tools/follow_colab.py dev` (S3 = 0, 15, 16, 31 on `brain-school-cx3`).
