@@ -14,3 +14,4 @@ build 6 adopted (2026-10-15): the S2 reader is the reader; no env needed from he
 build 7: FOLLOW S3 (frozen at S3=31): the shelf read with the S3 reader (F3 a clause after "but", F4 who is who change the reading), for the test (2026-10-16)
 tag: brain-school-cx4
 env: S3=31
+build 7 adopted (2026-10-16): the S3 reader is the reader; no env needed from here on

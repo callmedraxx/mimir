@@ -1,15 +1,15 @@
-# The school brain with its cortex, kept as the GitHub release brain-school-cx3 (the shelf read by the reader of
-# docs/COMPREHEND.md and docs/READ2.md) so a Colab session need not rebuild it.
+# The school brain with its cortex, kept as the GitHub release brain-school-cx4 (the shelf read by the reader of
+# docs/COMPREHEND.md, docs/READ2.md and docs/FOLLOW.md) so a Colab session need not rebuild it.
 # Built and published by .github/workflows/brain.yml (GitHub's own token for that job; no key anywhere else).
 #   get(dst)   download it and the shelf it read (data/school/, which open book re-reads: without it that part is 0)
 #              if the release exists (checked by SHA-256); True if both are there
 import os, subprocess
-REPO, TAG = "callmedraxx/mimir", "brain-school-cx3"
+REPO, TAG = "callmedraxx/mimir", "brain-school-cx4"
 URL = "https://github.com/%s/releases/download/%s/" % (REPO, TAG)
 FILES = ("school_cx.brain.gz", "school_cx.brain.cx.gz", "school_shelf.tar.gz")
 def sh(cmd): print("$", cmd, flush=True); subprocess.run(cmd, shell=True, check=True)
 def get(dst, tag=TAG):
-    """the release `tag` (brain-school-cx3 unless another is named) to dst, dst.cx and data/school/"""
+    """the release `tag` (brain-school-cx4 unless another is named) to dst, dst.cx and data/school/"""
     URL = "https://github.com/%s/releases/download/%s/" % (REPO, tag)
     if os.path.exists(dst) and os.path.exists(dst + ".cx") and os.path.exists("data/school/07_vital.txt"): return True
     d = os.path.dirname(dst) or "."

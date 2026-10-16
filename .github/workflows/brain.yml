@@ -1,4 +1,4 @@
-# Builds the school brain with its cortex (docs/CORTEX_LINK.md) and publishes it as a release (now brain-school-cx3), so a
+# Builds the school brain with its cortex (docs/CORTEX_LINK.md) and publishes it as a release (now brain-school-cx4), so a
 # Colab session downloads it instead of rebuilding (tools/brain_release.py). Uses GitHub's own token for this job only; no key.
 # Runs when tools/brain_build.txt changes on the reader branch; its last "tag: NAME" line names the release and its last
 # "env: ..." line is the environment of the read (a reader switch under test, e.g. S2=31).
@@ -40,7 +40,7 @@ jobs:
           gzip -1 -c cx.brain > school_cx.brain.gz && rm cx.brain
           gzip -1 -c cx.brain.cx > school_cx.brain.cx.gz && rm cx.brain.cx
           sha256sum school_cx.brain.gz school_cx.brain.cx.gz school_shelf.tar.gz > SHA256SUMS
-          cd $GITHUB_WORKSPACE; TAG=$(grep '^tag: ' tools/brain_build.txt | tail -1 | cut -c6-); TAG=${TAG:-brain-school-cx3}; cd $RUNNER_TEMP
+          cd $GITHUB_WORKSPACE; TAG=$(grep '^tag: ' tools/brain_build.txt | tail -1 | cut -c6-); TAG=${TAG:-brain-school-cx4}; cd $RUNNER_TEMP
           gh release delete $TAG --repo $GITHUB_REPOSITORY --yes --cleanup-tag 2>/dev/null || true
           gh release create $TAG --repo $GITHUB_REPOSITORY --target $GITHUB_SHA --title "School brain with its cortex ($TAG)" \
             --notes "The school brain read with the cortex learning from its facts (docs/CORTEX_LINK.md), built by .github/workflows/brain.yml at $GITHUB_SHA. BRAIN and BRAIN.cx gzipped; the shelf it read (data/school/, open book reads it); SHA256SUMS." \

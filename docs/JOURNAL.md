@@ -40,10 +40,11 @@ anti-Hebbian, reward and penalty); answers use both.
 | **the cortex** | `sandbox/brain/bg.c` | learns from each fact in its own thread while reading (K3b's reward/penalty rule; each word's rate falls as it is met more often); saved as `BRAIN.cx`; compares words when answering (a link from cosine 0.40) and scores how well an option fits the question (weight 1) |
 | **the episode** | `sandbox/brain/bg.c`, `bg passages` | the text being read kept apart from the shelf's facts, active while asked about; its facts answer first, weighted 4 (EPISODE); inside it the association parts are off and the passage decides (PASSAGE); after each passage everything is put back |
 | passage tests | `data/understand/mctest` (`tools/understand_fetch.py`), `data/understand/race` (`tools/race_fetch.py`) | MCTest MC160/MC500, RACE-Middle |
-| reading sentences into facts | `sandbox/brain/facts.c` | word classes, chunks, frames (verb, who, what, is-what, place/time, negation); names ("named", "called", apposition), "made of", "without", "X, not Y", passives as actives (COMPREHEND); he / she / him / her to the latest person of the right sex (sex from titles, words like wife or brother, and the pronouns used; the main character over a passer-by; plurals and things called "it" excluded), a name or "a Y" after a comma at the end of a sentence or before the verb describes the phrase before it, lists ("flour, water and salt") and "made of" in passives (READ2); `bg facts` shows what it makes of a sentence, `PRDBG=1` traces the pronouns |
-| **"not" counts against** | `sandbox/brain/bg.c` | a fact or re-read sentence saying the opposite of an option counts against it (weight 2); the passage's "not" decides over the shelf; yes/no options read by their yes or no (COMPREHEND); for a yes/no question every option's statement is judged whole (READ2) |
+| reading sentences into facts | `sandbox/brain/facts.c` | word classes, chunks, frames (verb, who, what, is-what, place/time, negation); names ("named", "called", apposition), "made of", "without", "X, not Y", passives as actives (COMPREHEND); he / she / him / her to the latest person of the right sex (sex from titles, words like wife or brother, and the pronouns used; the main character over a passer-by; plurals and things called "it" excluded), a name or "a Y" after a comma at the end of a sentence or before the verb describes the phrase before it, lists ("flour, water and salt") and "made of" in passives (READ2); each fact marked past or now (aux, verb form, time words: ago, now, still, no longer, "last year"), "but" starts a new clause (no list across it, a new subject), "he" to a known man over a man-maybe, "it" to the subject of "be" (not what it is) or the same slot of the earlier saying, "them" to the latest plural thing, "said that X was" takes X as the subject, a be-attribute is not a person (FOLLOW); `bg facts` shows what it makes of a sentence ([past] / [now]), `PRDBG=1` traces the pronouns |
+| **"not" counts against** | `sandbox/brain/bg.c` | a fact or re-read sentence saying the opposite of an option counts against it (weight 2); the passage's "not" decides over the shelf; yes/no options read by their yes or no (COMPREHEND); for a yes/no question every option's statement is judged whole (READ2); a fact of another time counts half (TENSEW 0.5), of two equally close episode facts the later one decides, "Who did not …" matched as said when the episode has that NOT fact, a yes/no question is about its own words, and one option said almost whole by the passage (fact ≥ 0.85 of the episode weight) silences open book and joint (×0.25) for that question (FOLLOW) |
 | tokens, word meanings, word reader | `src/text.c`, `src/meaning.c`, `src/reader.c` | shared with the app |
-| **the school brain with its cortex** | GitHub release `brain-school-cx3` (built by `.github/workflows/brain.yml`; Colab gets it with `tools/brain_release.py`) | the shelf read by the COMPREHEND + READ2 reader: 32,964,286 facts, 761k words, cortex 1.8 GB; rebuilt when `tools/brain_build.txt` changes (its last `env:` line is the read's environment) |
+| **the school brain with its cortex** | GitHub release `brain-school-cx4` (built by `.github/workflows/brain.yml`; Colab gets it with `tools/brain_release.py`) | the shelf read by the COMPREHEND + READ2 + FOLLOW reader: 32,471,614 facts, cortex 1.8 GB; rebuilt when `tools/brain_build.txt` changes (its last `env:` line is the read's environment) |
+| the school brain with its cortex, READ2 reader | GitHub release `brain-school-cx3` | 32,964,286 facts; the loser of FOLLOW, **to be deleted by the owner** (the session could not) |
 | the school brain with its cortex, COMPREHEND reader | GitHub release `brain-school-cx2` | 32,484,331 facts; the loser of READ2, **to be deleted by the owner** (the session could not) |
 | the school brain with its cortex, old reader | GitHub release `brain-school-cx` | CORTEX_LINK to PASSAGE (32,488,986 facts) |
 | the school brain (before the cortex) | GitHub release `brain-school` | 32.5M facts from 2.2 GB, baby to high school (docs/past/SCHOOL_BRAIN.md) |
@@ -65,11 +66,12 @@ which the Workbench Lab bench builds (`tools/wasm_instrument.py`, `tools/wiring.
 its alphabet images (`tools/fetch_*.py`, `tools/vision_diag.c`). Kept because the live bench
 uses them; say if they should go too.
 
-## Scores now (school brain + cortex, 2026-10-15)
+## Scores now (school brain + cortex, 2026-10-16)
 
 | | MMLU-HS | CommonsenseQA | ARC-Easy | ARC-Challenge | OpenBookQA |
 |---|---|---|---|---|---|
-| **Mimir, COMPREHEND + READ2 reader** (`brain-school-cx3` with its shelf) | 26.9 | 31.1 | **46.3** | 22.0 | 24.2 |
+| **Mimir, COMPREHEND + READ2 + FOLLOW reader** (`brain-school-cx4` with its shelf) | 27.3 | 30.8 | 45.6 | **23.7** | 23.8 |
+| Mimir, COMPREHEND + READ2 reader (`brain-school-cx3` with its shelf) | 26.9 | 31.1 | **46.3** | 22.0 | 24.2 |
 | Mimir, COMPREHEND reader (`brain-school-cx2` with its shelf; READ2 step 0) | 26.6 | 31.1 | 46.1 | 22.0 | 24.2 |
 | Mimir, school brain + cortex (before COMPREHEND, with shelf) | 27.4 | 31.4 | **46.6** | 21.2 | 24.4 |
 | Mimir, school brain alone | 27.9 | 25.5 | 45.5 | 21.3 | 20.7 |
@@ -82,7 +84,8 @@ Reading a passage and answering about it (`bg passages`, with the episode):
 | | MC160 | MC500 | RACE-Middle | new stories (30) | harbor/garden/snow (30) |
 |---|---|---|---|---|---|
 | Mimir + COMPREHEND (reads "not", names; "not" counts against) | 54.7 | 52.5 | 40.4 | 23/30 (salt/train/kite), 21/30 (lighthouse/dragon/night bus, was 16) | 28/30 |
-| **Mimir + READ2 (he/she, apposition, lists; yes/no judged whole)** | 54.5 | 52.1 | 39.8 | 27/30 (orchard/lanterns/ferry, S0 25), 20/30 (lighthouse/dragon/night bus), 23/30 (salt/train/kite) | 28/30 |
+| **Mimir + FOLLOW (past / now, a clause after "but", who is who, an exact fact first)** | **58.2** | 52.1 | 40.7 | 21/30 (well/bridge/parrot, S0 20.5), 25/30 (orchard/lanterns/ferry), 23/30 (lighthouse/dragon/night bus), 24/30 (salt/train/kite) | 28/30 |
+| Mimir + READ2 (he/she, apposition, lists; yes/no judged whole) | 54.5 | 52.1 | 39.8 | 27/30 (orchard/lanterns/ferry, S0 25), 20/30 (lighthouse/dragon/night bus), 23/30 (salt/train/kite) | 28/30 |
 | Mimir, episode, passage decides (PASSAGE) | 49.6 | 50.6 | 40.7 | 23/30 (salt/train/kite) | 29/30 |
 | sliding window (MCTest paper) | 67.1 | 57.8 | 45.3 | | |
 | Mimir's passage-only reader (10-12) | 63.8 | 52.8 | 41.1 | | |
@@ -115,6 +118,7 @@ Word tests (cortex learned from facts): SimLex-999 0.381, MEN 0.738 (word2vec 0.
 
 | 10-15 | **COMPREHEND**: reading what a sentence says ("not", names, made of, without) and "not" counting against | MC160 +5.1, MC500 +1.8, new stories 16 → 21 of 30, ARC-C +2.5, OBQA +1.2; ARC-E −3.6, MMLU −1.1, one story question lost (5 better, 3 worse, 3 ties; general mean the same). **Correction:** the general run had no shelf (open book off), so those general numbers do not compare; rerun with the shelf in READ2 step 1. A new "he/she" rule cost MCTest dev and was dropped | **in use** (owner adopted); the old reading and the switches removed |
 | 10-15 | **READ2**: step 0 remeasured COMPREHEND with its shelf (ARC-E −0.5, not −3.6: no rule to hunt). **S2**: he/she by sex and recency, apposition at the end of a sentence, lists and "made of" in passives, the main character, yes/no judged whole | dev: 45 vs 43 of 50 story questions, passage mean +0.25, general dev identical. Test, once: new stories 25 → 27 of 30; MC160 −0.2, MC500 −0.4, RACE-M −0.6; general mean +0.1 (ARC-E 46.3, MMLU 26.9); one lighthouse question lost | **in use** (owner adopted); switch removed, `brain-school-cx3` |
+| 10-16 | **FOLLOW**: a sense of time (each fact past or now; a fact of another time counts half; the later of two equal facts), "but" starting a new clause, who is who (a known man over a maybe, "it" to the be-subject or the same slot, "them", "said that X was", be-attributes not people), "Who did not …" matched as said, an exact fact silencing open book | dev (Colab, cx3): 67 vs 60 of 70 dev-story questions, passage mean +0.56, general dev the same or +0.2. Test, once (cx4): MC160 54.5 → 58.2, RACE-M 39.8 → 40.7, MC500 the same; new stories 20.5 → 21 of 30; the twelve older test stories 98 → 100 of 120; general mean 30.11 → 30.22 (ARC-C +1.7, ARC-E −0.7) | **in use** (owner adopted); switch removed, `brain-school-cx4` |
 
 Lessons that keep coming back:
 * Reading more helps ARC-Easy only; ARC-Challenge and OpenBookQA were built against
@@ -132,7 +136,13 @@ Lessons that keep coming back:
 
 ## Open
 
-* **Now: the answering misses the reader no longer causes.** On the droplet the facts read right but the
+* **Now: following a story on stories it has not seen.** FOLLOW's dev gain (60 → 67 of 70) became +0.5 on the three
+  unseen stories (well / bridge / parrot, 21 of 30): "What was the roof made of long ago?" → tin (the "now" roof),
+  "Who did not get a fish?" → Zainab, "Who does not like the parrot?" → Mrs. Bello, "Who is Mr. Audu?" → a parrot,
+  "Does Tayo like the parrot now?" → yes (lost), what Mr. Audu said / who brought the parrot down. The rules fit
+  the stories they were built on; the next step needs a way of reading that carries over (test on stories written
+  before the code, as FOLLOW did).
+* The answering misses the reader no longer causes. On the droplet the facts read right but the
   answer is still wrong: "What is the kite made of?" → plastic (fact: paper, bamboo), "Who is Mr. Bayo?"
   → a doctor (fact: grandfather), "Was Mr. Bayo still sick?" / "Is Bisi shy?" (the "no longer" fact is
   there), "Who won the prize?" ("gave the prize to her"), "How did Mr. Sola pay?" (open book favours
@@ -146,6 +156,10 @@ Lessons that keep coming back:
 
 ## Log
 
+* 2026-10-16: FOLLOW adopted by the owner ("ok adopt FOLLOW"): switch S3 and FDBG traces removed (byte-identical
+  to S3=31 on the tiny brain), brain-school-cx4 is the brain (brain_release.py, brain.yml), follow_colab.py deleted,
+  brain_build.txt notes the adoption (rebuilds cx4 with the switch-free reader, as READ2 did); brain-school-cx3
+  (and cx2, cx) to be deleted by the owner.
 * 2026-10-16: FOLLOW tested once in Colab (S3=31 reader on brain-school-cx4, 32.47M facts): MC160 54.5 → 58.2,
   MC500 52.1 → 52.1, RACE-M 39.8 → 40.7; new stories well / bridge / parrot 20.5 → 21 of 30; the twelve older
   test stories 98 → 100 of 120; general mean 30.11 → 30.22 (ARC-C +1.7, ARC-E −0.7). results/follow_test.txt.

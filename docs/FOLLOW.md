@@ -152,5 +152,11 @@ like it"); still wrong: well_2 "What was the roof made of long ago?" (tin), well
 did not get a fish?" (Zainab, S0 the children), parrot_4 "Who does not like the parrot?" (Mrs. Bello),
 parrot_6 / 7 / 8, parrot_10 "Who is Mr. Audu?" → a parrot. The older stories: orchard_10, lantern_5, lantern_6,
 lighthouse_10 newly wrong; ferry_7, lighthouse_1, dragon_3, nightbus_8, nightbus_10, kite_9 newly right.
-Adoption is the owner's call (the dev gain of 7 on the dev stories became +2.5 on unseen stories: much of the
-"who is who" and "then vs now" gap remains).
+The dev gain of 7 on the dev stories became +2.5 on unseen stories: much of the "who is who" and "then vs now"
+gap remains (see Open in the journal).
+
+**Adopted by the owner 2026-10-16** ("ok adopt FOLLOW"). The switch `S3` and the `FDBG` traces removed (the
+switch-free reader byte-identical to S3=31 on the tiny brain: answer dumps of the 225 story + 320 MCTest dev
+questions, the 320 general dev questions, the fact traces of the stories); `brain-school-cx4` is the brain
+(`tools/brain_release.py`, `brain.yml`); `tools/follow_colab.py` deleted; `brain-school-cx3` is the loser, to be
+deleted by the owner.
