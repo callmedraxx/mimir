@@ -22,11 +22,11 @@ for t, d in tests.items():
     if t == "boolq": note.append("picks yes %.0f%%, right is yes %.0f%%" % (100.0 * sum(x[2] == "yes" for x in p) / n, 100.0 * sum(x[3] == "yes" for x in p) / n))
     if t == "cosmosqa": note.append("picks 'none of the above' %.0f%% (right %.0f%%)" % (100.0 * sum("none of the above" in x[2].lower() for x in p) / n, 100.0 * sum("none of the above" in x[3].lower() for x in p) / n))
     if t == "multirc": note.append("options per question vary")
-    if t == "babi":
+    if t.startswith("babi"):
         bt = defaultdict(list)
         for x in p: bt[int(re.match(r"babi(\d+)_", x[0]).group(1))].append(x[4])
         note.append("by task: " + " ".join("%d:%.0f" % (k, 100.0 * sum(v) / len(v)) for k, v in sorted(bt.items())))
-    if t == "babi": pass
+    if t.startswith("babi"): pass
     elif t in ("cbt_ne", "cbt_cn", "cbt_v", "cbt_p", "lambada", "record", "multirc"): note.append("right answer shorter than pick %.0f%%" % (100.0 * sum(len(x[3]) < len(x[2]) for x in p if not x[4]) / max(1, sum(not x[4] for x in p))))
     print("%-14s %5d  %6.2f  %5s  %s" % (t, n, acc, CH.get(t, "-"), "; ".join(x for x in note if x)))
 print()

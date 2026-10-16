@@ -13,7 +13,7 @@ is the football?": Mary took it, Mary went to the kitchen), and the FOLLOW misse
 now?", "Does Tayo like the parrot now?", "What was the roof made of long ago?". A human keeps one current
 state per thing and remembers the earlier ones as "before".
 
-## Steps (switch `S4`: 1 S1 the latest supersedes, 2 S2 derived states, 4 S3 the holder's place, 8 S2's "is in" statement, 16 S1b a superseded state is the opposite now; `S4=0` identical to the adopted reader)
+## Steps (all adopted 2026-10-16; while in dev they were the switch `S4`: 1 S1, 2 S2 derived states, 4 S3, 8 S2's "is in" statement, 16 S1b)
 
 **S1. One state per slot: the latest supersedes.** Inside an episode, facts about the same subject that
 fill the same slot with a different value are one *state*: motion verbs with "to" (go, move, travel, journey,
@@ -121,4 +121,11 @@ Mrs. Okafor now"); "Is Baba Ike still angry?" → yes ("He is not angry anymore"
 thatch ("It has a zinc roof now": having, not made of); "What was the gate made of before?" → iron (the past
 question takes the current state). The mechanism works where the sentence shape is "X went to Y" / "X took Z";
 the natural phrasings of the same states (with, has a … roof, not … anymore, pronouns on the given thing) are not
-yet read as states. That is the next step's material (journal Open). Adoption is the owner's call.
+yet read as states. That is the next step's material (journal Open).
+
+## Adopted (2026-10-16, owner: "we will adopt it")
+
+All five steps are now the reader, without a switch (the build without `S4` is byte-identical to `S4=31` on the tiny
+brain: every pick, part dump and general score the same; the episode trace `EPDBG` is gone with it; `tools/state_colab.py`
+deleted). The brain is not rebuilt: the shelf's facts have no episode, and S1-S3 act on episode facts only. The
+survey's seventeen test files are rerun once after adoption (`results/survey.txt`, the STATE column).

@@ -41,16 +41,17 @@ anti-Hebbian, reward and penalty); answers use both.
 | **the episode** | `sandbox/brain/bg.c`, `bg passages` | the text being read kept apart from the shelf's facts, active while asked about; its facts answer first, weighted 4 (EPISODE); inside it the association parts are off and the passage decides (PASSAGE); after each passage everything is put back |
 | passage tests | `data/understand/mctest` (`tools/understand_fetch.py`), `data/understand/race` (`tools/race_fetch.py`) | MCTest MC160/MC500, RACE-Middle |
 | reading sentences into facts | `sandbox/brain/facts.c` | word classes, chunks, frames (verb, who, what, is-what, place/time, negation); names ("named", "called", apposition), "made of", "without", "X, not Y", passives as actives (COMPREHEND); he / she / him / her to the latest person of the right sex (sex from titles, words like wife or brother, and the pronouns used; the main character over a passer-by; plurals and things called "it" excluded), a name or "a Y" after a comma at the end of a sentence or before the verb describes the phrase before it, lists ("flour, water and salt") and "made of" in passives (READ2); each fact marked past or now (aux, verb form, time words: ago, now, still, no longer, "last year"), "but" starts a new clause (no list across it, a new subject), "he" to a known man over a man-maybe, "it" to the subject of "be" (not what it is) or the same slot of the earlier saying, "them" to the latest plural thing, "said that X was" takes X as the subject, a be-attribute is not a person (FOLLOW); `bg facts` shows what it makes of a sentence ([past] / [now]), `PRDBG=1` traces the pronouns |
+| **the state now** | `sandbox/brain/bg.c` (`ep_states`), `facts.c` | inside an episode the facts filling one state (someone's place, a thing's holder, what a thing is made of) are ordered as said; the latest is current, the earlier ones superseded (×0.25 for a question about the present; for an "is" statement the superseded fact says the opposite now); a motion with "to" is also a place, take / give / drop / put also having or no longer having (derived facts answer state statements only); a thing is where its holder is; "Where is X?" + a bare option reads as "X is in <option>"; a past fact never supersedes a present one (STATE) |
 | **"not" counts against** | `sandbox/brain/bg.c` | a fact or re-read sentence saying the opposite of an option counts against it (weight 2); the passage's "not" decides over the shelf; yes/no options read by their yes or no (COMPREHEND); for a yes/no question every option's statement is judged whole (READ2); a fact of another time counts half (TENSEW 0.5), of two equally close episode facts the later one decides, "Who did not …" matched as said when the episode has that NOT fact, a yes/no question is about its own words, and one option said almost whole by the passage (fact ≥ 0.85 of the episode weight) silences open book and joint (×0.25) for that question (FOLLOW) |
 | tokens, word meanings, word reader | `src/text.c`, `src/meaning.c`, `src/reader.c` | shared with the app |
-| **the school brain with its cortex** | GitHub release `brain-school-cx4` (built by `.github/workflows/brain.yml`; Colab gets it with `tools/brain_release.py`) | the shelf read by the COMPREHEND + READ2 + FOLLOW reader: 32,471,614 facts, cortex 1.8 GB; rebuilt when `tools/brain_build.txt` changes (its last `env:` line is the read's environment) |
+| **the school brain with its cortex** | GitHub release `brain-school-cx4` (built by `.github/workflows/brain.yml`; Colab gets it with `tools/brain_release.py`) | the shelf read by the COMPREHEND + READ2 + FOLLOW reader (STATE acts on episodes only, so no rebuild): 32,471,614 facts, cortex 1.8 GB; rebuilt when `tools/brain_build.txt` changes (its last `env:` line is the read's environment) |
 | the school brain (before the cortex) | GitHub release `brain-school` | 32.5M facts from 2.2 GB, baby to high school (docs/past/SCHOOL_BRAIN.md) |
 | its shelf | `tools/school_shelf.py` | rebuilds the 2.2 GB of books in Colab (35 min); the brain's pointers lead into it |
 | word classes | `data/understand/wordclass.tsv` (`tools/understand_fetch.py`; release `brain-E`) | |
 | glue words | `data/meaning/meaning.mng` | only its list of the most common words (the, of, …), which the reader skips; its word meanings are no longer used |
 | dev sets | `data/dev_sets/` (`tools/general_tests.py`) | ARC-Easy, ARC-Challenge, OpenBookQA dev; MMLU-HS validation; CommonsenseQA 1,000 from train |
 | tests | `data/arc_tests/` | MMLU-HS test, CommonsenseQA dev, ARC-Easy, ARC-Challenge, OpenBookQA test |
-| stories | `data/story/` (`tools/stories.py` writes them as passages) | dev: clock, bicycle, stone owl, swim (40), red boat + market stall (20, `smart_tests`); tested: harbor, garden, snow; salt, train, kite; lighthouse, paper dragon, night bus (COMPREHEND) |
+| stories | `data/story/` (`tools/stories.py` writes them as passages) | dev: clock, bicycle, stone owl, swim (40), red boat + market stall (20, `smart_tests`); tested: harbor, garden, snow; salt, train, kite; lighthouse, paper dragon, night bus (COMPREHEND); orchard, lanterns, ferry (READ2); well, bridge, parrot (FOLLOW); umbrella, goat gate, library key (`state_tests`, STATE) |
 | word tests | `data/cortex/wordsim/` | WordSim-353, SimVerb-3500 (dev); SimLex-999, MEN-3000 (test) |
 | results | `results/` | every run's output |
 
@@ -67,7 +68,7 @@ uses them; say if they should go too.
 
 | | MMLU-HS | CommonsenseQA | ARC-Easy | ARC-Challenge | OpenBookQA |
 |---|---|---|---|---|---|
-| **Mimir, COMPREHEND + READ2 + FOLLOW reader** (`brain-school-cx4` with its shelf) | 27.3 | 30.8 | 45.6 | **23.7** | 23.8 |
+| **Mimir, COMPREHEND + READ2 + FOLLOW + STATE reader** (`brain-school-cx4` with its shelf; STATE leaves these untouched) | 27.3 | 30.8 | 45.6 | **23.7** | 23.8 |
 | Mimir, COMPREHEND + READ2 reader (`brain-school-cx3` with its shelf) | 26.9 | 31.1 | **46.3** | 22.0 | 24.2 |
 | Mimir, COMPREHEND reader (`brain-school-cx2` with its shelf; READ2 step 0) | 26.6 | 31.1 | 46.1 | 22.0 | 24.2 |
 | Mimir, school brain + cortex (before COMPREHEND, with shelf) | 27.4 | 31.4 | **46.6** | 21.2 | 24.4 |
@@ -78,7 +79,7 @@ uses them; say if they should go too.
 
 The standard reading tests, once (docs/SURVEY.md, 2026-10-16, `brain-school-cx4`; chance in brackets): SciQ 89.5 (25),
 MultiRC 59.5 (~40), Story Cloze 55.5 (50), Winograd 49.6 (50), WinoGrande 50.4 (50), BoolQ 46.7 (50), DREAM 43.0 (33),
-bAbI choice version 42.8 (task 1 "where is" 66, he/they 8-10, deduction 0; 94 in words on 10-12), CBT names 31.7 /
+bAbI choice version 42.8 → **57.0 with STATE** (task 1 "where is" 66 → 97, he/they 8-10 → 70-72, deduction 0; 94 in words on 10-12), CBT names 31.7 /
 nouns 29.5 / verbs 16.5 / prepositions 4.3 (10), RACE-High 30.7 (25), QuALITY 23.4 (25), ReCoRD 23.1 (~8), CosmosQA
 18.6 (25), LAMBADA 10-choice 16.0 (10). Not run: SQuAD, CoQA, QuAC, DROP, NarrativeQA (an answer must be written out).
 
@@ -87,7 +88,8 @@ Reading a passage and answering about it (`bg passages`, with the episode):
 | | MC160 | MC500 | RACE-Middle | new stories (30) | harbor/garden/snow (30) |
 |---|---|---|---|---|---|
 | Mimir + COMPREHEND (reads "not", names; "not" counts against) | 54.7 | 52.5 | 40.4 | 23/30 (salt/train/kite), 21/30 (lighthouse/dragon/night bus, was 16) | 28/30 |
-| **Mimir + FOLLOW (past / now, a clause after "but", who is who, an exact fact first)** | **58.2** | 52.1 | 40.7 | 21/30 (well/bridge/parrot, S0 20.5), 25/30 (orchard/lanterns/ferry), 23/30 (lighthouse/dragon/night bus), 24/30 (salt/train/kite) | 28/30 |
+| **Mimir + STATE (the latest state wins; went to = is in; a thing is where its holder is)** | **58.7** | 52.3 | 40.8 | 16/30 (umbrella/goat/key, S0 15), the fifteen older 121/150 both | |
+| Mimir + FOLLOW (past / now, a clause after "but", who is who, an exact fact first) | 58.2 | 52.1 | 40.7 | 21/30 (well/bridge/parrot, S0 20.5), 25/30 (orchard/lanterns/ferry), 23/30 (lighthouse/dragon/night bus), 24/30 (salt/train/kite) | 28/30 |
 | Mimir + READ2 (he/she, apposition, lists; yes/no judged whole) | 54.5 | 52.1 | 39.8 | 27/30 (orchard/lanterns/ferry, S0 25), 20/30 (lighthouse/dragon/night bus), 23/30 (salt/train/kite) | 28/30 |
 | Mimir, episode, passage decides (PASSAGE) | 49.6 | 50.6 | 40.7 | 23/30 (salt/train/kite) | 29/30 |
 | sliding window (MCTest paper) | 67.1 | 57.8 | 45.3 | | |
@@ -136,15 +138,17 @@ Lessons that keep coming back:
 * Sending big files (100 MB and up) from Colab through the shared browser fails. The brain is
   built by GitHub Actions instead and published as a release (no key needed: GitHub's own job
   token); a Colab session downloads it in minutes.
+| 10-16 | STATE (docs/STATE.md): the latest state supersedes, derived states from motion / take / give / drop / put, a thing is where its holder is | bAbI test 42.8 → 57.0, new state stories 15 → 16/30, nothing fell | **in use** (switch removed) |
 
 ## Open
 
-* **Now: a state that changes over the text** (docs/SURVEY.md): "Where is Sandra?" after three moves (bAbI task 1,
-  66%), "What is the stall made of now?", "Does Tayo like the parrot now?": every change is a fact, the latest does
-  not beat the earlier ones, and "is" does not match "go". bAbI train (1,000 a task) is the dev set, bAbI test and the
-  stories' "now" questions the test.
+* **Now (next in the program): yes/no with thin support** (BoolQ 46.7, picks "no" 70% of the time while 62% of the
+  answers are "yes"). Then, carried from STATE: the natural phrasings of a state are not read as states yet ("the key
+  is with Mrs. Okafor now", "has a zinc roof now", "not angry anymore", "gave it back to her", "went home with the
+  umbrella"); a "before X" question (bAbI task 3) takes the current state; deduction (task 15) 0, path finding (task
+  19) 8, counting (7) and lists (8) untouched.
 * **The program (owner 2026-10-16: "ensure we improve on all those tests one by one without getting too bad on the
-  other")**: one scorecard per survey test or skill, in this order: STATE (bAbI; running) → yes/no with thin support
+  other")**: one scorecard per survey test or skill, in this order: STATE (bAbI; adopted 10-16) → yes/no with thin support
   (BoolQ) → an inference said in other words (CosmosQA, Story Cloze, DREAM) → pronouns needing knowledge of the world
   (Winograd, WinoGrande) → cloze over names and nouns (CBT-NE / CN, ReCoRD, LAMBADA) → verbs and prepositions as
   answers (CBT-V / P) → long texts (QuALITY, RACE-High). Each step's choice rule lists every earlier test's dev half
@@ -175,10 +179,12 @@ Lessons that keep coming back:
 
 ## Log
 
+* 2026-10-16: STATE adopted (owner: "we will adopt it"): the S4 switch and the EPDBG trace removed (byte-identical to
+  S4=31 on the tiny brain), tools/state_colab.py deleted, no brain rebuild (episode facts only). The survey's seventeen
+  files rerun once in Colab as the running scorecard (results/survey.txt, STATE column). Next in the program: BoolQ.
 * 2026-10-16: STATE tested once in Colab (S4=31, brain-school-cx4): bAbI test 42.8 → 57.0 (task 1 66 → 97, task 2
   22 → 74, he/she 8 → 70, they 10 → 72); new state stories 15 → 16 of 30; the fifteen older stories 121 of 150 both;
-  MC160 58.2 → 58.7, MC500 52.1 → 52.3, RACE-M 40.7 → 40.8; general tests the same. results/state_test.txt. Awaiting
-  the owner's call on adoption. The natural phrasings of a state ("the key is with X now", "has a zinc roof", "not
+  MC160 58.2 → 58.7, MC500 52.1 → 52.3, RACE-M 40.7 → 40.8; general tests the same. results/state_test.txt. The natural phrasings of a state ("the key is with X now", "has a zinc roof", "not
   angry anymore", "gave it back to her") are not read as states yet: the misses of the new stories.
 * 2026-10-16: STATE (docs/STATE.md) dev in Colab on brain-school-cx4: S4=31 (the latest state supersedes and is the
   opposite now; "went to" is "is in", take / give / drop / put are having; a thing is where its holder is) bAbI train

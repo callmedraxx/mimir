@@ -151,7 +151,7 @@ static uint8_t *epword; static uint32_t nepword;     /* words the episode holds 
 /* docs/STATE.md: each episode fact's order of saying (ep_ord) and whether a later fact of the same state supersedes it (ep_sup) */
 static uint8_t *ep_sup, *ep_der; static uint32_t *ep_ord, ep_seq; static double SUPW = 0.25; static int ep_deriving;   /* ep_der: a fact derived from another (S2, S3), not said by the text */
 static void ep_add(const KF *f, uint64_t ptr) {
-    for (uint32_t i = 0; i < nep; i++) if (kf_same(&ep[i], f)) { ep[i].count++; ep[i].s += 1; if (ep[i].count == 2) ep[i].ptr[1] = ptr; if (s4(1)) ep_ord[i] = ++ep_seq; return; }
+    for (uint32_t i = 0; i < nep; i++) if (kf_same(&ep[i], f)) { ep[i].count++; ep[i].s += 1; if (ep[i].count == 2) ep[i].ptr[1] = ptr; ep_ord[i] = ++ep_seq; return; }
     if (nep == capep) { capep = capep ? capep * 2 : 256; ep = realloc(ep, capep * sizeof *ep); ep_sup = realloc(ep_sup, capep); ep_der = realloc(ep_der, capep); ep_ord = realloc(ep_ord, capep * 4); }
     KF *e = &ep[nep++]; *e = *f; e->count = 1; e->s = 1; e->L = (uint32_t)CLK; e->ptr[0] = ptr; e->ptr[1] = ~0ull; ep_sup[nep - 1] = 0; ep_der[nep - 1] = (uint8_t)ep_deriving; ep_ord[nep - 1] = ++ep_seq;
 }
@@ -210,13 +210,13 @@ static void ep_states(void) {
     state_init(); uint32_t n0 = nep; ntracked = 0;
     for (uint32_t i = 0; i < n0; i++) { const KF *f = &ep[i]; int pa = kf_arg(f, A_PAT, NONE); if (pa < 0 || ntracked >= 64 || is_tracked(f->head[pa])) continue;
         if (is_take(f) || gin(G_give, f->verb) || gin(G_drop, f->verb) || (gin(G_put, f->verb) && kf_arg(f, A_PP, G_in) >= 0)) tracked[ntracked++] = f->head[pa]; }
-    if (s4(2)) for (uint32_t i = 0; i < n0; i++) { const KF *f = &ep[i]; if (f->flags & F_NEG) continue; int ag = kf_arg(f, A_AGENT, NONE), pa = kf_arg(f, A_PAT, NONE); uint32_t ord = ep_ord[i];
+    for (uint32_t i = 0; i < n0; i++) { const KF *f = &ep[i]; if (f->flags & F_NEG) continue;                     /* S2: what an event also says of a state */ int ag = kf_arg(f, A_AGENT, NONE), pa = kf_arg(f, A_PAT, NONE); uint32_t ord = ep_ord[i];
         if (gin(G_motion, f->verb) && ag >= 0) { int to = kf_arg(f, A_PP, G_to); if (to >= 0) ep_derive(ord, G_be, 0, f->head[ag], G_in, f->head[to], ep[i].ptr[0]); }
         if (is_take(f) && ag >= 0 && pa >= 0) ep_derive(ord, G_have, 0, f->head[ag], NONE, f->head[pa], ep[i].ptr[0]);
         if (gin(G_give, f->verb) && ag >= 0 && pa >= 0) { int to = kf_arg(f, A_PP, G_to); if (to >= 0) { ep_derive(ord, G_have, 0, f->head[to], NONE, f->head[pa], ep[i].ptr[0]); ep_derive(ord, G_have, F_NEG, f->head[ag], NONE, f->head[pa], ep[i].ptr[0]); } }
         if (gin(G_drop, f->verb) && ag >= 0 && pa >= 0) ep_derive(ord, G_have, F_NEG, f->head[ag], NONE, f->head[pa], ep[i].ptr[0]);
         if (gin(G_put, f->verb) && ag >= 0 && pa >= 0) { int in = kf_arg(f, A_PP, G_in); if (in >= 0) { ep_derive(ord, G_be, 0, f->head[pa], G_in, f->head[in], ep[i].ptr[0]); ep_derive(ord, G_have, F_NEG, f->head[ag], NONE, f->head[pa], ep[i].ptr[0]); } } }
-    if (s4(4)) {                                        /* S3: a thing is where its holder is */
+    {                                                   /* S3: a thing is where its holder is */
         uint32_t n1 = nep; enum { MAXT = 64 }; uint32_t things[MAXT]; int nt = 0;
         for (uint32_t i = 0; i < n1; i++) { uint32_t sj, v; if (state_key(&ep[i], &sj, &v) == 2) { int dup = 0; for (int t = 0; t < nt; t++) dup |= things[t] == sj; if (!dup && nt < MAXT) things[nt++] = sj; } }
         for (int t = 0; t < nt; t++) { uint32_t T = things[t], holder = NONE;
@@ -227,7 +227,7 @@ static void ep_states(void) {
                     if (holder != NONE) { uint32_t pl = NONE, po = 0; for (uint32_t j = 0; j < n1; j++) { uint32_t s2, v2; if (state_key(&ep[j], &s2, &v2) == 1 && s2 == holder && ep_ord[j] <= bo && ep_ord[j] >= po) { po = ep_ord[j]; pl = v2; } }
                         if (pl != NONE) ep_derive(bo, G_be, 0, T, G_in, pl, f->ptr[0]); } }
                 else if (k == 1 && holder != NONE && sj == holder) ep_derive(bo, G_be, 0, T, G_in, v, f->ptr[0]); } } }
-    if (s4(1)) {                                        /* S1: the latest fact of a state is current, the others superseded */
+    {                                                   /* S1: the latest fact of a state is current, the others superseded */
         for (uint32_t i = 0; i < nep; i++) { uint32_t si, vi; int ki = state_key(&ep[i], &si, &vi); if (!ki) continue;
             for (uint32_t j = 0; j < nep; j++) { if (j == i) continue; uint32_t sj, vj; if (state_key(&ep[j], &sj, &vj) != ki || sj != si || vj == vi) continue;
                 if ((ep[j].flags & F_PAST) && (ep[i].flags & F_PRES)) continue;     /* "last year it was wood", said after "now it is bamboo", does not supersede it */
@@ -598,12 +598,12 @@ static void score_cands(Know *A, Frame *hf, int nh, int focus, const QW *Q, int 
                         double *fact, double *joint, double *open, uint64_t *optr) {
     *fact = *joint = *open = 0; *optr = ~0ull;
     double fs = 0; int nfs = 0; int stq = 0, stk[64];        /* S1: which statement frames state a place, a holder, a making-of (only those meet superseded facts differently) */
-    for (int i = 0; i < nh && i < 64; i++) { stk[i] = 0; if (s4(1) && nep) { KF hk; frame_kf(A, &hf[i], &hk); stk[i] = state_stmt(&hk); } stq |= stk[i] && !(hf[i].flags & F_PAST); }
+    for (int i = 0; i < nh && i < 64; i++) { stk[i] = 0; if (nep) { KF hk; frame_kf(A, &hf[i], &hk); stk[i] = state_stmt(&hk); } stq |= stk[i] && !(hf[i].flags & F_PAST); }
     for (int i = 0; i < nh; i++) { if (focus && !hf[i].tc) continue; double b = 0, bo = 0;
         for (int c = 0; c < nc; c++) { const KF *f = kf_at(cand[c]); if (is_ep(f) && ep_der[f - ep] && !(i < 64 && stk[i])) continue;   /* S2/S3: derived states answer state questions only */
             double s = kfact_sim(A, &hf[i], f) * conf(f);
             if (is_ep(f) && ep_sup[f - ep] && i < 64 && stk[i] && !(hf[i].flags & F_PAST)) {     /* S1: a superseded state, asked about the state now */
-                if (s4(16) && (hf[i].flags & F_PRES)) { KF g = *f; g.flags ^= F_NEG; s = kfact_sim(A, &hf[i], &g) * conf(f); }   /* S1b: "is": it is no longer so, the fact says the opposite now */
+                if (hf[i].flags & F_PRES) { KF g = *f; g.flags ^= F_NEG; s = kfact_sim(A, &hf[i], &g) * conf(f); }   /* S1b: "is": it is no longer so, the fact says the opposite now */
                 else s *= SUPW; }                                                         /* no tense said: it counts less */
             if (fabs(s) > fabs(b) || (is_ep(f) && fabs(s) == fabs(b) && s != b)) b = s;    /* F2: of two facts equally close, the one read later (the newer state) */
             if (fabs(s) > fabs(bo) || (is_ep(f) && fabs(s) == fabs(bo) && s != bo)) { uint32_t w[8]; int n = kf_words(f, w), has = 0; for (int x = 0; x < n; x++) for (int y = 0; y < no; y++) has |= w[x] == O[y].g && w[x] != NONE; if (has) bo = s; } }
@@ -773,9 +773,7 @@ static void ep_read(Know *k, const char *text) {
     size_t L = strlen(text); if (neb + L + 2 > capeb) { capeb = (neb + L + 2) * 2; epbuf = realloc(epbuf, capeb); }
     memcpy(epbuf + neb, text, L); epbuf[neb + L] = '\n'; size_t off = neb; neb += L + 1; epbuf[neb] = 0;
     memset(&k->R.refs, 0, sizeof k->R.refs); k->R.refs.plthing = NONE; EPREAD = 1; read_block(k, epbuf + off, L + 1, EPFID, off); EPREAD = 0;
-    if (s4(31)) ep_states();
-    if (getenv("EPDBG")) for (uint32_t e = 0; e < nep; e++) { fprintf(stderr, "  ep%u ord=%u%s %s%s", e, ep_ord[e], ep_sup[e] ? " SUP" : "", ep[e].flags & F_NEG ? "NOT " : "", ep[e].verb != NONE ? LX.s[ep[e].verb] : "-");
-        for (int a = 0; a < ep[e].narg; a++) fprintf(stderr, " %s%s%s=%s", ep[e].role[a] == A_AGENT ? "who" : ep[e].role[a] == A_PAT ? "what" : ep[e].role[a] == A_ATTR ? "is" : "pp", ep[e].prep[a] != NONE ? ":" : "", ep[e].prep[a] != NONE ? LX.s[ep[e].prep[a]] : "", LX.s[ep[e].head[a]]); fprintf(stderr, "\n"); }
+    ep_states();
     for (uint32_t i = 0; i < ncxjr; i++) if (!cxjr[i].which) { uint32_t g = cxjr[i].g; float n = cx_dot(CXU(g), CXU(g)); cxinv[g] = n > 0 ? 1 / sqrtf(n) : 0; }
     if (nepword < LX.n) { epword = realloc(epword, LX.n); memset(epword + nepword, 0, LX.n - nepword); nepword = LX.n; }
     for (uint32_t e = 0; e < nep; e++) { uint32_t w[8]; int n = kf_words(&ep[e], w); for (int j = 0; j < n; j++) if (w[j] < nepword) epword[w[j]] = 1; }
@@ -783,7 +781,7 @@ static void ep_read(Know *k, const char *text) {
 #define MAXO 24                                        /* options a passage question may have (docs/SURVEY.md: CBT 10, ReCoRD up to 24) */
 static int run_passages(int nfile, char **files) {
     Know A; answer_ctx(&A); Know k; memset(&k, 0, sizeof k); text_init(&k.t); r2_init(&k.R, &k.t, &k.wm);
-    cx_epst = 0x2545F4914F6CDD1Dull; if (getenv("SUPW")) SUPW = atof(getenv("SUPW")); if (s4(31)) state_init();
+    cx_epst = 0x2545F4914F6CDD1Dull; if (getenv("SUPW")) SUPW = atof(getenv("SUPW")); state_init();
     static FILE *dump; if (!dump && getenv("DUMP")) dump = fopen(getenv("DUMP"), "a");
     for (int fi = 0; fi < nfile; fi++) {
         FILE *f = fopen(files[fi], "r"); if (!f) { perror(files[fi]); return 1; }

@@ -18,8 +18,6 @@
 #undef vocab_id
 
 /* docs/FOLLOW.md (adopted 2026-10-16): polarity (F1), tense and time (F2), a clause after "but" (F3), who is who (F4) are the reading; the F-marks below name the rules */
-/* docs/STATE.md: the switch S4 (1 the latest state supersedes, 2 "is at" means "went to", 4 a thing is where its holder is) */
-static int S4 = -1; static int s4(int bit) { if (S4 < 0) { const char *e = getenv("S4"); S4 = e ? atoi(e) : 0; } return S4 & bit; }
 static double now(void) { struct timespec t; clock_gettime(CLOCK_MONOTONIC, &t); return t.tv_sec + t.tv_nsec * 1e-9; }
 static inline int vput(uint8_t *p, uint32_t v) { int n = 0; while (v >= 128) { p[n++] = (v & 127) | 128; v >>= 7; } p[n++] = v; return n; }
 
@@ -826,7 +824,7 @@ static void statement(const char *q, const char *opt, char *out, size_t cap) {
                     if (c == 'V' || c == 'X' || canv) { snprintf(out, cap, "%s %s %s", opt, AUX[a], x0); goto done; } }
                 if (be && !strncasecmp(x0, "the name of ", 12)) snprintf(out, cap, "%s %s named %s", x0 + 12, AUX[a], opt);           /* "what was the name of the cat" */
                 else if (be && L > 7 && !strcasecmp(x0 + L - 7, "'s name")) snprintf(out, cap, "%.*s %s named %s", (int)(L - 7), x0, AUX[a], opt);   /* "the cat's name" */
-                else if (be && s4(8) && w == 4 && !strcasestr(x0, "not") && !strstr(x0, "n't") && !opt_prep(opt)) snprintf(out, cap, "%s %s in %s", x0, AUX[a], opt);   /* S2: "Where is Sandra?" + "kitchen": Sandra is in kitchen */
+                else if (be && w == 4 && !strcasestr(x0, "not") && !strstr(x0, "n't") && !opt_prep(opt)) snprintf(out, cap, "%s %s in %s", x0, AUX[a], opt);   /* S2: "Where is Sandra?" + "kitchen": Sandra is in kitchen */
                 else if (be && !strcasestr(x0, "not") && !strstr(x0, "n't")) be_statement(x0, AUX[a], opt, out, cap);
                 else snprintf(out, cap, clause(opt) ? "%s. %s" : "%s %s", x0, opt);   /* an option that is a clause stays a sentence of its own */
                 goto done; }
