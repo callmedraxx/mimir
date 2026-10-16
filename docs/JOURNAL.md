@@ -146,6 +146,10 @@ Lessons that keep coming back:
 
 ## Log
 
+* 2026-10-16: FOLLOW (docs/FOLLOW.md) dev in Colab on brain-school-cx3: S3=31 (polarity, tense, a clause after
+  "but", who is who, an exact fact first) 67 vs 60 of 70 dev-story questions, passage mean 51.32 vs 50.76, general
+  dev sets the same or +0.2. Frozen at S3=31; build 7 → brain-school-cx4 for the test.
+
 * 2026-10-16: owner asked how smart the reader is. Two new stories (data/story/redboat.txt, market.txt,
   `smart_tests.tsv`, dev). Red boat (plain, one fact a sentence) 10/10. Market stall (two sisters, "last
   year" vs now, "not silver … made of tin", "did not laugh", "no longer", a relative-clause subject) 5/10,

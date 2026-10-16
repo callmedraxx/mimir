@@ -111,3 +111,18 @@ read). Knobs on the tiny brain: TENSEW 0.3 / 0.7, FX 0.75, FO 0 / 0.5 each moved
 kept at 0.5 / 0.85 / 0.25. Not fixed: bicycle_10, stoneowl_3, swim_8, bakery_7 / 9 / 10 (other causes).
 
 Colab dev next: `tools/follow_colab.py dev` (S3 = 0, 15, 16, 31 on `brain-school-cx3`).
+
+## Dev result (2026-10-16, Colab, school brain `brain-school-cx3`; `results/follow_dev.txt`)
+
+| cell | MC160 train / dev | MC500 train / dev | RACE-M dev | passage mean | clock | dev stories | bakery | red boat + market | **of 70** |
+|---|---|---|---|---|---|---|---|---|---|
+| S0 (adopted) | 61.10 / 50.69 | 53.11 / 58.25 | 40.47 | 50.76 | 10 | 27 | 7 | 16 | **60** |
+| S3 15 (F1-F4) | 60.92 / 54.44 | 53.11 / 59.75 | 40.26 | 51.10 | 10 | 28 | 8 | 18 | **64** |
+| S3 16 (F5 alone) | 61.46 / 51.53 | 53.53 / 58.75 | 40.82 | 51.19 | 10 | 28 | 10 | 16 | **64** |
+| **S3 31 (all)** | 61.28 / 54.44 | 53.78 / 58.75 | 40.24 | **51.32** | 10 | 29 | 9 | 19 | **67** |
+
+General dev sets, S0 → S3 31: ARC-Easy 46.05 → 46.05, ARC-Challenge 17.42 → 17.42, OpenBookQA 21.85 → 22.05,
+MMLU-HS 29.19 → 29.19, CommonsenseQA 30.25 → 30.45. The rule (4 more story questions, passage mean not 0.5
+lower, no general set 1 worse) is met by S3 31: +7 questions, mean +0.56, no general loss. The market stall's one
+miss on the school brain is the goat question, between two "no" answers. **Frozen at S3=31**; build 7
+(`brain-school-cx4`, the shelf read with S3=31) for the test.
