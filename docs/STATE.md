@@ -99,3 +99,26 @@ The general dev sets at S4 31 (ARC-Easy 47.19, ARC-Challenge 18.26, OpenBookQA 2
 S4 31: bAbI +34.6 (tasks 1-3 far more than 20), the dev stories the same 67, the passage mean +0.08, no general
 loss. S4 25 shows the derived states carry most of the gain (39.6 → 67.9). **Frozen at S4=31**; the brain is not
 rebuilt (episode facts only). Test: `tools/state_colab.py test`.
+
+## Test result (2026-10-16, Colab, once, S4=31 on `brain-school-cx4`; `results/state_test.txt`)
+
+| | adopted (FOLLOW) | STATE S4=31 | change |
+|---|---|---|---|
+| bAbI test, 20 tasks (choice version, 200 each) | 42.81 | **57.00** | +14.2 |
+| task 1 where is / 2 with a held thing / 6 yes-no / 9 negation / 11 he-she / 12 conjunction / 13 they | 66 / 22 / 52 / 65 / 8 / 54 / 10 | 97 / 74 / 68 / 74 / 70 / 88 / 72 | |
+| tasks 3 (before X), 15 deduction, 19 path, and 4, 5, 7, 8, 14, 16-18, 20 | | unchanged | |
+| new stories umbrella / goat / key (S0 → S4) | 15 / 30 | 16 / 30 | +1 |
+| fifteen older test stories | 121 / 150 | 121 / 150 | 0 |
+| MC160 / MC500 / RACE-Middle | 58.23 / 52.11 / 40.69 | 58.65 / 52.28 / 40.83 | +0.4 / +0.2 / +0.1 |
+| MMLU / CSQA / ARC-E / ARC-C / OBQA | 27.26 / 30.75 / 45.63 / 23.66 / 23.80 | the same | 0 |
+
+Nothing fell. The bAbI gain is where the rules aim: a person's place after several moves, a thing carried by its
+holder, yes/no on a place, "he" / "they" (the state facts give the pronoun rules something to land on). The
+free-written state stories gain one question of thirty, and their misses are the step's own questions in natural
+words: "Who has the umbrella now?" → Dayo (the text: "Mr. Felix gave it back to her" — "it" and "her" are pronouns,
+and "went home with the umbrella" is "with", not "have"); "Who has the key now?" → Mr. Bassey ("the key is with
+Mrs. Okafor now"); "Is Baba Ike still angry?" → yes ("He is not angry anymore"); "What is the roof made of now?" →
+thatch ("It has a zinc roof now": having, not made of); "What was the gate made of before?" → iron (the past
+question takes the current state). The mechanism works where the sentence shape is "X went to Y" / "X took Z";
+the natural phrasings of the same states (with, has a … roof, not … anymore, pronouns on the given thing) are not
+yet read as states. That is the next step's material (journal Open). Adoption is the owner's call.

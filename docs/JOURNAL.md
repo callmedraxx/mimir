@@ -175,6 +175,11 @@ Lessons that keep coming back:
 
 ## Log
 
+* 2026-10-16: STATE tested once in Colab (S4=31, brain-school-cx4): bAbI test 42.8 → 57.0 (task 1 66 → 97, task 2
+  22 → 74, he/she 8 → 70, they 10 → 72); new state stories 15 → 16 of 30; the fifteen older stories 121 of 150 both;
+  MC160 58.2 → 58.7, MC500 52.1 → 52.3, RACE-M 40.7 → 40.8; general tests the same. results/state_test.txt. Awaiting
+  the owner's call on adoption. The natural phrasings of a state ("the key is with X now", "has a zinc roof", "not
+  angry anymore", "gave it back to her") are not read as states yet: the misses of the new stories.
 * 2026-10-16: STATE (docs/STATE.md) dev in Colab on brain-school-cx4: S4=31 (the latest state supersedes and is the
   opposite now; "went to" is "is in", take / give / drop / put are having; a thing is where its holder is) bAbI train
   33.2 → 67.9, dev stories 67 of 70 both, passage mean +0.08, general dev untouched. Frozen at S4=31; test started.
