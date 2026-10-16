@@ -85,3 +85,17 @@ to carry more. Colab dev next: `tools/state_colab.py dev` (S4 = 0, 25, 31 on `br
   not rebuilt (the shelf's facts have no episode; S1-S3 act on episode facts only).
 * All runs in Colab, each runtime deleted after; droplet for code and the tiny brain only. Reported as they
   come; journal updated; losers' code deleted; the switch removed on adoption.
+
+## Dev result (2026-10-16, Colab, school brain `brain-school-cx4`; `results/state_dev.txt`)
+
+| cell | bAbI train (1,2,3,6,9,11,13) | MC160 train / dev | MC500 train / dev | RACE-M dev | passage mean | dev stories of 70 |
+|---|---|---|---|---|---|---|
+| S4 0 (adopted) | 33.24 | 61.46 / 52.78 | 53.64 / 57.25 | 40.69 | 50.13 | 67 |
+| S4 25 (S1, S1b, "is in") | 39.57 | 61.46 / 52.78 | 53.67 / 57.25 | 40.69 | 50.14 | 67 |
+| **S4 31 (all)** | **67.86** | 62.17 / 52.78 | 53.68 / 57.25 | 40.62 | 50.21 | 67 |
+
+The general dev sets at S4 31 (ARC-Easy 47.19, ARC-Challenge 18.26, OpenBookQA 25.05, MMLU-HS 30.07, CommonsenseQA
+30.55) are the adopted reader's own on this brain: without a passage the switch does nothing. The rule is met by
+S4 31: bAbI +34.6 (tasks 1-3 far more than 20), the dev stories the same 67, the passage mean +0.08, no general
+loss. S4 25 shows the derived states carry most of the gain (39.6 → 67.9). **Frozen at S4=31**; the brain is not
+rebuilt (episode facts only). Test: `tools/state_colab.py test`.

@@ -168,6 +168,9 @@ Lessons that keep coming back:
 
 ## Log
 
+* 2026-10-16: STATE (docs/STATE.md) dev in Colab on brain-school-cx4: S4=31 (the latest state supersedes and is the
+  opposite now; "went to" is "is in", take / give / drop / put are having; a thing is where its holder is) bAbI train
+  33.2 → 67.9, dev stories 67 of 70 both, passage mean +0.08, general dev untouched. Frozen at S4=31; test started.
 * 2026-10-16: SURVEY (docs/SURVEY.md): the adopted reader on 17 standard reading tests, once, in Colab on
   brain-school-cx4 (results/survey.txt). Strong only where the passage states the answer (SciQ 89.5, MultiRC 59.5);
   chance or below on changed state (bAbI 42.8), inference in other words (CosmosQA 18.6), pronouns needing world

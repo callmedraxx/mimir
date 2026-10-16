@@ -1,0 +1,42 @@
+# docs/STATE.md dev, Colab 2026-10-16 (16:00-17:23 UTC), brain-school-cx4 with its shelf. Summary lines of /content/state_dev.txt.
+# bAbI train: tasks 1, 2, 3, 6, 9, 11, 13, 200 questions each, choice version (the answer + up to 9 other answers of the task).
+=== S4 0 (the adopted reader)
+RESULT bgpass file=babi_train.txt n=1400 acc=33.24 epw=4.00
+RESULT bgpass file=mc160.train.txt n=280 acc=61.46 epw=4.00
+RESULT bgpass file=mc160.dev.txt n=120 acc=52.78 epw=4.00
+RESULT bgpass file=mc500.train.txt n=1200 acc=53.64 epw=4.00
+RESULT bgpass file=mc500.dev.txt n=200 acc=57.25 epw=4.00
+RESULT bgpass file=dev_middle.txt n=1436 acc=40.69 epw=4.00
+RESULT bgpass file=clock.txt n=10 acc=100.00 epw=4.00
+RESULT bgpass file=dev_stories.txt n=30 acc=96.67 epw=4.00
+RESULT bgpass file=bakery.txt n=10 acc=90.00 epw=4.00
+RESULT bgpass file=smart_tests.txt n=20 acc=95.00 epw=4.00
+=== S4 25 (S1 the latest supersedes, S1b the opposite now, "is in"; no derived states)
+RESULT bgpass file=babi_train.txt n=1400 acc=39.57 epw=4.00
+RESULT bgpass file=mc160.train.txt n=280 acc=61.46 epw=4.00
+RESULT bgpass file=mc160.dev.txt n=120 acc=52.78 epw=4.00
+RESULT bgpass file=mc500.train.txt n=1200 acc=53.67 epw=4.00
+RESULT bgpass file=mc500.dev.txt n=200 acc=57.25 epw=4.00
+RESULT bgpass file=dev_middle.txt n=1436 acc=40.69 epw=4.00
+RESULT bgpass file=clock.txt n=10 acc=100.00 epw=4.00
+RESULT bgpass file=dev_stories.txt n=30 acc=96.67 epw=4.00
+RESULT bgpass file=bakery.txt n=10 acc=90.00 epw=4.00
+RESULT bgpass file=smart_tests.txt n=20 acc=95.00 epw=4.00
+=== S4 31 (all: S1, S1b, S2 derived places and holders, S3 a thing is where its holder is, "is in")
+RESULT bgpass file=babi_train.txt n=1400 acc=67.86 epw=4.00
+RESULT bgpass file=mc160.train.txt n=280 acc=62.17 epw=4.00
+RESULT bgpass file=mc160.dev.txt n=120 acc=52.78 epw=4.00
+RESULT bgpass file=mc500.train.txt n=1200 acc=53.68 epw=4.00
+RESULT bgpass file=mc500.dev.txt n=200 acc=57.25 epw=4.00
+RESULT bgpass file=dev_middle.txt n=1436 acc=40.62 epw=4.00
+RESULT bgpass file=clock.txt n=10 acc=100.00 epw=4.00
+RESULT bgpass file=dev_stories.txt n=30 acc=96.67 epw=4.00
+RESULT bgpass file=bakery.txt n=10 acc=90.00 epw=4.00
+RESULT bgpass file=smart_tests.txt n=20 acc=95.00 epw=4.00
+=== general dev sets, S4 31 (no passage: the switch cannot act; these are the adopted reader's numbers on brain-school-cx4)
+RESULT bgarc file=easy_dev.tsv n=570 acc=47.19 facts=32471614
+RESULT bgarc file=challenge_dev.tsv n=299 acc=18.26 facts=32471614
+RESULT bgarc file=obqa_dev.tsv n=500 acc=25.05 facts=32471614
+RESULT bgarc file=mmlu_hs_dev.tsv n=370 acc=30.07 facts=32471614
+RESULT bgarc file=csqa_traindev.tsv n=1000 acc=30.55 facts=32471614
+=== by the rule (bAbI train 1-3 up 20 points, the 70 dev-story questions not fewer, passage mean not 0.5 lower, no general set 1 worse): S4 31. Frozen.
