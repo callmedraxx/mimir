@@ -691,6 +691,7 @@ static void ep_read(Know *k, const char *text) {
     if (nepword < LX.n) { epword = realloc(epword, LX.n); memset(epword + nepword, 0, LX.n - nepword); nepword = LX.n; }
     for (uint32_t e = 0; e < nep; e++) { uint32_t w[8]; int n = kf_words(&ep[e], w); for (int j = 0; j < n; j++) if (w[j] < nepword) epword[w[j]] = 1; }
 }
+#define MAXO 24                                        /* options a passage question may have (docs/SURVEY.md: CBT 10, ReCoRD up to 24) */
 static int run_passages(int nfile, char **files) {
     Know A; answer_ctx(&A); Know k; memset(&k, 0, sizeof k); text_init(&k.t); r2_init(&k.R, &k.t, &k.wm);
     cx_epst = 0x2545F4914F6CDD1Dull;
@@ -704,19 +705,20 @@ static int run_passages(int nfile, char **files) {
             if (line[0] == 'S') { if (open) ep_end(); ep_begin(); open = 1; cx_epst = 0x2545F4914F6CDD1Dull; continue; }
             if (line[0] == 'T') { ep_read(&k, line + 2); continue; }
             if (line[0] != 'Q') continue;
-            char *fld[9]; int nf = 0; for (char *p = strtok(line, "\t"); p && nf < 9; p = strtok(0, "\t")) fld[nf++] = p;
-            if (nf < 8) continue;
-            const char *q = fld[2]; int want = fld[7][0] - 'A'; BParts P[4]; double sc[4];
-            for (int o = 0; o < 4; o++) { bg_option(&A, q, fld[3 + o], &P[o]); A.t.ntok = 0; }
-            { int ex = 0; for (int o = 0; o < 4; o++) ex += P[o].active && P[o].fact >= FX * EPW * 0.5;     /* F5: one option said almost whole by the passage: the fact decides */
-                if (ex == 1) for (int o = 0; o < 4; o++) { P[o].open *= FO; P[o].joint *= FO; } }
-            scores(q, P, 4, sc);
-            double best = -1e9; int nb = 0; for (int o = 0; o < 4; o++) if (sc[o] > best + 1e-9) { best = sc[o]; nb = 1; } else if (sc[o] > best - 1e-9) nb++;
-            if (want >= 0 && want < 4 && sc[want] > best - 1e-9) ok += 1.0 / nb;
-            if (dump) { fprintf(dump, "%s\t%d\t4\t%d", bn, want, asks_opposite(q));
-                for (int o = 0; o < 4; o++) fprintf(dump, "\t%.5f %.5f %.5f %.5f %.5f %d", P[o].fact, P[o].joint, P[o].open, P[o].mean, P[o].fit, P[o].active);
+            char *fld[MAXO + 4]; int nf = 0; for (char *p = strtok(line, "\t"); p && nf < MAXO + 4; p = strtok(0, "\t")) fld[nf++] = p;
+            if (nf < 6) continue;                                   /* Q id question option option… letters: 2 to MAXO options, one or more right letters ("AC") */
+            int no = nf - 4; const char *ans = fld[nf - 1]; const char *q = fld[2]; int want = ans[0] - 'A'; BParts P[MAXO]; double sc[MAXO];
+            int right[MAXO]; for (int o = 0; o < no; o++) right[o] = strchr(ans, 'A' + o) != 0;
+            for (int o = 0; o < no; o++) { bg_option(&A, q, fld[3 + o], &P[o]); A.t.ntok = 0; }
+            { int ex = 0; for (int o = 0; o < no; o++) ex += P[o].active && P[o].fact >= FX * EPW * 0.5;     /* F5: one option said almost whole by the passage: the fact decides */
+                if (ex == 1) for (int o = 0; o < no; o++) { P[o].open *= FO; P[o].joint *= FO; } }
+            scores(q, P, no, sc);
+            double best = -1e9; int nb = 0, nbr = 0; for (int o = 0; o < no; o++) if (sc[o] > best + 1e-9) { best = sc[o]; nb = 1; nbr = right[o]; } else if (sc[o] > best - 1e-9) { nb++; nbr += right[o]; }
+            ok += (double)nbr / nb;
+            if (dump) { fprintf(dump, "%s\t%d\t%d\t%d", bn, want, no, asks_opposite(q));
+                for (int o = 0; o < no; o++) fprintf(dump, "\t%.5f %.5f %.5f %.5f %.5f %d", P[o].fact, P[o].joint, P[o].open, P[o].mean, P[o].fit, P[o].active);
                 fprintf(dump, "\n"); }
-            if (getenv("SHOW")) { int pick = 0; for (int o = 1; o < 4; o++) if (sc[o] > sc[pick] + 1e-9) pick = o; printf("  %s\t%s\tpick=%s\tright=%s\t%s\n", fld[1], q, fld[3 + pick], fld[3 + want], pick == want ? "OK" : "WRONG"); }
+            if (getenv("SHOW")) { int pick = 0; for (int o = 1; o < no; o++) if (sc[o] > sc[pick] + 1e-9) pick = o; printf("  %s\t%s\tpick=%s\tright=%s\t%s\n", fld[1], q, fld[3 + pick], want >= 0 && want < no ? fld[3 + want] : ans, right[pick] ? "OK" : "WRONG"); }
             n++; }
         if (open) ep_end();
         fclose(f); if (dump) fflush(dump);
