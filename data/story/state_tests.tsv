@@ -1,0 +1,30 @@
+umbrella_1	Who has the umbrella now?	4	Dayo	Mr. Felix	Nneka	the bank	2
+umbrella_2	Where was the umbrella on Monday evening?	4	at the market	in the lost box at the bank	at Nneka's house	at Dayo's house	1
+umbrella_3	Who had the umbrella at the market on Monday?	4	Mr. Felix	Nneka and then Dayo	a guard	nobody	1
+umbrella_4	Where is Dayo now?	4	at the bank	at home	at the market	in the lost box	2
+umbrella_5	What colour is the umbrella now?	4	red	blue	green	black	1
+umbrella_6	What colour was the umbrella before last year?	4	blue	red	yellow	white	1
+umbrella_7	Who found the umbrella in the bank?	4	Dayo	Nneka	Mr. Felix	a friend	2
+umbrella_8	Why did Nneka give Dayo the umbrella?	4	because he asked for it	because it started to rain and he had no hat	because she was going home	because he found it	1
+umbrella_9	Where did Dayo leave the umbrella?	4	at the market	at home	in the bank	in the rain	2
+umbrella_10	Who owns the umbrella?	4	Dayo	Mr. Felix	the bank	Nneka	3
+goatgate_1	Where is Pepper now?	4	in the yard	in the garden	in the shed	in the field	3
+goatgate_2	Where was Pepper in the morning?	4	in the field	in the yard	in the shed	in the garden	1
+goatgate_3	Where was Pepper at noon before Amara came?	4	in the shed	in the field	in the garden	in the yard	0
+goatgate_4	Is Baba Ike still angry with the goat?	4	yes, he is still angry	no, he is not angry anymore	yes, because of the cabbages	no, he was never angry	1
+goatgate_5	What is the garden gate made of now?	4	wood	iron	bamboo	wire	1
+goatgate_6	What was the gate made of before?	4	iron	wood	stone	wire	1
+goatgate_7	Is Amara afraid of the goat now?	4	yes, very afraid	no, not at all	yes, since this morning	only in the field	1
+goatgate_8	Who led Pepper to the field?	4	Baba Ike	Amara	the goat	a neighbour	1
+goatgate_9	What did Pepper eat?	4	three cabbages	a bowl of soup	the gate	grass in the field	0
+goatgate_10	Why is Baba Ike not angry anymore?	4	because the goat is in the shed	because Amara gave him a bowl of soup	because the gate is iron	because he sold the goat	1
+librarykey_1	Who has the key now?	4	Mr. Bassey	Ruth	Udo	Mrs. Okafor	3
+librarykey_2	Who had the key on Wednesday?	4	Mrs. Okafor	Mr. Bassey	Ruth	the chief	1
+librarykey_3	Who had the key on Thursday?	4	Ruth	Udo	Mrs. Okafor	the chief	0
+librarykey_4	Where is Mr. Bassey now?	4	in the library	at the river	in Enugu	at the chief's house	2
+librarykey_5	Who found the key?	4	the chief	Ruth	a fisherman named Udo	Mrs. Okafor's son	2
+librarykey_6	Where did Ruth lose the key?	4	in the library	in the grass near the river	in Enugu	at the chief's house	1
+librarykey_7	Is Ruth still ashamed?	4	yes, she is still ashamed	no, she is not ashamed now	yes, because she lost the key	no, she was never ashamed	1
+librarykey_8	What is the library roof made of now?	4	thatch	zinc	wood	iron	1
+librarykey_9	Why did Mr. Bassey give the key to Ruth?	4	because he was sick	because he had to travel to Enugu	because she asked	because he lost it	1
+librarykey_10	Who gave the key back to Mrs. Okafor?	4	Ruth	Udo	the chief	Mr. Bassey	2
