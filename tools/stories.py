@@ -8,7 +8,8 @@ SETS = {"clock": ("clock_questions.tsv", ["clock"]),
         "comprehend_tests": ("comprehend_tests.tsv", ["lighthouse", "dragon", "nightbus"]),
         "episode_tests": ("episode_tests.tsv", ["salt", "train", "kite"]),
         "story_tests": ("story_tests.tsv", ["harbor", "garden", "snow"]),
-        "smart_tests": ("smart_tests.tsv", ["redboat", "market"])}                        # dev (owner's "how smart is it" check, 2026-10-16)
+        "smart_tests": ("smart_tests.tsv", ["redboat", "market"]),
+        "follow_tests": ("follow_tests.tsv", ["well", "bridge", "parrot"])}             # FOLLOW's test (docs/FOLLOW.md), written before its code                        # dev (owner's "how smart is it" check, 2026-10-16)
 def write(out, name):
     qfile, names = SETS[name]; D = "data/story/"
     qs = [l.rstrip("\n").split("\t") for l in open(D + qfile) if l.strip()]

@@ -1,0 +1,30 @@
+well_1	What is the roof of the well made of now?	4	wood	tin	stone	grass	1
+well_2	What was the roof made of long ago?	4	tin	mud	wood	iron	2
+well_3	Who did not cry?	4	Sani	Musa	Hauwa	Ladi	0
+well_4	Who is the blacksmith?	4	Hauwa	Sani	Musa	Ladi	3
+well_5	How much money did Sani have?	4	ten naira	six naira	four naira	none	1
+well_6	What was the bucket full of when it came out?	4	mud	water	sand	rope	0
+well_7	Does Musa still run with the bucket?	4	no, he no longer runs with it	yes, he runs every morning	yes, he is faster than Sani	no, Sani carries it now	0
+well_8	Who sells the water?	4	Sani	Musa	Ladi	Hauwa	3
+well_9	Who is the older brother?	4	Musa	Sani	Ladi	the blacksmith	1
+well_10	What did Ladi say the hook would cost?	4	six naira	nothing	ten naira	a bucket of water	2
+bridge_1	What is the bridge made of?	4	concrete	wood	stone	iron	0
+bridge_2	What are the rails made of?	4	concrete	iron	wood	rope	2
+bridge_3	Does Baba Tanko still carry people across the river?	4	yes, in his canoe	yes, every morning	no, he moved to Dala	no, he fishes under the bridge now	3
+bridge_4	Who is Zainab?	4	the mayor	an engineer	a fisherman	a teacher	1
+bridge_5	What did Zainab tell the mayor?	4	that the rail was dangerous	that the bridge was new	that she needed a canoe	that the children painted it	0
+bridge_6	Who said there was no money?	4	Zainab	Baba Tanko	the children	the mayor	3
+bridge_7	Who fixed the rail?	4	Zainab	the mayor	Baba Tanko	the children	0
+bridge_8	Who painted the new rail?	4	Zainab	the children who walk to the farm school	Alhaji Dauda	Baba Tanko	1
+bridge_9	Who did not get a fish?	4	the children	Zainab	Baba Tanko	the mayor	3
+bridge_10	How did people cross the river before the bridge?	4	by swimming	on a raft	in a canoe	on a ferry	2
+parrot_1	What is Koko's cage made of now?	4	wire	iron	glass	wood	3
+parrot_2	What was Koko's cage made of last year?	4	wood	wire	bamboo	paper	1
+parrot_3	Who built the new cage?	4	Mr. Audu	Tayo	Mrs. Bello	the mosque	0
+parrot_4	Who does not like the parrot?	4	Mrs. Bello	Mr. Audu	Koko	Tayo	3
+parrot_5	Who forgot to close the cage?	4	Mrs. Bello	Tayo	Mr. Audu	the carpenter	1
+parrot_6	Where did Koko sit after she flew out?	4	on the ladder	on the shop	on the roof of the mosque	on a biscuit	2
+parrot_7	What did Mr. Audu say?	4	that the parrot was too high	that the ladder was broken	that Koko was hungry	that Tayo should climb	0
+parrot_8	Who brought the parrot down?	4	Tayo with the ladder	Mr. Audu	nobody, she flew home	Mrs. Bello with a biscuit	3
+parrot_9	Does Tayo like the parrot now?	4	yes, since that night	no, he still does not like it	yes, he feeds it	no, he sold it	1
+parrot_10	Who is Mr. Audu?	4	Mrs. Bello's son	a parrot	Mrs. Bello's neighbour	the imam	2
