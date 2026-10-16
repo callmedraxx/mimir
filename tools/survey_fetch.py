@@ -165,6 +165,15 @@ def babi():
                 w.passage(" ".join(story) if story else "-"); w.q("babi%d_%d" % (task, n), q.strip(), opts, opts.index(a)); n += 1
             else: story.append(rest.strip())
     w.done()
+def sciq():
+    """SciQ test (Welbl et al. 2017): the questions that come with a support paragraph, as the repo's local copy"""
+    w = W("sciq"); last = None
+    for i, r in enumerate(rows("allenai/sciq", "default", "test", 1000)):
+        if not clean(r.get("support", "")): continue
+        if r["support"] != last: w.passage(r["support"]); last = r["support"]
+        opts = [r["distractor1"], r["distractor2"], r["distractor3"], r["correct_answer"]]; random.Random(i).shuffle(opts)
+        w.q("sciq_%d" % i, r["question"], opts, opts.index(r["correct_answer"]))
+    w.done()
 def copy_local(name, src):
     if not os.path.exists(src): print("missing", src); return
     n = 0; out = open("%s/%s.txt" % (OUT, name), "w")
@@ -176,9 +185,9 @@ def copy_local(name, src):
     out.close(); print("%-14s %6d questions (copied)" % (name, n), flush=True)
 ALL = [("wsc273", wsc), ("winogrande", winogrande), ("storycloze", storycloze), ("boolq", boolq), ("dream", dream), ("cosmosqa", cosmos), ("multirc", multirc), ("record", record), ("lambada", lambada), ("cbt", cbt), ("quality", quality), ("babi", babi)]
 if __name__ == "__main__":
-    want = sys.argv[1:] or [n for n, _ in ALL] + ["race_high", "sciq"]
+    want = sys.argv[1:] or [n for n, _ in ALL] + ["race_high", "sciq"]   # sciq: HuggingFace too (the repo's data/understand is not in git)
     if "race_high" in want: copy_local("race_high", "data/understand/race/test_high.txt")
-    if "sciq" in want: copy_local("sciq", "data/understand/sciq/test.txt")
+    if "sciq" in want: sciq()
     failed = []
     for name, fn in ALL:
         if name not in want: continue
