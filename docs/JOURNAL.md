@@ -44,9 +44,6 @@ anti-Hebbian, reward and penalty); answers use both.
 | **"not" counts against** | `sandbox/brain/bg.c` | a fact or re-read sentence saying the opposite of an option counts against it (weight 2); the passage's "not" decides over the shelf; yes/no options read by their yes or no (COMPREHEND); for a yes/no question every option's statement is judged whole (READ2); a fact of another time counts half (TENSEW 0.5), of two equally close episode facts the later one decides, "Who did not …" matched as said when the episode has that NOT fact, a yes/no question is about its own words, and one option said almost whole by the passage (fact ≥ 0.85 of the episode weight) silences open book and joint (×0.25) for that question (FOLLOW) |
 | tokens, word meanings, word reader | `src/text.c`, `src/meaning.c`, `src/reader.c` | shared with the app |
 | **the school brain with its cortex** | GitHub release `brain-school-cx4` (built by `.github/workflows/brain.yml`; Colab gets it with `tools/brain_release.py`) | the shelf read by the COMPREHEND + READ2 + FOLLOW reader: 32,471,614 facts, cortex 1.8 GB; rebuilt when `tools/brain_build.txt` changes (its last `env:` line is the read's environment) |
-| the school brain with its cortex, READ2 reader | GitHub release `brain-school-cx3` | 32,964,286 facts; the loser of FOLLOW, **to be deleted by the owner** (the session could not) |
-| the school brain with its cortex, COMPREHEND reader | GitHub release `brain-school-cx2` | 32,484,331 facts; the loser of READ2, **to be deleted by the owner** (the session could not) |
-| the school brain with its cortex, old reader | GitHub release `brain-school-cx` | CORTEX_LINK to PASSAGE (32,488,986 facts) |
 | the school brain (before the cortex) | GitHub release `brain-school` | 32.5M facts from 2.2 GB, baby to high school (docs/past/SCHOOL_BRAIN.md) |
 | its shelf | `tools/school_shelf.py` | rebuilds the 2.2 GB of books in Colab (35 min); the brain's pointers lead into it |
 | word classes | `data/understand/wordclass.tsv` (`tools/understand_fetch.py`; release `brain-E`) | |
@@ -159,7 +156,7 @@ Lessons that keep coming back:
 * 2026-10-16: FOLLOW adopted by the owner ("ok adopt FOLLOW"): switch S3 and FDBG traces removed (byte-identical
   to S3=31 on the tiny brain), brain-school-cx4 is the brain (brain_release.py, brain.yml), follow_colab.py deleted,
   brain_build.txt notes the adoption (rebuilds cx4 with the switch-free reader, as READ2 did); brain-school-cx3
-  (and cx2, cx) to be deleted by the owner.
+  (and cx2, cx) deleted by the owner the same day: brain-school-cx4 is the only cortex brain left (releases brain-school and brain-E stay).
 * 2026-10-16: FOLLOW tested once in Colab (S3=31 reader on brain-school-cx4, 32.47M facts): MC160 54.5 → 58.2,
   MC500 52.1 → 52.1, RACE-M 39.8 → 40.7; new stories well / bridge / parrot 20.5 → 21 of 30; the twelve older
   test stories 98 → 100 of 120; general mean 30.11 → 30.22 (ARC-C +1.7, ARC-E −0.7). results/follow_test.txt.
