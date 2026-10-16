@@ -126,3 +126,31 @@ MMLU-HS 29.19 → 29.19, CommonsenseQA 30.25 → 30.45. The rule (4 more story q
 lower, no general set 1 worse) is met by S3 31: +7 questions, mean +0.56, no general loss. The market stall's one
 miss on the school brain is the goat question, between two "no" answers. **Frozen at S3=31**; build 7
 (`brain-school-cx4`, the shelf read with S3=31) for the test.
+
+## Test result (2026-10-16, Colab, once, S3=31 on `brain-school-cx4`; `results/follow_test.txt`)
+
+| | READ2 (`brain-school-cx3`) | FOLLOW (`brain-school-cx4`) | change |
+|---|---|---|---|
+| MC160 test | 54.48 | **58.23** | +3.75 |
+| MC500 test | 52.06 | 52.11 | +0.05 |
+| RACE-Middle test | 39.78 | **40.69** | +0.91 |
+| new stories well / bridge / parrot (S0 on cx3 → S3 on cx4) | 20.5 / 30 | 21 / 30 | +0.5 |
+| orchard / lanterns / ferry | 27 / 30 | 25 / 30 | −2 |
+| lighthouse / dragon / night bus | 20 / 30 | 23 / 30 | +3 |
+| salt / train / kite | 23 / 30 | 24 / 30 | +1 |
+| harbor / garden / snow | 28 / 30 | 28 / 30 | 0 |
+| all 150 story questions | 118.5 | 121 | +2.5 |
+| MMLU-HS / CSQA / ARC-E / ARC-C / OBQA | 26.87 / 31.12 / 46.34 / 22.00 / 24.20 | 27.26 / 30.75 / 45.63 / 23.66 / 23.80 | +0.39 / −0.37 / −0.71 / +1.66 / −0.40 |
+| general mean | 30.11 | 30.22 | +0.11 |
+
+The shelf read with S3=31 makes 32,471,614 facts (cx3: 32,964,286; fewer list facts across "but" and
+clauses split after "but"). The passage tests gain (MC160 +3.8, RACE-M +0.9), the story tests +2.5 of 150,
+the general mean +0.1 (ARC-Challenge +1.7, ARC-Easy −0.7). The three new stories, written before the code,
+gain only one question (S0 20.5 → 21): well_3 "Who did not cry?" and parrot_1 "made of now" are fixed,
+parrot_9 "Does Tayo like the parrot now?" is lost (picked "yes, since that night" over "no, he still does not
+like it"); still wrong: well_2 "What was the roof made of long ago?" (tin), well_5 (ten naira), bridge_9 "Who
+did not get a fish?" (Zainab, S0 the children), parrot_4 "Who does not like the parrot?" (Mrs. Bello),
+parrot_6 / 7 / 8, parrot_10 "Who is Mr. Audu?" → a parrot. The older stories: orchard_10, lantern_5, lantern_6,
+lighthouse_10 newly wrong; ferry_7, lighthouse_1, dragon_3, nightbus_8, nightbus_10, kite_9 newly right.
+Adoption is the owner's call (the dev gain of 7 on the dev stories became +2.5 on unseen stories: much of the
+"who is who" and "then vs now" gap remains).

@@ -146,6 +146,10 @@ Lessons that keep coming back:
 
 ## Log
 
+* 2026-10-16: FOLLOW tested once in Colab (S3=31 reader on brain-school-cx4, 32.47M facts): MC160 54.5 → 58.2,
+  MC500 52.1 → 52.1, RACE-M 39.8 → 40.7; new stories well / bridge / parrot 20.5 → 21 of 30; the twelve older
+  test stories 98 → 100 of 120; general mean 30.11 → 30.22 (ARC-C +1.7, ARC-E −0.7). results/follow_test.txt.
+  Awaiting the owner's call on adoption. Colab runtime deleted.
 * 2026-10-16: FOLLOW (docs/FOLLOW.md) dev in Colab on brain-school-cx3: S3=31 (polarity, tense, a clause after
   "but", who is who, an exact fact first) 67 vs 60 of 70 dev-story questions, passage mean 51.32 vs 50.76, general
   dev sets the same or +0.2. Frozen at S3=31; build 7 → brain-school-cx4 for the test.

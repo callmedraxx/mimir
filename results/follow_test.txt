@@ -1,0 +1,39 @@
+# docs/FOLLOW.md test, Colab 2026-10-16 (started 10:08 UTC, finished 10:46 UTC), once, frozen at S3=31 (commit f2b1cc7).
+# S3 on brain-school-cx4 (the shelf read by the S3 reader, 32,471,614 facts); S0 on brain-school-cx3 for the new stories.
+# A first attempt at 09:19 UTC died after the MCTest fetch (the Colab page reloaded and its output was lost; no result file);
+# this run wrote its log to the runtime as well. Summary lines of /content/follow_test.txt; the misses on the story tests follow.
+=== choice: S3=31 (frozen; docs/FOLLOW.md), brain brain-school-cx4
+=== S0 new stories (brain-school-cx3)
+RESULT bgpass file=follow_tests.txt n=30 acc=68.33 epw=4.00
+=== S3 passages (brain-school-cx4)
+RESULT bgpass file=mc160.test.txt n=240 acc=58.23 epw=4.00
+RESULT bgpass file=mc500.test.txt n=600 acc=52.11 epw=4.00
+RESULT bgpass file=test_middle.txt n=1436 acc=40.69 epw=4.00
+RESULT bgpass file=follow_tests.txt n=30 acc=70.00 epw=4.00
+RESULT bgpass file=read2_tests.txt n=30 acc=83.33 epw=4.00
+RESULT bgpass file=comprehend_tests.txt n=30 acc=76.67 epw=4.00
+RESULT bgpass file=episode_tests.txt n=30 acc=80.00 epw=4.00
+RESULT bgpass file=story_tests.txt n=30 acc=93.33 epw=4.00
+=== general tests, once (READ2 on brain-school-cx3: 26.87 31.12 46.34 22.00 24.20)
+=== general S3 (brain-school-cx4)
+RESULT bgarc file=mmlu_hs_test.tsv n=3420 acc=27.26 facts=32471614
+RESULT bgarc file=csqa_dev.tsv n=1221 acc=30.75 facts=32471614
+RESULT bgarc file=easy_test.tsv n=2376 acc=45.63 facts=32471614
+RESULT bgarc file=challenge_test.tsv n=1172 acc=23.66 facts=32471614
+RESULT bgarc file=obqa_test.tsv n=500 acc=23.80 facts=32471614
+=== misses on the story tests
+S0 new stories (10, one tie counted half): well_2 roof long ago -> tin; well_3 who did not cry -> Hauwa; well_5 how much money -> ten naira;
+  bridge_9 who did not get a fish -> the children; parrot_1 cage made of now -> wire; parrot_4 who does not like the parrot -> Mrs. Bello;
+  parrot_6 where Koko sat -> on the shop; parrot_7 what Mr. Audu said -> that Tayo should climb; parrot_8 who brought it down -> Mr. Audu;
+  parrot_10 who is Mr. Audu -> a parrot
+S3 new stories (9): well_2 roof long ago -> tin; well_5 how much money -> ten naira; bridge_9 who did not get a fish -> Zainab;
+  parrot_4 who does not like the parrot -> Mrs. Bello; parrot_6 -> on the shop; parrot_7 -> that Tayo should climb; parrot_8 -> Mr. Audu;
+  parrot_9 does Tayo like the parrot now -> yes, since that night (new miss); parrot_10 who is Mr. Audu -> a parrot
+S3 orchard / lanterns / ferry (5; READ2 had 3): orchard_3 who picks the apples -> Kemi; orchard_10 Kemi gave the neighbour -> a ladder (new);
+  lantern_5 what happened to many lanterns -> they won prizes (new); lantern_6 did Zara's lantern blow out -> yes (new); lantern_7 who won -> the teacher;
+  ferry_7 now right
+S3 lighthouse / dragon / night bus (7; READ2 had 10): lighthouse_6 not take -> her coat; lighthouse_10 did Marta take the money -> yes (new);
+  dragon_4 where fly -> on the hill; dragon_8 prize -> a yellow hat; dragon_10 who got the book -> the judge; nightbus_3 loud music -> only at night;
+  nightbus_7 who was sick -> the children; lighthouse_1, dragon_3, nightbus_8, nightbus_10 now right
+S3 salt / train / kite (6; READ2 had 7): salt_4, salt_5, train_2, train_9, kite_7, kite_10; kite_9 now right
+S3 harbor / garden / snow (2, as before): garden_5, snow_2
