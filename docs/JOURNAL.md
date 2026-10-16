@@ -52,7 +52,7 @@ anti-Hebbian, reward and penalty); answers use both.
 | glue words | `data/meaning/meaning.mng` | only its list of the most common words (the, of, …), which the reader skips; its word meanings are no longer used |
 | dev sets | `data/dev_sets/` (`tools/general_tests.py`) | ARC-Easy, ARC-Challenge, OpenBookQA dev; MMLU-HS validation; CommonsenseQA 1,000 from train |
 | tests | `data/arc_tests/` | MMLU-HS test, CommonsenseQA dev, ARC-Easy, ARC-Challenge, OpenBookQA test |
-| stories | `data/story/` (`tools/stories.py` writes them as passages) | dev: clock, bicycle, stone owl, swim (40); tested: harbor, garden, snow; salt, train, kite; lighthouse, paper dragon, night bus (COMPREHEND) |
+| stories | `data/story/` (`tools/stories.py` writes them as passages) | dev: clock, bicycle, stone owl, swim (40), red boat + market stall (20, `smart_tests`); tested: harbor, garden, snow; salt, train, kite; lighthouse, paper dragon, night bus (COMPREHEND) |
 | word tests | `data/cortex/wordsim/` | WordSim-353, SimVerb-3500 (dev); SimLex-999, MEN-3000 (test) |
 | results | `results/` | every run's output |
 
@@ -145,6 +145,15 @@ Lessons that keep coming back:
   is kept for good; the GPT-2 vs Mimir chat page (half built).
 
 ## Log
+
+* 2026-10-16: owner asked how smart the reader is. Two new stories (data/story/redboat.txt, market.txt,
+  `smart_tests.tsv`, dev). Red boat (plain, one fact a sentence) 10/10. Market stall (two sisters, "last
+  year" vs now, "not silver … made of tin", "did not laugh", "no longer", a relative-clause subject) 5/10,
+  the same with the pre-S2 reader. Reading misses: the subject after "but" kept the old subject ("the table
+  on it is made of iron" → stall); "it" resolved to a predicate ("silver") instead of the coin; no time on
+  facts ("last year the stall was made of wood" ties with "is made of bamboo"). Answering misses: "Who did
+  not laugh?" has the fact NOT laugh who=Ngozi but the answering ignores the negation; "no longer" yes/no
+  still goes to the option sharing most words. Tiny brain, droplet.
 
 **2026-10-15 (night, adopted)**
 * READ2 S2 tested once and adopted by the owner ("adopt it"): new stories 25 → 27 of 30, general mean
