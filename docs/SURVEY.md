@@ -60,6 +60,9 @@ own right and goes to the journal's Open list.
 * Format checked on the droplet with the tiny brain on the first 40 questions of each test; then **one** Colab
   run (`tools/survey_colab.py`, `brain-school-cx4` with its shelf, free CPU runtime, runtime deleted after),
   results in `results/survey.txt`, reported as they come.
+* **The running scorecard** (owner 2026-10-16): the steps that follow take these tests one by one, each with a
+  choice rule that no other test falls more than a point; after each adoption the 17 files are rerun once on the
+  adopted reader and `results/survey.txt` grows a column, so every gain and every cost is on one page.
 * Nothing here is a dev set for later steps unless the owner says so; the published dev splits used here are
   named so a later step can choose its dev and test halves.
 

@@ -143,6 +143,13 @@ Lessons that keep coming back:
   66%), "What is the stall made of now?", "Does Tayo like the parrot now?": every change is a fact, the latest does
   not beat the earlier ones, and "is" does not match "go". bAbI train (1,000 a task) is the dev set, bAbI test and the
   stories' "now" questions the test.
+* **The program (owner 2026-10-16: "ensure we improve on all those tests one by one without getting too bad on the
+  other")**: one scorecard per survey test or skill, in this order: STATE (bAbI; running) → yes/no with thin support
+  (BoolQ) → an inference said in other words (CosmosQA, Story Cloze, DREAM) → pronouns needing knowledge of the world
+  (Winograd, WinoGrande) → cloze over names and nouns (CBT-NE / CN, ReCoRD, LAMBADA) → verbs and prepositions as
+  answers (CBT-V / P) → long texts (QuALITY, RACE-High). Each step's choice rule lists every earlier test's dev half
+  and requires none to fall more than a point; after each adoption the survey's test files are rerun once
+  (results/survey.txt grows a column) so the whole picture is always current.
 * From the survey, after that: an inference said in other words (CosmosQA 18.6 below chance, Story Cloze 55.5, DREAM
   43.0, QuALITY 23.4: the wrong options reuse the passage's words and win); knowledge of the world joined to one
   sentence (Winograd / WinoGrande at chance; bAbI deduction 0); yes/no with thin support says "no" (BoolQ 46.7, "no"
