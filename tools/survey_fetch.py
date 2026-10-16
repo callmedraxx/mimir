@@ -147,10 +147,10 @@ def quality():
         if r["article"] != last: w.passage(r["article"]); last = r["article"]
         w.q("quality_%d" % i, r["question"], list(r["options"]), int(r["gold_label"]) - 1)
     w.done()
-def babi():
-    w = W("babi"); per = CAP if CAP else 200
-    for task in range(1, 21):
-        fn = "data/understand/babi/qa%d_test.txt" % task
+def babi(split="test", tasks=range(1, 21), name="babi"):
+    w = W(name); per = CAP if CAP else 200
+    for task in tasks:
+        fn = "data/understand/babi/qa%d_%s.txt" % (task, split)
         if not os.path.exists(fn): print("missing", fn); continue
         lines = open(fn).read().split("\n"); answers = sorted({l.split("\t")[1].strip() for l in lines if "\t" in l})
         story, n = [], 0
@@ -188,6 +188,7 @@ if __name__ == "__main__":
     want = sys.argv[1:] or [n for n, _ in ALL] + ["race_high", "sciq"]   # sciq: HuggingFace too (the repo's data/understand is not in git)
     if "race_high" in want: copy_local("race_high", "data/understand/race/test_high.txt")
     if "sciq" in want: sciq()
+    if "babi_train" in want: babi("train", (1, 2, 3, 6, 9, 11, 13), "babi_train")   # docs/STATE.md dev set
     failed = []
     for name, fn in ALL:
         if name not in want: continue
