@@ -129,6 +129,11 @@ looked for along chains, crossing the orthogonal relation either way (what is le
 you). A relation the text does not give holds not. Tiny brain, bAbI in words: task 17 46 → 100, task 18 52 → 99; the
 dev stories unchanged. These are general rules of relations (inverse, transitivity), not bAbI's.
 
+**Y17. Putting down and leaving are dropping; "either … or" is maybe (bit 262144, for STATE).** "Mary put down the
+apple", "Mary left the milk there" (a thing she held): no longer held; "Bill is either in the office or the kitchen" asked
+"Is Bill in the office?": maybe (the answering path says it; the choice judge takes it as unknown). Tiny brain, bAbI in
+words: counting (7) 86 → 100, lists (8) 83 → 99, indefinite knowledge (10) 84 → 96.
+
 ## Dev run 5 (2026-10-17, full brain, `S5=32234`: Y2 Y4 Y6 Y7 Y8 Y9 Y10 Y11 Y12 Y13 Y14)
 
 BoolQ train 61.4; **bAbI train (choice) 67.9 → 83.6**; bAbI train in words 95.6 (docs/SPEAK.md); dev stories 67/70;

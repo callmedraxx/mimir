@@ -113,8 +113,12 @@ twenty **80.3** (1:100 2:84 3:97 4:100 5:76 6:86 7:86 8:83 9:84 10:84 11:100 12:
 19:0 20:60). Every rule here is a general reading rule (a kind's facts hold for its members; a relation has its inverse),
 none is bAbI's: they are what the shelf's facts will need too. With Y15 (states follow the time words said: "yesterday … this
 morning …", docs/YESNO.md) task 14 72 → 97 and all twenty **81.5**. With Y16 (relations, inverses and chains) positions 46 → 100 and sizes 52 → 99: all twenty **86.5**. With W1f, a path
-over the places' relations ("How do you go from the kitchen to the garden?" → "south east", bAbI 19 0 → 100): **91.5**. Still open:
-three-argument facts (5), counting and lists (7, 8), "maybe" (10), and motives (20: "Sumit is tired. Where will Sumit go?" needs the world's knowledge that tired people go to bed;
+over the places' relations ("How do you go from the kitchen to the garden?" → "south east", bAbI 19 0 → 100): **91.5**. A derived state (has, is in) now answers only a question about a state, not "who gave" (task 5 76 → 78), putting down
+and leaving are dropping and "either … or" is maybe (Y17: tasks 7, 8, 10 to 100 / 99 / 96), and a question with only a
+weak fact and no kind to lean on gets no answer ("-") instead of a guess: task 20 falls from 60 to 6, because its 60 was
+luck (someone else's destination) and its answers ("bored people go to the garden") are the world's knowledge, not the
+story's. All twenty **90.9**, with that honest loss. Still open: three-argument facts (5 at 78), negation and yes/no in words
+(6, 9 at 84-86), and motives (20: "Sumit is tired. Where will Sumit go?" needs the world's knowledge that tired people go to bed;
 only the shelf can give that). Left: relations (4 "east of"), deduction (15), induction (16 "what colour is Greg": by his
 kind), positions (17), size (18), paths (19), motives (20, "will go"), and the pronoun tasks at 73-84.
 

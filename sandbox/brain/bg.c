@@ -162,13 +162,13 @@ static int is_ep(const KF *f) { return f >= ep && f < ep + nep; }
    putting are also having (or no longer having) and, for a put, a place. S3: a thing held is where its holder is, until it is
    put down. S1: of the facts filling one state (someone's place, a thing's holder, what a thing is made of) the latest is
    current and the earlier ones are superseded: they count SUPW of themselves for a question about the present. */
-static uint32_t G_be, G_have, G_in, G_to, G_of, G_make, G_motion[32], G_take[32], G_give[32], G_drop[32], G_put[32], G_loc[16];
+static uint32_t G_be, G_have, G_in, G_to, G_of, G_make, G_leave, G_motion[32], G_take[32], G_give[32], G_drop[32], G_put[32], G_loc[16];
 static int state_ready;
 static void gset(uint32_t *out, const char *words) { char b[512]; snprintf(b, sizeof b, "%s", words); int n = 0; for (char *w = strtok(b, " "); w && n < 31; w = strtok(0, " ")) out[n++] = lx_id(w, 1); out[n] = NONE; }
 static int gin(const uint32_t *set, uint32_t g) { for (int i = 0; set[i] != NONE; i++) if (set[i] == g) return 1; return 0; }
 static void state_init(void) {              /* before any episode, so the words stay in the table */
     if (state_ready) return; state_ready = 1;
-    G_be = lx_id("be", 1); G_have = lx_id("have", 1); G_in = lx_id("in", 1); G_to = lx_id("to", 1); G_of = lx_id("of", 1); G_make = lx_id("make", 1);
+    G_be = lx_id("be", 1); G_have = lx_id("have", 1); G_in = lx_id("in", 1); G_to = lx_id("to", 1); G_of = lx_id("of", 1); G_make = lx_id("make", 1); G_leave = lx_id("leave", 1);
     gset(G_motion, "go move travel journey walk run return come head drive fly ride hurry wander sail swim march enter");
     gset(G_take, "take get grab pick hold carry keep receive borrow steal fetch catch find buy collect");
     gset(G_give, "give hand pass lend send bring sell");
@@ -215,7 +215,7 @@ static void ep_states(void) {
         if (gin(G_motion, f->verb) && ag >= 0) { int to = kf_arg(f, A_PP, G_to); if (to >= 0) ep_derive(ord, G_be, 0, f->head[ag], G_in, f->head[to], ep[i].ptr[0]); }
         if (is_take(f) && ag >= 0 && pa >= 0) ep_derive(ord, G_have, 0, f->head[ag], NONE, f->head[pa], ep[i].ptr[0]);
         if (gin(G_give, f->verb) && ag >= 0 && pa >= 0) { int to = kf_arg(f, A_PP, G_to); if (to >= 0) { ep_derive(ord, G_have, 0, f->head[to], NONE, f->head[pa], ep[i].ptr[0]); ep_derive(ord, G_have, F_NEG, f->head[ag], NONE, f->head[pa], ep[i].ptr[0]); } }
-        if (gin(G_drop, f->verb) && ag >= 0 && pa >= 0) ep_derive(ord, G_have, F_NEG, f->head[ag], NONE, f->head[pa], ep[i].ptr[0]);
+        if (ag >= 0 && pa >= 0 && (gin(G_drop, f->verb) || (s5(262144) && ((gin(G_put, f->verb) && kf_arg(f, A_PP, G_in) < 0) || (f->verb == G_leave && is_tracked(f->head[pa])))))) ep_derive(ord, G_have, F_NEG, f->head[ag], NONE, f->head[pa], ep[i].ptr[0]);   /* Y17: "put down the apple", "left the milk there": no longer held */
         if (gin(G_put, f->verb) && ag >= 0 && pa >= 0) { int in = kf_arg(f, A_PP, G_in); if (in >= 0) { ep_derive(ord, G_be, 0, f->head[pa], G_in, f->head[in], ep[i].ptr[0]); ep_derive(ord, G_have, F_NEG, f->head[ag], NONE, f->head[pa], ep[i].ptr[0]); } } }
     {                                                   /* S3: a thing is where its holder is */
         uint32_t n1 = nep; enum { MAXT = 64 }; uint32_t things[MAXT]; int nt = 0;
@@ -831,9 +831,12 @@ static int yn_opt(const char *o) { return is_word_at(o, "yes") ? 1 : is_word_at(
    facts not superseded. */
 static int state_verdict(Know *A, Frame *hf, int nh) {
     for (int i = 0; i < nh; i++) { KF hk; frame_kf(A, &hf[i], &hk); uint32_t sj, v; int k = state_key(&hk, &sj, &v); if (!k || !state_stmt(&hk) || v == NONE || sj == NONE) continue;
-        int same = 0, other = 0;
-        for (uint32_t e = 0; e < nep; e++) { if (ep_sup[e] || (ep[e].flags & F_NEG)) continue; uint32_t s2, v2; if (state_key(&ep[e], &s2, &v2) != k || s2 != sj || v2 == NONE) continue; if (v2 == v) same = 1; else other = 1; }
-        if (same) return 1; if (other) return -1; }
+        int same = 0, other = 0, maybe = 0;
+        for (uint32_t e = 0; e < nep; e++) { if (ep_sup[e] || (ep[e].flags & F_NEG)) continue; uint32_t s2, v2; if (state_key(&ep[e], &s2, &v2) != k || s2 != sj || v2 == NONE) continue;
+            int npp = 0, hasv = 0; for (int a_ = 0; a_ < ep[e].narg; a_++) if (ep[e].role[a_] == A_PP) { npp++; hasv |= ep[e].head[a_] == v; }
+            if (npp >= 2 && s5(262144)) { if (hasv) maybe = 1; else other = 1; continue; }     /* Y17: "either in the office or the kitchen": maybe */
+            if (v2 == v) same = 1; else other = 1; }
+        if (same) return 1; if (maybe) return 2; if (other) return -1; }
     return 0;
 }
 /* Y16: "Is the pink rectangle to the right of the blue square?", "Does the chest fit in the suitcase?": a relation said, its inverse
@@ -885,7 +888,7 @@ static void yesno_judge(BParts *P, int yes) {
     if (s5(1) && P[0].active && P[1].active) {
         int thin = fabs(P[0].efact) < YTHIN && fabs(P[0].eopen) < YTHIN && fabs(P[1].efact) < YTHIN && fabs(P[1].eopen) < YTHIN;
         if (!thin) for (int o = 0; o < 2; o++) { P[o].fact = EPW * P[o].efact; P[o].joint = EPW * P[o].ejoint; P[o].open = EPW * P[o].eopen; P[o].optr = P[o].eptr; } }
-    if (s5(4096 | 65536) && yn_slot) { yn_state = yn_slot > 0 ? 1 : 2; for (int o = 0; o < 2; o++) P[o].fact = P[o].joint = P[o].open = 0; P[yn_slot > 0 ? yes : no].fact = EPW; return; }   /* Y12: the state decides */
+    if (s5(4096 | 65536) && yn_slot && yn_slot != 2) { yn_state = yn_slot > 0 ? 1 : 2; for (int o = 0; o < 2; o++) P[o].fact = P[o].joint = P[o].open = 0; P[yn_slot > 0 ? yes : no].fact = EPW; return; }   /* Y12: the state decides */
     if (s5(2)) {
         double ev = (BW[0] * P[yes].fact + BW[1] * P[yes].joint + BW[2] * P[yes].open) - (BW[0] * P[no].fact + BW[1] * P[no].joint + BW[2] * P[no].open);
         if (s5(2048) && P[0].active && P[1].active) ev = EPW * (P[yes].efact - P[no].efact);   /* Y10: the judgement is the passage's facts alone (open book and the shelf are at the prior's precision, docs/YESNO.md) */
@@ -898,7 +901,7 @@ static void yesno_judge(BParts *P, int yes) {
    text said it (its lemma for now). A yes/no question is judged as the choice reader judges "yes" against "no". */
 static int ask_answer(Know *A, const char *q, char *out, size_t cap) {
     if (yesno_q(q)) { BParts P[2]; yn_slot = 0; bg_option(A, q, "yes", &P[0]); A->t.ntok = 0; bg_option(A, q, "no", &P[1]); A->t.ntok = 0;
-        yn_state = 0; if (s5(3)) yesno_judge(P, 0); double sc[2]; scores(q, P, 2, sc); snprintf(out, cap, "%s", sc[0] >= sc[1] ? "yes" : "no"); return 1; }
+        yn_state = 0; if (yn_slot == 2) { snprintf(out, cap, "maybe"); return 1; } if (s5(3)) yesno_judge(P, 0); double sc[2]; scores(q, P, 2, sc); snprintf(out, cap, "%s", sc[0] >= sc[1] ? "yes" : "no"); return 1; }
     TextContext *t = &A->t; uint32_t n0 = t->ntok; Refs keep = A->R.refs; text_take(t, NULL, q, strlen(q)); A->R.question = 1;
     Frame hf[8]; int wh = -1; int nh = read_span(&A->R, t->tok, n0, t->ntok, hf, 8, &wh); t->ntok = n0; t->src_len = 0; A->R.refs = keep; A->R.question = 0;
     int fi = -1, slot = -1; for (int i = 0; i < nh && fi < 0; i++) for (int a = 0; a < hf[i].narg; a++) if (hf[i].a[a].head == OPEN) { fi = i; slot = a; break; }
@@ -932,7 +935,8 @@ static int ask_answer(Know *A, const char *q, char *out, size_t cap) {
     int want_adj = !strcmp(wtw, "color") || !strcmp(wtw, "colour") || !strcmp(wtw, "size") || !strcmp(wtw, "shape");   /* "what colour is Greg": an adjective, not his kind */
 #define FILLER_OK(f_, j_) (!want_adj || wclass(LX.s[(f_)->head[j_]], strlen(LX.s[(f_)->head[j_]])) == 'J')
     double best = 0; const KF *bf = 0;
-    for (uint32_t e = 0; e < nep; e++) { const KF *f = &ep[e]; int has = 0; for (int j = 0; j < f->narg; j++) has |= f->role[j] == role && FILLER_OK(f, j) && (!dirprep || f->prep[j] == prep); if (!has || (f->flags & F_NEG)) continue;   /* a direction asked is that direction, not another */
+    int stateq = qkind || qk.verb == G_be || qk.verb == G_have;      /* a derived state ("has", "is in") answers a question about a state, not about who gave or took */
+    for (uint32_t e = 0; e < nep; e++) { const KF *f = &ep[e]; int has = 0; for (int j = 0; j < f->narg; j++) has |= f->role[j] == role && FILLER_OK(f, j) && (!dirprep || f->prep[j] == prep); if (!has || (f->flags & F_NEG) || (ep_der[e] && !stateq)) continue;   /* a direction asked is that direction, not another */
         double s = kfact_sim(A, &hf[fi], f) * conf(f); if (ep_sup[e]) s *= SUPW;
         if (s > best || (s == best && bf && ep_ord[e] > ep_ord[bf - ep])) { best = s; bf = f; } }   /* equally close: the later one */
     /* W1f: "How do you go from the kitchen to the garden?": a path over the places' relations (north / south / east / west), the
@@ -981,7 +985,7 @@ static int ask_answer(Know *A, const char *q, char *out, size_t cap) {
                 int j = -1; for (int a_ = 0; a_ < f->narg && j < 0; a_++) if (f->role[a_] == role && (role != A_PP || prep == NONE || f->prep[a_] == prep) && FILLER_OK(f, a_)) j = a_;
                 if (j < 0) continue; uint32_t v = f->head[j]; int found = 0; for (int i = 0; i < nv; i++) if (vals[i] == v) { cnt[i] += about_kind ? 3 : 1; found = 1; } if (!found && nv < 32) { vals[nv] = v; cnt[nv++] = about_kind ? 3 : 1; } } }
         if (nv) { int bi = 0; for (int i = 1; i < nv; i++) if (cnt[i] > cnt[bi]) bi = i; if (getenv("ASKDBG")) fprintf(stderr, "  ASK kind: %d kinds, %d values, best %s\n", nk, nv, LX.s[vals[bi]]); snprintf(out, cap, "%s", LX.s[vals[bi]]); return 1; } }
-    if (!bf) { snprintf(out, cap, "-"); return 0; }
+    if (!bf || best < 0.3) { snprintf(out, cap, "-"); return 0; }
     int j0 = -1; for (int j = 0; j < bf->narg && j0 < 0; j++) if (bf->role[j] == role && (role != A_PP || prep == NONE || bf->prep[j] == prep) && FILLER_OK(bf, j)) j0 = j;
     for (int j = 0; j < bf->narg && j0 < 0; j++) if (bf->role[j] == role && FILLER_OK(bf, j)) j0 = j;
     if (j0 < 0) { snprintf(out, cap, "-"); return 0; }
