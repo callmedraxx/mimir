@@ -122,6 +122,18 @@ story's. All twenty **90.9**, with that honest loss. Still open: three-argument 
 only the shelf can give that). Left: relations (4 "east of"), deduction (15), induction (16 "what colour is Greg": by his
 kind), positions (17), size (18), paths (19), motives (20, "will go"), and the pronoun tasks at 73-84.
 
+## SQuAD, first look (2026-10-17, tiny brain, the first 40 dev questions as a format check only)
+
+The harness runs (`tools/squad_words.py`, A lines with several right answers, exact match and word F1). Said right: "Cam
+Newton", "Carolina Panthers" (after Y18 kept the object before a score), "24-10" (a number said in figures from the
+sentence). What the misses need, in order of reach: (1) "What was the theme / final score of X?": the reader makes
+"the N of X" a relation (as for "west of the kitchen"); the N is the thing asked about, with "of X" its phrase; (2) a
+predicate said in other words ("won" for "defeated … to earn the title", "take place" for "was played at"), which is
+the inference step's skill, with the cortex's word links on the full brain; (3) "the game" for "Super Bowl 50"
+(coreference by kind); (4) why-questions (the cause: a state said just before the deed, or a "because" clause); (5)
+the world's knowledge for bAbI 20 ("tired people go to bed"), which only the shelf can give. The dev measure for SQuAD
+is the first 2,000 of train, as the scorecard says; nothing is tuned on these forty.
+
 ## When
 
 After the understanding program's steps (BoolQ next), or when the owner says so. Each understanding step from here
