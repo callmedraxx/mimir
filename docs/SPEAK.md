@@ -1,0 +1,98 @@
+# Answering in words (speak)
+
+Owner (2026-10-17): "the goal is to be brain like no backdrop. let's improve the understanding and start working on a
+method no matter how unconventional that will help mimir to be able to answer questions with words so that it can
+reply to conversations so after we nail the understanding tests benchmarks let's nail the answering test benchmarks."
+
+This scorecard is written now so that every understanding step keeps what answering will need, and so the method is
+settled before the code. The runs come after the understanding program (docs/SURVEY.md, the running scorecard),
+unless the owner moves it up.
+
+## Why
+
+Mimir picks among options that someone else wrote. It has no part that produces a word, so it cannot reply, and five
+of the standard tests could not be run (SQuAD, CoQA, QuAC, DROP, NarrativeQA: the answer must be written out). An
+LLM speaks because it is a next-word predictor and nothing else; its understanding is a by-product of speaking. Mimir
+is built the other way round and stays so: **meaning first, words after, no model of language behind it.** The brain
+does the same: speech starts from a thought (slips of the tongue swap whole words of one kind; the
+tip-of-the-tongue state has the meaning before the word), memory is apart from language (a person without a
+hippocampus speaks fluently and remembers nothing new), and prediction of the next word is a habit that serves the
+thought, not the other way round.
+
+## The method
+
+Mimir already turns a sentence into a frame (`facts.c`: verb, who, what, is-what, place, time, past / now, not). The
+same reader, run on the question, gives a **frame with a hole**; answering is filling the hole from memory and saying
+what filled it. Five parts, in the order they are built:
+
+**W1. The question is a frame with a hole.** The question word marks the slot: *who* → the person in the who or what
+slot; *where* → the place; *when* → the time; *what / which X* → the what slot, the is-what slot or the thing of kind X;
+*how many / how much* → a count; *why* → the cause (a relation the reader does not read yet; the first version
+re-reads the sentence that follows "because" / "so"); *how* → the manner or the means ("by …", "with …"). A yes/no
+question is a full frame, judged true / false / unknown as the yes/no judging does now. The same episode and shelf
+candidates that score options today fill the hole: the fact closest to the frame, with the hole's slot filled, in
+the episode first (weight EPW), the shelf after. STATE's current/superseded facts and FOLLOW's past / now apply as
+they do for options, so "Where is Sandra?" takes the current place and "Where was Sandra before?" the superseded one.
+
+**W2. Say the filler as the text said it.** The short answer is the filler's own phrase, taken from the sentence the
+fact points to (the pointer is already there: the open-book part re-reads it). The full answer is the question's
+frame with the hole filled, put into words by the sentence that filled it: Mimir echoes the question with the answer
+in it ("Where is the football?" → "The football is in the garden"). Children answer this way before they can
+compose. No new words are invented: every word said is either the question's or the text's. This is what SQuAD,
+CoQA, QuAC and DROP measure (exact match and word F1 against the reference span).
+
+**W3. Nothing fills the hole: say so.** When no fact fits the frame above a threshold (set on dev), the answer is
+"I don't know" (SQuAD 2.0's unanswerable half, QuAC's "cannot answer"). This is the brain-like default and it is
+honest; an LLM has no such state. The threshold is the only knob.
+
+**W4. A conversation is an episode.** Each turn, question and answer alike, is read into the episode as the passage
+was, so the pronouns of the next question ("Where did *she* go then?") resolve by the rules FOLLOW and READ2 already
+have, and an answer given becomes a fact Mimir remembers having said. CoQA and QuAC are conversations over a passage;
+a chat with the owner is the same thing without the passage: the shelf is the memory it answers from, and what the
+owner says is read in and kept (the owner's memory is the brain's, docs/JOURNAL.md Goal).
+
+**W5. A habit of word order, later.** Echoing the text is stilted. The brain's fluency is a sequence habit (the
+next word is pre-activated before it is heard: the N400, skipped predictable words). Mimir's version: a small
+sequence memory over the shelf's words, learned the Hebbian way the cortex is (each word strengthens the link to the
+one that follows it, weakened when it does not), used only to **order and connect** the words a frame already chose,
+never to add content. Pruned to the words met often it fits the phone. This is the last part, and it is not an LLM:
+it chooses no fact, it holds no knowledge, it is the mouth and not the mind.
+
+Unconventional and allowed by the owner: no backpropagation anywhere, no pretrained model behind it, no text that
+does not point back to a page in the shelf or a turn in the conversation.
+
+## Benchmarks (the answering tests)
+
+| test | what | n | measure | published |
+|---|---|---|---|---|
+| bAbI 1-20 in words | the state / list / count / yes-no answer as a word | 20 × 1,000 test | exact match | the roles reader (10-12) 94 mean on the same tasks |
+| SQuAD 1.1 dev | a span of the paragraph | 10,570 | EM / F1 | sliding window 20 F1, logistic regression 51, BiDAF 77, human 91 |
+| SQuAD 2.0 dev | half unanswerable (W3) | 11,873 | EM / F1 | BiDAF++ 65 F1, human 89 |
+| CoQA dev | conversation over a passage (W4) | 7,983 | F1 | DrQA + PGNet 65, human 89 |
+| QuAC dev | conversation, "cannot answer" (W3 + W4) | 7,354 | F1 | BiDAF++ 60, human 81 |
+| DROP dev | numbers, dates, counting | 9,536 | EM / F1 | NAQANet 47, human 96 |
+| NarrativeQA (summaries) | free answers | 10,557 | Rouge-L | BiDAF 36, human ~ |
+| the hand-written stories (18 so far) | the right option's text as the reference | 180 | F1 | |
+
+**Dev**: SQuAD 1.1 train (a fixed 2,000), bAbI train in words (tasks 1, 2, 6, 9, 11, 13 as STATE used), CoQA train
+(a fixed 500 conversations), the dev stories answered in words. **Test, once**: the dev splits above (the standard
+test splits are hidden). The owner's private tests are never developed on.
+
+## Rules
+
+* Measurement first: `bg ask <brain> <file>` (W1 + W2 with no threshold) run once on the dev sets gives the baseline
+  before any tuning; the choice test files already in `data/understand/survey` are reused where the right option's
+  text is the reference.
+* Every earlier test (the survey's 17 files, MCTest / RACE, the stories, the five general tests) stays in the
+  choice rule: answering in words must cost nothing in choosing among options (none falls more than a point).
+* All runs in Colab, once per test, runtime deleted after; droplet for code and the tiny brain. Reported as they come;
+  losers' code deleted; the journal updated. Adoption is the owner's call.
+* Order: W1 + W2 (SQuAD 1.1, bAbI in words, the stories) → W3 (SQuAD 2.0, QuAC) → W4 (CoQA, QuAC) → DROP's
+  counting and dates (with bAbI 7 counting, which is 42 today) → W5 last, on the stories and a conversation with the
+  owner, judged by the owner.
+
+## When
+
+After the understanding program's steps (BoolQ next), or when the owner says so. Each understanding step from here
+notes under "For speaking" what it adds that W1-W4 will use (STATE: the current place and holder, the superseded
+"before"; BoolQ: a true / false / unknown judgement for W3).

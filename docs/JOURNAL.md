@@ -12,7 +12,12 @@ A brain that runs on a phone: it reads anything its owner gives it, keeps it, un
 it, and answers from it, on the phone's own CPU, built like a brain (no LLM, no
 backpropagation). Each owner decides what its memory holds; a bigger device holds more; it
 stays fast everywhere (≥ 10k tokens/s on the S22 Ultra's little core). Producing sentences
-comes later.
+comes after understanding: the owner (2026-10-17): "the goal is to be brain like no backdrop … a method no matter
+how unconventional that will help mimir to be able to answer questions with words so that it can reply to
+conversations; after we nail the understanding tests benchmarks let's nail the answering test benchmarks". The
+method is settled in docs/SPEAK.md (meaning first, words after: the question is a frame with a hole, the answer is
+the filler said as the text said it, "I don't know" when nothing fills it, a conversation is an episode, a habit of
+word order last); its tests are SQuAD, SQuAD 2.0, CoQA, QuAC, DROP, NarrativeQA and bAbI in words.
 
 Now: **Laya-level understanding.** Laya (421M parameters) scores MMLU high school 33.2,
 CommonsenseQA 44.7, ARC-Easy 50.1, ARC-Challenge 30.5, OpenBookQA 40.0.
@@ -143,6 +148,8 @@ Lessons that keep coming back:
 
 ## Open
 
+* **Then (owner 2026-10-17): answering in words** (docs/SPEAK.md): after the understanding program, the frame-with-a-hole
+  method on SQuAD / CoQA / QuAC / DROP / NarrativeQA / bAbI in words; each understanding step notes what it adds for it.
 * **Now (next in the program): yes/no with thin support** (BoolQ 46.7, picks "no" 70% of the time while 62% of the
   answers are "yes"). Then, carried from STATE: the natural phrasings of a state are not read as states yet ("the key
   is with Mrs. Okafor now", "has a zinc roof now", "not angry anymore", "gave it back to her", "went home with the
@@ -180,6 +187,8 @@ Lessons that keep coming back:
 
 ## Log
 
+* 2026-10-17: the owner set the direction after understanding: brain-like with nothing behind it, answer in words, reply to
+  conversations; docs/SPEAK.md written (the method and the answering benchmarks), the Goal updated. Next: BoolQ.
 * 2026-10-17: the survey rerun after STATE (Colab, once, 17 files, 21:50-00:08 UTC): bAbI 42.8 → 57.0, every other test
   within 0.1 of before (results/survey.txt STATE column; docs/SURVEY.md). Runtime deleted. Next in the program: BoolQ.
 * 2026-10-16: STATE adopted (owner: "we will adopt it"): the S4 switch and the EPDBG trace removed (byte-identical to
