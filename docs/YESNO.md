@@ -89,7 +89,17 @@ reader fixes Y7 + Y8 keep BoolQ and lift MC500 dev 0.5 and MMLU dev 0.5 with not
 
 | 234, Y6 fixed (run 3) | 61.00 | 97% | 67.07 | 67/70 | 52.78 / 57.75 / 40.69 |
 
-## Where dev ends (2026-10-17, after three runs)
+## The owner's answer (2026-10-17)
+
+"It should reflect real judgement; don't stop until Mimir passes those tests at Laya level or GPT-2 or 3 level and can start
+answering also." So: no test with `S5=234`; dev goes on past the three-run cap until the judgement is real (says "yes" near the
+answer rate, and "false" right more often than the prior), with every run logged and nothing falling more than a point. The
+targets for BoolQ: GPT-3 zero-shot 60.5, few-shot 76.4; the owner's level is the few-shot one. The work is the reader on
+Wikipedia prose (negated facts keeping their arguments) and evidence against a statement beyond the word "not" (the same
+slot filled otherwise, an "only" / "except", a list the subject is missing from). The tiny brain on the droplet gives the
+passage-side judgement without Colab (the episode facts are the same on any brain); Colab confirms.
+
+## Where dev stood after three runs (2026-10-17 08:45 UTC)
 
 The candidate is `S5=234`: Y4, Y2, Y6, Y7, Y8. Against the choice rule: BoolQ train +13.9 (47.1 → 61.0) ✓; bAbI train
 −0.8 ✓; dev stories 67/70 ✓; passage dev mean +0.2 ✓; general dev none worse than 0.2 ✓; **says "yes" 97%: ✗** (the rule

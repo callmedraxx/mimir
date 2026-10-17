@@ -19,6 +19,9 @@ method is settled in docs/SPEAK.md (meaning first, words after: the question is 
 the filler said as the text said it, "I don't know" when nothing fills it, a conversation is an episode, a habit of
 word order last); its tests are SQuAD, SQuAD 2.0, CoQA, QuAC, DROP, NarrativeQA and bAbI in words.
 
+The owner (2026-10-17): "it should reflect real judgement; don't stop until Mimir passes those tests at Laya level or
+GPT-2 or 3 level and can start answering also." A gain that is a prior or an artefact does not count.
+
 Now: **Laya-level understanding.** Laya (421M parameters) scores MMLU high school 33.2,
 CommonsenseQA 44.7, ARC-Easy 50.1, ARC-Challenge 30.5, OpenBookQA 40.0.
 
@@ -187,6 +190,11 @@ Lessons that keep coming back:
 
 ## Log
 
+* 2026-10-17: YESNO (docs/YESNO.md) dev: the "no" lean was an artefact ("yes" counted as an option word, "no" not); with it
+  fixed and two reader fixes ("as" + noun phrase, an opening participle) BoolQ train 47.1 → 61.0 and nothing falls, but it
+  says yes 97%: the gain is the prior. Owner: "it should reflect real judgement; don't stop until Mimir passes those tests at
+  Laya level or GPT-2 or 3 level and can start answering also." No test run; dev continues on the reader and on evidence
+  against a statement.
 * 2026-10-17: the owner set the direction after understanding: brain-like with nothing behind it, answer in words, reply to
   conversations; docs/SPEAK.md written (the method and the answering benchmarks), the Goal updated. Next: BoolQ.
 * 2026-10-17: the survey rerun after STATE (Colab, once, 17 files, 21:50-00:08 UTC): bAbI 42.8 → 57.0, every other test
