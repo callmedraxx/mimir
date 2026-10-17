@@ -540,13 +540,16 @@ static float kfact_sim(Know *A, const Frame *h, const KF *f) {
     double num = 0, den = 0, vs = 1;
     if (h->verb != NONE) { int light = h->verb == A->R.w_be || h->verb == A->R.w_have || h->verb == A->R.w_do; double w = light ? 0.3 : 1.0;
         QW v = { lx_id(A->t.voc[h->verb].word, 0), wmid(A->t.voc[h->verb].word) }; vs = f->verb != NONE ? qsim(&v, f->verb) : 0; num += w * vs; den += w; }
+    double subj = -1; int others = 0, matched = 0;   /* Y5b: the statement's subject and how many of its other things the fact holds */
     for (int i = 0; i < h->narg; i++) { const Arg *a = &h->a[i]; if (a->head >= OPEN || !content(A, a->head)) continue;
         QW x = { lx_id(A->t.voc[a->head].word, 0), wmid(A->t.voc[a->head].word) }; double best = 0;
         for (int j = 0; j < f->narg; j++) { Arg b = { f->role[j], 0, f->prep[j], 0, 0 }, aa = *a; aa.prep = a->prep < OPEN ? lx_id(A->t.voc[a->prep].word, 0) : NONE;
             double s = role_fit(&aa, &b) * fmax(qsim(&x, f->head[j]), f->mod[j] != NONE ? 0.6 * qsim(&x, f->mod[j]) : 0); if (s > best) best = s; }
-        num += best; den += 1; }
+        num += best; den += 1;
+        if (subj < 0 && (a->role == A_AGENT || i == 0)) subj = best; else { others++; matched += best >= 0.5; } }
     if (den <= 0) return 0;
     double s = num / den; if ((h->flags & F_NEG) != (f->flags & F_NEG) && s > (s5(4) ? 0.35 : 0.5)) s = vs >= 0.5 ? -s : (yn_mode && s5(16)) ? -0.5 * s : s * 0.3;   /* it says the opposite (of the same doing); Y3: from 0.35; Y5: for a yes/no judgement a "not" about the same things counts against even with another verb */
+    else if (yn_mode && s5(512) && (h->flags & F_NEG) != (f->flags & F_NEG) && vs < 0.5 && subj >= 0.8 && (others == 0 || matched > 0) && s > 0.3) s = -0.5 * s;   /* Y5b: "the certificate is not considered proof of identity" against "the certificate is a valid form of id": the same subject, one more thing in common, said with "not" */
     if ((h->flags & F_TENSE) && (f->flags & F_TENSE) && (h->flags & F_TENSE) != (f->flags & F_TENSE)) s *= TENSEW;   /* F2: said of another time */
     return (float)s;
 }
@@ -803,6 +806,7 @@ static void yesno_judge(BParts *P, int yes) {
         if (!thin) for (int o = 0; o < 2; o++) { P[o].fact = EPW * P[o].efact; P[o].joint = EPW * P[o].ejoint; P[o].open = EPW * P[o].eopen; P[o].optr = P[o].eptr; } }
     if (s5(2)) {
         double ev = (BW[0] * P[yes].fact + BW[1] * P[yes].joint + BW[2] * P[yes].open) - (BW[0] * P[no].fact + BW[1] * P[no].joint + BW[2] * P[no].open);
+        if (s5(2048) && P[0].active && P[1].active) ev = EPW * (P[yes].efact - P[no].efact);   /* Y10: the judgement is the passage's facts alone (open book and the shelf are at the prior's precision, docs/YESNO.md) */
         yn_state = ev > YTHIN2 ? 1 : ev < -YTHIN2 ? 2 : 3;
         if (yn_state == 3) { for (int o = 0; o < 2; o++) P[o].fact = P[o].joint = P[o].open = 0; P[yes].fact = 1e-6; } }
 }

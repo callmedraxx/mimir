@@ -98,6 +98,9 @@ enum { A_AGENT, A_PAT, A_ATTR, A_PP };
 typedef struct { uint8_t role, k; uint32_t prep, head, mod; } Arg;
 #define MAXARG 8
 enum { F_NEG = 1, F_EITHER = 2, F_FUT = 4, F_Q = 8, F_PASS = 16, F_PAST = 32, F_PRES = 64 };   /* F_PAST / F_PRES: docs/FOLLOW.md F2 */
+/* docs/YESNO.md: the switch S5 (1 Y1 the passage judges a yes/no question, 2 Y2 true / false / unknown, 4 Y3 "not" turns around from 0.35,
+   8 Y4 a bare yes has no words, 16 Y5, 32 Y6, 64 Y7 "as" + noun phrase a preposition, 128 Y8 an opening participle describes the noun, 256 Y9 the question's subject as a noun phrase, 512 Y5b, 1024 Y11 hyphenated words) */
+static int S5 = -1; static int s5(int bit) { if (S5 < 0) { const char *e = getenv("S5"); S5 = e ? atoi(e) : 0; } return S5 & bit; }
 #define F_TENSE (F_PAST | F_PRES)
 typedef struct { uint32_t verb, part; uint8_t flags, tc, narg; Arg a[MAXARG]; uint32_t when; int ev; } Frame;
 
@@ -177,6 +180,10 @@ static int expand(Reader2 *R, const TextToken *tok, uint32_t a, uint32_t b, Tk *
         if (k->kind != TEXT_WORD && k->kind != TEXT_LETTER) { if (k->end && n) ends[n - 1] = 1; continue; }
         char s[64]; snprintf(s, sizeof s, "%s", w); size_t L = strlen(s);
         const char *second = 0; int poss = 0, neg = 0, noend = 0;
+        /* docs/YESNO.md Y11: "shoot-out", "tie-breaker": a hyphenated word is one word (a noun unless the table knows it) */
+        while (s5(1024) && i + 2 < b && tok[i + 1].kind == TEXT_PUNCT && t->voc[tok[i + 1].word].word[0] == '-' && tok[i + 1].src == k->src + k->len && tok[i + 2].kind == TEXT_WORD && tok[i + 2].src == tok[i + 1].src + 1) {
+            const char *w2 = t->voc[tok[i + 2].word].word; if (L + 1 + strlen(w2) >= sizeof s) break;
+            s[L] = '-'; strcpy(s + L + 1, w2); L = strlen(s); k = &tok[i + 2]; i += 2; }
         /* "said no." is not the abbreviation "No." (number), and it ends the sentence */
         if (!strcmp(s, "number") && k->len == 3 && k->src + 3 <= t->src_len && !strncasecmp(t->src + k->src, "no.", 3)) { strcpy(s, "no"); L = 2; noend = 1; }
         if (L > 3 && !strcmp(s + L - 3, "n't")) {
@@ -230,9 +237,6 @@ static int is_nounish(const Tk *k) { return k->c == 'N' || k->c == 'P' || k->c =
 static int is_verbish(const Tk *k) { return k->c == 'V' || k->c == 'X' || k->c == 'M'; }
 
 /* one sentence's tokens → chunks */
-/* docs/YESNO.md: the switch S5 (1 Y1 the passage judges a yes/no question, 2 Y2 true / false / unknown, 4 Y3 "not" turns around from 0.35,
-   8 Y4 a bare yes has no words, 16 Y5, 32 Y6, 64 Y7 "as" + noun phrase a preposition, 128 Y8 an opening participle describes the noun) */
-static int S5 = -1; static int s5(int bit) { if (S5 < 0) { const char *e = getenv("S5"); S5 = e ? atoi(e) : 0; } return S5 & bit; }
 static int is_w(Reader2 *R, uint32_t id, const char *w);
 static int chunk(Reader2 *R, Tk *k, int n, Chunk *ch, int max) {
     int m = 0;
@@ -268,7 +272,7 @@ static int chunk(Reader2 *R, Tk *k, int n, Chunk *ch, int max) {
         if (art && (k[i].c == 'V' || k[i].c == 'R' || k[i].c == 'X') && !(i + 1 < n && is_nounish(&k[i + 1]))) k[i].c = 'N';
         if (i && (k[i - 1].c == 'D' || k[i - 1].poss || k[i - 1].c == 'J') && k[i].c == 'V' && i + 1 < n && is_nounish(&k[i + 1])) k[i].c = 'J';
         /* docs/YESNO.md Y8: "Converted penalties are not considered": a participle opening the sentence before a noun and its verb describes the noun */
-        if (s5(128) && i == 0 && k[0].c == 'V' && k[0].vb != k[0].id && n > 2 && is_nounish(&k[1]) && (k[2].c == 'X' || k[2].c == 'M' || k[2].c == 'V')) k[0].c = 'J';
+        if (s5(128) && i == 0 && k[0].c == 'V' && k[0].vb != k[0].id && n > 2 && is_nounish(&k[1])) { int j = 1; while (j < n && is_nounish(&k[j])) j++; if (j < n && (k[j].c == 'X' || k[j].c == 'M' || k[j].c == 'V')) k[0].c = 'J'; }
     }
     /* a noun or adjective that can be a verb is the verb when a subject came before and no verb yet */
     { int sawverb = 0, sawnp = 0;
