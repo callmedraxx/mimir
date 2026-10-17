@@ -910,6 +910,7 @@ static double word_f1(const char *said, const char *gold) {
     int used[32] = { 0 }, hit = 0; for (int i = 0; i < na; i++) for (int j = 0; j < nb; j++) if (!used[j] && !strcmp(a[i], b[j])) { used[j] = 1; hit++; break; }
     if (!hit) return 0; double pr = (double)hit / na, rc = (double)hit / nb; return 2 * pr * rc / (pr + rc);
 }
+static int numlike(const char *w);
 /* docs/SPEAK.md W2: the filler said as the text said it. The fact points into the episode's text; in its sentence the word whose
    lemma is the filler's (or begins with it: panthers / panther) is found, and the capitalised or modifying words just before it
    are kept ("Carolina Panthers", "Levi Stadium"); a number word's digits are found by its value. */
@@ -924,6 +925,9 @@ static int ask_surface(const KF *f, int j, char *out, size_t cap) {
     int hit = -1;
     for (int w = 0; w < nw && hit < 0; w++) { size_t wl = we[w] - ws[w]; char t[64]; if (wl >= sizeof t) continue; for (size_t x = 0; x < wl; x++) t[x] = (char)tolower((unsigned char)epbuf[ws[w] + x]); t[wl] = 0;
         if (!strcmp(t, lem) || (wl > L && !strncmp(t, lem, L) && wl - L <= 2) || (numv >= 0 && atoi(t) == numv && isdigit((unsigned char)t[0]))) hit = w; }
+    if (hit < 0 && numlike(lem)) {           /* a number said in figures ("24-10", "2015", "1,200"): the sentence's first run of digits */
+        for (size_t i = a; i < b; i++) if (isdigit((unsigned char)epbuf[i]) && (i == a || !isalnum((unsigned char)epbuf[i - 1]))) { size_t e = i; while (e < b && (isdigit((unsigned char)epbuf[e]) || ((epbuf[e] == '-' || epbuf[e] == ',' || epbuf[e] == '.' || epbuf[e] == ':') && e + 1 < b && isdigit((unsigned char)epbuf[e + 1])))) e++;
+            size_t len = e - i; if (len + 1 > cap) len = cap - 1; memcpy(out, epbuf + i, len); out[len] = 0; return 1; } }
     if (hit < 0) return 0;
     int st = hit;                                           /* the words before: the modifier, or capitalised words (a name) */
     while (st > 0) { size_t wl = we[st - 1] - ws[st - 1]; char t[64]; if (wl >= sizeof t) break; for (size_t x = 0; x < wl; x++) t[x] = (char)tolower((unsigned char)epbuf[ws[st - 1] + x]); t[wl] = 0;
@@ -932,6 +936,8 @@ static int ask_surface(const KF *f, int j, char *out, size_t cap) {
         if (ismod || cap_) st--; else break; }
     size_t len = we[hit] - ws[st]; if (len + 1 > cap) len = cap - 1; memcpy(out, epbuf + ws[st], len); out[len] = 0; return 1;
 }
+static int numlike(const char *w) { static const char *N[] = { "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety", "hundred", "thousand", "million", 0 };
+    for (int i = 0; N[i]; i++) { size_t L = strlen(N[i]); if (!strncmp(w, N[i], L) && (w[L] == 0 || w[L] == '-')) return 1; } return 0; }
 static int timelike(const char *w) {                     /* a number word, a month, a day of the week, a time of day */
     static const char *X[] = { "january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday", "morning", "afternoon", "evening", "night", "noon", "midnight", "yesterday", "today", "tomorrow", "week", "month", "year", "century", "summer", "winter", "spring", "autumn", "fall", 0 };
     static const char *N[] = { "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety", "hundred", "thousand", 0 };
@@ -941,6 +947,9 @@ static int ask_answer(Know *A, const char *q, char *out, size_t cap) {
         yn_state = 0; if (yn_slot == 2) { snprintf(out, cap, "maybe"); return 1; } if (s5(3)) yesno_judge(P, 0); double sc[2]; scores(q, P, 2, sc); snprintf(out, cap, "%s", sc[0] >= sc[1] ? "yes" : "no"); return 1; }
     TextContext *t = &A->t; uint32_t n0 = t->ntok; Refs keep = A->R.refs; text_take(t, NULL, q, strlen(q)); A->R.question = 1;
     Frame hf[8]; int wh = -1; int nh = read_span(&A->R, t->tok, n0, t->ntok, hf, 8, &wh); t->ntok = n0; t->src_len = 0; A->R.refs = keep; A->R.question = 0;
+    if (s5(2097152)) for (int i = 0; i < nh; i++) {        /* "What was the final score of the game?": the score is the subject, the hole is what it was */
+        int ag = -1, at = -1; for (int a = 0; a < hf[i].narg; a++) { if (hf[i].a[a].role == A_AGENT && hf[i].a[a].head == OPEN) ag = a; if (hf[i].a[a].role == A_ATTR && hf[i].a[a].head != OPEN) at = a; }
+        if (ag >= 0 && at >= 0 && hf[i].verb == A->R.w_be) { Arg t = hf[i].a[ag]; hf[i].a[ag] = hf[i].a[at]; hf[i].a[ag].role = A_AGENT; hf[i].a[at] = t; hf[i].a[at].role = A_ATTR; hf[i].a[at].mod = hf[i].a[ag].mod == NONE ? t.mod : NONE; } }
     int fi = -1, slot = -1; for (int i = 0; i < nh && fi < 0; i++) for (int a = 0; a < hf[i].narg; a++) if (hf[i].a[a].head == OPEN) { fi = i; slot = a; break; }
     if (fi < 0 && nh > 0 && wh >= 0 && wh < hf[0].narg) { fi = 0; slot = wh; }
     if (fi < 0) { snprintf(out, cap, "-"); return 0; }

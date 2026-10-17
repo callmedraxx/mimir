@@ -581,7 +581,7 @@ static int read_sentence(Reader2 *R, Tk *k, int n, Frame *out, int max, int *whs
                     && !((f->flags & F_PASS))) {                 /* "is made of flour": what it is made of, not "the flour's bread" */
                     f->a[last].mod = who[0];                       /* "the box of chocolates" */
                 } else if (last >= 0 && (sp == SP_OF || sp == SP_THAN) && (f->a[last].role == A_ATTR || f->a[last].role == A_PP) && f->a[last].mod == NONE && f->a[last].head < OPEN &&
-                    !(f->a[last].k & K_KIND)) {
+                    !(f->a[last].k & K_KIND) ) {
                     f->a[last].role = A_PP; f->a[last].prep = f->a[last].head; f->a[last].head = who[0]; f->a[last].mod = c->np.mod;
                 } else frame_arg(f, A_PP, c->prep, who[0], c->np.mod, 0);
             }
