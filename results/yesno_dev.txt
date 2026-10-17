@@ -45,3 +45,25 @@
 ==> general S5 15 RESULT bgarc file=mmlu_hs_dev.tsv n=370 acc=30.34 facts=32471614
 ==> general S5 15 RESULT bgarc file=csqa_traindev.tsv n=1000 acc=30.45 facts=32471614
 === picks (SHOW): S5 8 says yes 92%, 9 92%, 11 94% (true 354 right 64%, false 16 right 44%, unknown 582 answered yes right 59%)
+=== dev run 2 (07:13-08:14 UTC; Y6 before its wh-question fix, commit 7fcef26)
+==> S5 10 RESULT bgpass file=boolq_train.txt n=1000 acc=59.10 epw=4.00
+==> S5 10 babi_train 67.07 | dev stories 95/96.67/100/90 (67/70) | mc160.dev 52.78 mc500.dev 57.25 dev_middle 40.62
+==> S5 42 RESULT bgpass file=boolq_train.txt n=1000 acc=61.40 epw=4.00
+==> S5 42 babi_train 67.07 | dev stories 95/95/100/90 (66/70: stoneowl_8 "What did the mayor say?" + yes/no taken as a yes/no question; Y6 fixed to leave wh-questions alone, a178258) | mc160.dev 52.78 mc500.dev 57.25 dev_middle 40.62
+==> S5 234 RESULT bgpass file=boolq_train.txt n=1000 acc=61.20 epw=4.00
+==> S5 234 RESULT bgpass file=babi_train.txt n=1400 acc=67.07 epw=4.00
+==> S5 234 RESULT bgpass file=smart_tests.txt n=20 acc=95.00 epw=4.00
+==> S5 234 RESULT bgpass file=dev_stories.txt n=30 acc=95.00 epw=4.00
+==> S5 234 RESULT bgpass file=clock.txt n=10 acc=100.00 epw=4.00
+==> S5 234 RESULT bgpass file=bakery.txt n=10 acc=90.00 epw=4.00
+==> S5 234 RESULT bgpass file=mc160.dev.txt n=120 acc=52.78 epw=4.00
+==> S5 234 RESULT bgpass file=mc500.dev.txt n=200 acc=57.75 epw=4.00
+==> S5 234 RESULT bgpass file=dev_middle.txt n=1436 acc=40.69 epw=4.00
+==> general S5 234 RESULT bgarc file=easy_dev.tsv n=570 acc=47.19 facts=32471614
+==> general S5 234 RESULT bgarc file=challenge_dev.tsv n=299 acc=18.26 facts=32471614
+==> general S5 234 RESULT bgarc file=obqa_dev.tsv n=500 acc=25.05 facts=32471614
+==> general S5 234 RESULT bgarc file=mmlu_hs_dev.tsv n=370 acc=30.61 facts=32471614
+==> general S5 234 RESULT bgarc file=csqa_traindev.tsv n=1000 acc=30.65 facts=32471614
+==> S5 250 RESULT bgpass file=boolq_train.txt n=1000 acc=61.30 epw=4.00
+==> S5 250 RESULT bgpass file=babi_train.txt n=1400 acc=64.21 epw=4.00   (Y5 costs bAbI 3.7: out)
+==> S5 250 dev stories 95/95/100/90

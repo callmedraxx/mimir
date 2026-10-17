@@ -77,6 +77,16 @@ the same; MC160 dev 52.4 → 53.2, MC500 dev 57.4 → 57.9; BoolQ train's passag
 | 11 Y4 + Y1 + Y2 | 59.00 | 94% | 67.07 | 67/70 | 52.78 / 57.25 / 40.62 |
 | 15 + Y3 | 59.40 | | 67.00 | 67/70 | 52.78 / 58.25 / 40.55; general dev 47.19 / 18.26 / 24.85 / 30.34 / 30.45 (was 47.19 / 18.26 / 25.05 / 30.07 / 30.55) |
 
+| 10 Y4 + Y2 | 59.10 | | 67.07 | 67/70 | 52.78 / 57.25 / 40.62 |
+| 42 + Y6 | 61.40 | | 67.07 | 66/70 | 52.78 / 57.25 / 40.62 |
+| 234 + Y7 + Y8 | 61.20 | | 67.07 | 66/70 | 52.78 / 57.75 / 40.69; general dev 47.19 / 18.26 / 25.05 / 30.61 / 30.65 |
+| 250 + Y5 | 61.30 | | **64.21** | 66/70 | |
+
+Dev run 2 (masks 10, 42, 234, 250): Y1 off is 0.1 better than on; Y6 adds 2.3 but took one dev story ("What did the mayor
+say?" answered "no": a wh-question, not a judgement; Y6 now leaves wh-questions alone, checked on the tiny brain); the
+reader fixes Y7 + Y8 keep BoolQ and lift MC500 dev 0.5 and MMLU dev 0.5 with nothing down; Y5 costs bAbI train 3.7 (its
+"not" about the same things fires on bAbI's yes/no tasks) and is out. Dev run 3 (the last): mask 234 with the fixed Y6.
+
 Ties (the two statements scored alike) count half in the accuracy and go to "yes" in the picks. With Y2 the judgement
 was true 354 (right 64%), false 16 (right 44%), unknown 582 (answered yes, right 59%): the passage's evidence tells
 "true" a little better than the prior (62%) and "false" worse. Y1 (the passage alone) costs 1.3. Dev run 2: masks
