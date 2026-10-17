@@ -793,6 +793,8 @@ static int yesno_statement(const char *q, const char *opt, char *out, size_t cap
     return 1;
 }
 /* the statement an option makes: the option put where the question asks */
+/* docs/YESNO.md: the switch S5 (1 Y1 the passage judges a yes/no question, 2 Y2 true / false / unknown, 4 Y3 "not" turns around from 0.35) */
+static int S5 = -1; static int s5(int bit) { if (S5 < 0) { const char *e = getenv("S5"); S5 = e ? atoi(e) : 0; } return S5 & bit; }
 static int opt_prep(const char *o) { const char *e = o; while (*e && *e != ' ') e++; return e > o && wclass(o, (size_t)(e - o)) == 'I'; }   /* "in the lost box": says where already */
 static void statement(const char *q, const char *opt, char *out, size_t cap) {
     static const char *WH[] = { "what", "which", "who", "whom", "where", "when", "why", "how", 0 };

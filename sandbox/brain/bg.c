@@ -545,7 +545,7 @@ static float kfact_sim(Know *A, const Frame *h, const KF *f) {
             double s = role_fit(&aa, &b) * fmax(qsim(&x, f->head[j]), f->mod[j] != NONE ? 0.6 * qsim(&x, f->mod[j]) : 0); if (s > best) best = s; }
         num += best; den += 1; }
     if (den <= 0) return 0;
-    double s = num / den; if ((h->flags & F_NEG) != (f->flags & F_NEG) && s > 0.5) s = vs >= 0.5 ? -s : s * 0.3;   /* it says the opposite (of the same doing) */
+    double s = num / den; if ((h->flags & F_NEG) != (f->flags & F_NEG) && s > (s5(4) ? 0.35 : 0.5)) s = vs >= 0.5 ? -s : s * 0.3;   /* it says the opposite (of the same doing); Y3: from 0.35 */
     if ((h->flags & F_TENSE) && (f->flags & F_TENSE) && (h->flags & F_TENSE) != (f->flags & F_TENSE)) s *= TENSEW;   /* F2: said of another time */
     return (float)s;
 }
@@ -779,6 +779,26 @@ static void ep_read(Know *k, const char *text) {
     for (uint32_t e = 0; e < nep; e++) { uint32_t w[8]; int n = kf_words(&ep[e], w); for (int j = 0; j < n; j++) if (w[j] < nepword) epword[w[j]] = 1; }
 }
 #define MAXO 24                                        /* options a passage question may have (docs/SURVEY.md: CBT 10, ReCoRD up to 24) */
+/* ---- docs/YESNO.md: a yes/no question about a passage ------------------------------------------------------------ */
+/* Y1: the passage judges it: when the passage is read (both statements active) the shelf's fact, joint and open-book parts are
+   replaced by the episode's own (weighted EPW as always), unless the passage says nothing of either statement (both within
+   YTHIN of zero), when the shelf stays. Y2: the judgement has three values: the evidence for "yes" less that for "no" (fact and
+   open book, weighted as the score is) above YTHIN2 is true, below -YTHIN2 false, between them unknown, and an unknown yes/no
+   question asked of a text is answered yes (BoolQ: 62% of the answers are yes; a question is asked when the asker leans to yes).
+   yn_state is 1 true, 2 false, 3 unknown for SHOW (docs/SPEAK.md W3 will say "I don't know"). */
+static int yn_state; static double YTHIN = 0.05, YTHIN2 = 0.1;
+static int yn_opt(const char *o) { return is_word_at(o, "yes") ? 1 : is_word_at(o, "no") ? 2 : 0; }
+static void yesno_judge(BParts *P, int yes) {
+    if (getenv("YTHIN")) YTHIN = atof(getenv("YTHIN")); if (getenv("YTHIN2")) YTHIN2 = atof(getenv("YTHIN2"));
+    int no = 1 - yes;
+    if (s5(1) && P[0].active && P[1].active) {
+        int thin = fabs(P[0].efact) < YTHIN && fabs(P[0].eopen) < YTHIN && fabs(P[1].efact) < YTHIN && fabs(P[1].eopen) < YTHIN;
+        if (!thin) for (int o = 0; o < 2; o++) { P[o].fact = EPW * P[o].efact; P[o].joint = EPW * P[o].ejoint; P[o].open = EPW * P[o].eopen; P[o].optr = P[o].eptr; } }
+    if (s5(2)) {
+        double ev = (BW[0] * P[yes].fact + BW[1] * P[yes].joint + BW[2] * P[yes].open) - (BW[0] * P[no].fact + BW[1] * P[no].joint + BW[2] * P[no].open);
+        yn_state = ev > YTHIN2 ? 1 : ev < -YTHIN2 ? 2 : 3;
+        if (yn_state == 3) { for (int o = 0; o < 2; o++) P[o].fact = P[o].joint = P[o].open = 0; P[yes].fact = 1e-6; } }
+}
 static int run_passages(int nfile, char **files) {
     Know A; answer_ctx(&A); Know k; memset(&k, 0, sizeof k); text_init(&k.t); r2_init(&k.R, &k.t, &k.wm);
     cx_epst = 0x2545F4914F6CDD1Dull; if (getenv("SUPW")) SUPW = atof(getenv("SUPW")); state_init();
@@ -797,6 +817,7 @@ static int run_passages(int nfile, char **files) {
             int no = nf - 4; const char *ans = fld[nf - 1]; const char *q = fld[2]; int want = ans[0] - 'A'; BParts P[MAXO]; double sc[MAXO];
             int right[MAXO]; for (int o = 0; o < no; o++) right[o] = strchr(ans, 'A' + o) != 0;
             for (int o = 0; o < no; o++) { bg_option(&A, q, fld[3 + o], &P[o]); A.t.ntok = 0; }
+            yn_state = 0; if (s5(3) && no == 2 && yesno_q(q) && yn_opt(fld[3]) && yn_opt(fld[4])) yesno_judge(P, yn_opt(fld[3]) == 1 ? 0 : 1);   /* docs/YESNO.md */
             { int ex = 0; for (int o = 0; o < no; o++) ex += P[o].active && P[o].fact >= FX * EPW * 0.5;     /* F5: one option said almost whole by the passage: the fact decides */
                 if (ex == 1) for (int o = 0; o < no; o++) { P[o].open *= FO; P[o].joint *= FO; } }
             scores(q, P, no, sc);
@@ -806,7 +827,7 @@ static int run_passages(int nfile, char **files) {
                 for (int o = 0; o < no; o++) fprintf(dump, "\t%.5f %.5f %.5f %.5f %.5f %d", P[o].fact, P[o].joint, P[o].open, P[o].mean, P[o].fit, P[o].active);
                 if (getenv("EPDUMP")) for (int o = 0; o < no; o++) fprintf(dump, "\t%.5f %.5f %.5f", P[o].efact, P[o].ejoint, P[o].eopen);   /* docs/YESNO.md Y0: the episode's own parts */
                 fprintf(dump, "\n"); }
-            if (getenv("SHOW")) { int pick = 0; for (int o = 1; o < no; o++) if (sc[o] > sc[pick] + 1e-9) pick = o; printf("  %s\t%s\tpick=%s\tright=%s\t%s\n", fld[1], q, fld[3 + pick], want >= 0 && want < no ? fld[3 + want] : ans, right[pick] ? "OK" : "WRONG"); }
+            if (getenv("SHOW")) { int pick = 0; for (int o = 1; o < no; o++) if (sc[o] > sc[pick] + 1e-9) pick = o; printf("  %s\t%s\tpick=%s\tright=%s\t%s%s\n", fld[1], q, fld[3 + pick], want >= 0 && want < no ? fld[3 + want] : ans, right[pick] ? "OK" : "WRONG", yn_state == 1 ? "\ttrue" : yn_state == 2 ? "\tfalse" : yn_state == 3 ? "\tunknown" : ""); }
             n++; }
         if (open) ep_end();
         fclose(f); if (dump) fflush(dump);
