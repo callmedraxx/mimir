@@ -633,6 +633,7 @@ static void score_cands(Know *A, Frame *hf, int nh, int focus, const QW *Q, int 
 static int asks_opposite(const char *q);
 static int yesno_q(const char *q) { static const char *AUX[] = { "do", "does", "did", "is", "are", "was", "were", "can", "could", "will", "would", "has", "have", "had", 0 };
     for (int i = 0; AUX[i]; i++) if (is_word_at(q, AUX[i])) return 1; return 0; }
+static int rel_verdict(Know *A, Frame *hf, int nh); static int ep_mod_exists(uint32_t x);
 static int yn_slot;   /* docs/YESNO.md Y12: the episode's current state of the statement's slot says +1 the same value, -1 another value, 0 nothing */
 static int state_verdict(Know *A, Frame *hf, int nh);
 static int yn_bare(const char *o) { return (is_word_at(o, "yes") && !o[3]) || (is_word_at(o, "no") && !o[2]); }
@@ -643,6 +644,7 @@ static void bg_option(Know *A, const char *q, const char *opt, BParts *P) {
     static Frame hf[64], qf[64], of[64]; uint32_t sw[256], qwl[256], owl[128]; int nsw, nq, now_;
     int nh = read_statement(A, st, hf, 64, sw, &nsw, 256); read_statement(A, q, qf, 64, qwl, &nq, 256); read_statement(A, opt, of, 64, owl, &now_, 128);
     if (yn_mode && s5(4096) && is_word_at(opt, "yes") && nep) yn_slot = state_verdict(A, hf, nh);   /* Y12 */
+    if (yn_mode && s5(65536) && is_word_at(opt, "yes") && nep && !yn_slot) yn_slot = rel_verdict(A, hf, nh);   /* Y16 */
     if (getenv("STDBG")) { fprintf(stderr, "  STMT[%s]: %s\n", opt, st); for (int i = 0; i < nh; i++) { fprintf(stderr, "    %s%s%s", hf[i].flags & F_NEG ? "NOT " : "", hf[i].flags & F_PAST ? "[past] " : hf[i].flags & F_PRES ? "[now] " : "", hf[i].verb < OPEN ? A->t.voc[hf[i].verb].word : "-");
         for (int a_ = 0; a_ < hf[i].narg; a_++) fprintf(stderr, " %s%s%s=%s", hf[i].a[a_].role == A_AGENT ? "who" : hf[i].a[a_].role == A_PAT ? "what" : hf[i].a[a_].role == A_ATTR ? "is" : "pp", hf[i].a[a_].prep < OPEN ? ":" : "", hf[i].a[a_].prep < OPEN ? A->t.voc[hf[i].a[a_].prep].word : "", hf[i].a[a_].head < OPEN ? A->t.voc[hf[i].a[a_].head].word : "?"); fprintf(stderr, "\n"); } }   /* docs/YESNO.md dev trace */
     QW Q[256], O[128]; qwords(A, qwl, nq, Q);
@@ -809,7 +811,7 @@ static void ep_read(Know *k, const char *text) {
     if (s5(32768)) ep_time_order();                      /* Y15: "yesterday … this morning …": the order of saying is the order of the times said */
     ep_states();
     if (getenv("EPDBG")) for (uint32_t e = 0; e < nep; e++) { fprintf(stderr, "  ep%u ord=%u%s%s %s%s", e, ep_ord[e], ep_sup[e] ? " SUP" : "", ep_der[e] ? " der" : "", ep[e].flags & F_NEG ? "NOT " : "", ep[e].verb != NONE ? LX.s[ep[e].verb] : "-");
-        for (int a = 0; a < ep[e].narg; a++) fprintf(stderr, " %s%s%s=%s", ep[e].role[a] == A_AGENT ? "who" : ep[e].role[a] == A_PAT ? "what" : ep[e].role[a] == A_ATTR ? "is" : "pp", ep[e].prep[a] != NONE ? ":" : "", ep[e].prep[a] != NONE ? LX.s[ep[e].prep[a]] : "", LX.s[ep[e].head[a]]); fprintf(stderr, "\n"); }   /* dev trace */
+        for (int a = 0; a < ep[e].narg; a++) { fprintf(stderr, " %s%s%s=%s", ep[e].role[a] == A_AGENT ? "who" : ep[e].role[a] == A_PAT ? "what" : ep[e].role[a] == A_ATTR ? "is" : "pp", ep[e].prep[a] != NONE ? ":" : "", ep[e].prep[a] != NONE ? LX.s[ep[e].prep[a]] : "", LX.s[ep[e].head[a]]); if (ep[e].mod[a] != NONE) fprintf(stderr, "(%s)", LX.s[ep[e].mod[a]]); } fprintf(stderr, "\n"); }   /* dev trace */
     for (uint32_t i = 0; i < ncxjr; i++) if (!cxjr[i].which) { uint32_t g = cxjr[i].g; float n = cx_dot(CXU(g), CXU(g)); cxinv[g] = n > 0 ? 1 / sqrtf(n) : 0; }
     if (nepword < LX.n) { epword = realloc(epword, LX.n); memset(epword + nepword, 0, LX.n - nepword); nepword = LX.n; }
     for (uint32_t e = 0; e < nep; e++) { uint32_t w[8]; int n = kf_words(&ep[e], w); for (int j = 0; j < n; j++) if (w[j] < nepword) epword[w[j]] = 1; }
@@ -834,13 +836,56 @@ static int state_verdict(Know *A, Frame *hf, int nh) {
         if (same) return 1; if (other) return -1; }
     return 0;
 }
+/* Y16: "Is the pink rectangle to the right of the blue square?", "Does the chest fit in the suitcase?": a relation said, its inverse
+   ("below" is "above" the other way, "fits inside" is "bigger" the other way) and chains of it (above above = above). Each relation
+   fact becomes (REL, a, b) in one direction; the statement's pair is looked for along chains; the pair the other way round says no. */
+enum { R_ABOVE, R_LEFT, R_NORTH, R_EAST, R_BIGGER, R_NREL };
+static int rel_of(const char *w, int *flip) { static const struct { const char *w; int r, f; } T[] = { { "above", R_ABOVE, 0 }, { "below", R_ABOVE, 1 }, { "over", R_ABOVE, 0 }, { "under", R_ABOVE, 1 }, { "left", R_LEFT, 0 }, { "right", R_LEFT, 1 },
+        { "north", R_NORTH, 0 }, { "south", R_NORTH, 1 }, { "east", R_EAST, 0 }, { "west", R_EAST, 1 }, { "bigger", R_BIGGER, 0 }, { "larger", R_BIGGER, 0 }, { "smaller", R_BIGGER, 1 }, { "inside", R_BIGGER, 1 }, { "in", R_BIGGER, 1 }, { "into", R_BIGGER, 1 }, { 0, 0, 0 } };
+    for (int i = 0; T[i].w; i++) if (!strcmp(w, T[i].w)) { *flip = T[i].f; return T[i].r; } return -1; }
+/* an entity is its head with its modifier: "the blue square" is square(blue); a bare "the chocolate" is the thing modified by chocolate
+   (the box of chocolates), and a bare "the box" is the box said without a modifier */
+static int rel_same(const KF *f, int j, uint32_t x, uint32_t xm) {
+    if (xm != NONE) return f->head[j] == x && (f->mod[j] == xm || f->mod[j] == NONE);
+    return (f->head[j] == x && f->mod[j] == NONE) || f->mod[j] == x || (f->head[j] == x && !ep_mod_exists(x)); }
+static int ep_mod_exists(uint32_t x) { for (uint32_t e = 0; e < nep; e++) for (int a = 0; a < ep[e].narg; a++) if (ep[e].head[a] == x && ep[e].mod[a] != NONE) return 1; return 0; }
+static int rel_orth(int R) { return R == R_ABOVE ? R_LEFT : R == R_LEFT ? R_ABOVE : R == R_NORTH ? R_EAST : R == R_EAST ? R_NORTH : -1; }
+/* from (x, xm) to (y, ym) along R edges; the orthogonal relation's edges may be crossed either way (left of something above you is
+   left of you), at least one R edge used */
+static int rel_reach(int R, uint32_t x, uint32_t xm, uint32_t y, uint32_t ym, int depth, int used) {
+    if (depth > 5) return 0; int O = rel_orth(R);
+    for (uint32_t e = 0; e < nep; e++) { const KF *f = &ep[e]; if ((f->flags & F_NEG) || f->narg < 2 || !(f->verb == G_be || !strcmp(LX.s[f->verb], "fit"))) continue;
+        for (int j = 1; j < f->narg; j++) { if (f->role[j] != A_PP || f->prep[j] == NONE) continue; int flip, r = rel_of(LX.s[f->prep[j]], &flip); if (r < 0 || (r != R && r != O)) continue;
+            if (!strcmp(LX.s[f->prep[j]], "in") && f->verb == G_be) continue;             /* "is in the kitchen" is a place, not a size */
+            if (getenv("RELDBG")) fprintf(stderr, "    edge %s(%s) %s %s(%s) [r %d flip %d] from %s(%s) depth %d\n", LX.s[f->head[0]], f->mod[0] != NONE ? LX.s[f->mod[0]] : "-", LX.s[f->prep[j]], LX.s[f->head[j]], f->mod[j] != NONE ? LX.s[f->mod[j]] : "-", r, flip, LX.s[x], xm != NONE ? LX.s[xm] : "-", depth);
+            for (int dir = 0; dir < 2; dir++) {                                           /* dir 1: the edge crossed backwards (orthogonal only) */
+                if (dir == 1 && r != O) continue;
+                int from_i = (flip ^ dir) ? j : 0, to_i = (flip ^ dir) ? 0 : j;
+                if (!rel_same(f, from_i, x, xm)) continue;
+                int u = used || r == R;
+                if (u && rel_same(f, to_i, y, ym)) return 1;
+                if (rel_reach(R, f->head[to_i], f->mod[to_i], y, ym, depth + 1, u)) return 1; } } }
+    return 0;
+}
+static int rel_verdict(Know *A, Frame *hf, int nh) {
+    for (int i = 0; i < nh; i++) { const Frame *F = &hf[i]; if (F->narg < 2 || F->a[0].head >= OPEN) continue;
+        for (int j = 1; j < F->narg; j++) { if (F->a[j].role != A_PP || F->a[j].prep >= OPEN || F->a[j].head >= OPEN) continue; int flip, r = rel_of(A->t.voc[F->a[j].prep].word, &flip); if (r < 0) continue;
+            if (!strcmp(A->t.voc[F->a[j].prep].word, "in") && F->verb == A->R.w_be) continue;
+            uint32_t p = lx_id(A->t.voc[F->a[0].head].word, 0), pm = F->a[0].mod < OPEN ? lx_id(A->t.voc[F->a[0].mod].word, 0) : NONE;
+            uint32_t q = lx_id(A->t.voc[F->a[j].head].word, 0), qm = F->a[j].mod < OPEN ? lx_id(A->t.voc[F->a[j].mod].word, 0) : NONE;
+            if (flip) { uint32_t t = p; p = q; q = t; t = pm; pm = qm; qm = t; }
+            int v = rel_reach(r, p, pm, q, qm, 0, 0) ? 1 : -1;   /* a relation asked that the text does not give holds not (positions and sizes are told whole) */
+            if (getenv("RELDBG")) fprintf(stderr, "  REL %s: %s(%s) -> %s(%s) = %d\n", A->t.voc[F->a[j].prep].word, LX.s[p], pm != NONE ? LX.s[pm] : "-", LX.s[q], qm != NONE ? LX.s[qm] : "-", v);
+            return v; } }
+    return 0;
+}
 static void yesno_judge(BParts *P, int yes) {
     if (getenv("YTHIN")) YTHIN = atof(getenv("YTHIN")); if (getenv("YTHIN2")) YTHIN2 = atof(getenv("YTHIN2"));
     int no = 1 - yes;
     if (s5(1) && P[0].active && P[1].active) {
         int thin = fabs(P[0].efact) < YTHIN && fabs(P[0].eopen) < YTHIN && fabs(P[1].efact) < YTHIN && fabs(P[1].eopen) < YTHIN;
         if (!thin) for (int o = 0; o < 2; o++) { P[o].fact = EPW * P[o].efact; P[o].joint = EPW * P[o].ejoint; P[o].open = EPW * P[o].eopen; P[o].optr = P[o].eptr; } }
-    if (s5(4096) && yn_slot) { yn_state = yn_slot > 0 ? 1 : 2; for (int o = 0; o < 2; o++) P[o].fact = P[o].joint = P[o].open = 0; P[yn_slot > 0 ? yes : no].fact = EPW; return; }   /* Y12: the state decides */
+    if (s5(4096 | 65536) && yn_slot) { yn_state = yn_slot > 0 ? 1 : 2; for (int o = 0; o < 2; o++) P[o].fact = P[o].joint = P[o].open = 0; P[yn_slot > 0 ? yes : no].fact = EPW; return; }   /* Y12: the state decides */
     if (s5(2)) {
         double ev = (BW[0] * P[yes].fact + BW[1] * P[yes].joint + BW[2] * P[yes].open) - (BW[0] * P[no].fact + BW[1] * P[no].joint + BW[2] * P[no].open);
         if (s5(2048) && P[0].active && P[1].active) ev = EPW * (P[yes].efact - P[no].efact);   /* Y10: the judgement is the passage's facts alone (open book and the shelf are at the prior's precision, docs/YESNO.md) */

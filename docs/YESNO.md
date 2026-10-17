@@ -121,6 +121,14 @@ carry time words (yesterday, last night, this morning, today, this afternoon, th
 its sentence's time first, its saying second; the derived states follow. Tiny brain: bAbI task 14 in words 72 → 97, the
 dev stories unchanged.
 
+**Y16. A relation said, its inverse and its chains decide a yes/no (bit 65536).** "Is the pink rectangle to the right of
+the blue square?", "Does the chest fit in the suitcase?": each relation fact is kept one way round (below is above the
+other way; fits inside is bigger the other way; left / right, north / south, east / west alike), an entity is its head
+with its modifier ("the chocolate" is the box of chocolates, "the box" the one said without), and the asked pair is
+looked for along chains, crossing the orthogonal relation either way (what is left of something above you is left of
+you). A relation the text does not give holds not. Tiny brain, bAbI in words: task 17 46 → 100, task 18 52 → 99; the
+dev stories unchanged. These are general rules of relations (inverse, transitivity), not bAbI's.
+
 ## Dev run 4 and the threshold scan (2026-10-17): where BoolQ stands
 
 Full brain, masks 490 (Y9 added) / 1514 (+ Y5b, Y11) / 3562 (+ Y10): BoolQ train 61.9 / 61.9 / 61.7; bAbI train
