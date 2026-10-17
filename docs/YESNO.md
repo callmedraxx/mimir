@@ -115,6 +115,24 @@ Afterwards she travelled to the office. Mary went to the kitchen. Then she went 
 woman over someone who might be one" sent the last "she" to Sandra. The latest person named keeps the pronoun when
 their sex is not known to differ. Tiny brain: task 11 in words 78 → 99.5; the 70 dev-story questions unchanged.
 
+## Dev run 4 and the threshold scan (2026-10-17): where BoolQ stands
+
+Full brain, masks 490 (Y9 added) / 1514 (+ Y5b, Y11) / 3562 (+ Y10): BoolQ train 61.9 / 61.9 / 61.7; bAbI train
+67.07; dev stories 67/70; MC500 dev 58.25 (+1.0 on the adopted reader); RACE-M dev 40.6; general dev none down, OBQA
+and MMLU dev +0.2 / +0.5. The dump of 3562 scanned at every threshold (`results/yesno_dev.txt`): "true" is right 65-67%
+whatever the threshold (the answer is yes 62%), "false" fires on 8 to 35 of 1,000 questions and is right 50-88%, so the
+accuracy is 62.0-62.6 at every setting. **The passage gives Mimir no real "no" signal on BoolQ.** The "no" answers are
+inferences ("not in the Oyster zone" → cannot use the card, "cancelled plans for a sequel" → no second film) or need
+world knowledge; the reader fixes made the statements right and kept the negated facts' subjects, and it did not move
+the count, because the contradiction is not in the words. That is the next program step's skill (an inference said in
+other words), and BoolQ will be measured again after it.
+
+What this step did deliver, all measured and real: the artefact fix (Y4), the question's subject as a noun phrase (Y9),
+"as" phrases, opening participles and hyphenated words read (Y7, Y8, Y11: MC500 dev +1.0), the three-state judgement
+for speaking (Y2 / Y10), the state slot deciding a yes/no (Y12: bAbI yes/no tasks 52 → 83, 59 → 82), the STATE order
+bug (Y13: bAbI train choice 75 → 80 on the tiny brain) and the pronoun fix (Y14: task 11 in words 78 → 99.5). Dev run 5
+measures the candidate `S5=32234` (all of these, without Y1, Y3, Y5, Y5b) on the full brain, with bAbI in words.
+
 ## Dev run 1 (2026-10-17, Colab, `brain-school-cx4`; `results/yesno_dev.txt`)
 
 | S5 | BoolQ train | says yes | bAbI train | dev stories | MC160 / MC500 / RACE-M dev |

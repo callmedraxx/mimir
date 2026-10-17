@@ -77,3 +77,15 @@
 ==> S5 234 RESULT bgpass file=mc160.dev.txt n=120 acc=52.78 epw=4.00
 ==> S5 234 RESULT bgpass file=mc500.dev.txt n=200 acc=57.75 epw=4.00
 ==> S5 234 RESULT bgpass file=dev_middle.txt n=1436 acc=40.69 epw=4.00
+=== dev run 4 (08:50-10:27 UTC; masks 490 Y9 added, 1514 +Y5b +Y11, 3562 +Y10; EPDUMP dumps)
+==> S5 490 RESULT bgpass file=boolq_train.txt n=1000 acc=61.90 epw=4.00
+==> S5 490 babi_train 67.07 | dev stories 95/96.67/100/90 (67/70) | mc160.dev 52.78 mc500.dev 58.25 dev_middle 40.62
+==> general S5 490 easy_dev 47.19 challenge_dev 18.26 obqa_dev 25.25 mmlu_hs_dev 30.61 csqa_traindev 30.65
+==> S5 1514 RESULT bgpass file=boolq_train.txt n=1000 acc=61.90 epw=4.00   (Y5b: no change on the full brain either)
+==> S5 1514 babi_train 67.07 | dev stories 67/70 | mc160.dev 52.78 mc500.dev 58.25 dev_middle 40.60
+==> S5 3562 RESULT bgpass file=boolq_train.txt n=1000 acc=61.70 epw=4.00   (Y10 at YTHIN2 0.1)
+==> S5 3562 babi_train 67.07 | dev stories 67/70 | mc160.dev 52.78 mc500.dev 58.25 dev_middle 40.60
+=== threshold scan on the 3562 dump (the passage's own parts): the judgement has no real "no" side on BoolQ
+  fact only  T=0.10 true 378 (65% right) false 30 (53%) unknown 592 -> 62.1 | T=1.0 true 258 (66%) false 16 (69%) unknown 726 -> 62.5
+  weighted   T=0.10 true 307 (65%) false 27 (52%) unknown 666 -> 62.0 | T=0.4 true 242 (65%) false 19 (68%) unknown 739 -> 62.6
+  "true" is right 65-67% at every threshold (the answer is yes 62%); "false" fires on 8-35 questions, right 50-88%. The cap is the prior.
