@@ -632,6 +632,8 @@ static void score_cands(Know *A, Frame *hf, int nh, int focus, const QW *Q, int 
 static int asks_opposite(const char *q);
 static int yesno_q(const char *q) { static const char *AUX[] = { "do", "does", "did", "is", "are", "was", "were", "can", "could", "will", "would", "has", "have", "had", 0 };
     for (int i = 0; AUX[i]; i++) if (is_word_at(q, AUX[i])) return 1; return 0; }
+static int yn_slot;   /* docs/YESNO.md Y12: the episode's current state of the statement's slot says +1 the same value, -1 another value, 0 nothing */
+static int state_verdict(Know *A, Frame *hf, int nh);
 static int yn_bare(const char *o) { return (is_word_at(o, "yes") && !o[3]) || (is_word_at(o, "no") && !o[2]); }
 static int wh_q(const char *q) { static const char *W[] = { "what", "which", "who", "whom", "where", "when", "why", "how", 0 }; for (int i = 0; W[i]; i++) if (is_word_at(q, W[i])) return 1; return 0; }   /* "What did the mayor say?" + yes / no: the word said, not a judgement */
 static void bg_option(Know *A, const char *q, const char *opt, BParts *P) {
@@ -639,6 +641,7 @@ static void bg_option(Know *A, const char *q, const char *opt, BParts *P) {
     char st[4096]; statement(q, opt, st, sizeof st);
     static Frame hf[64], qf[64], of[64]; uint32_t sw[256], qwl[256], owl[128]; int nsw, nq, now_;
     int nh = read_statement(A, st, hf, 64, sw, &nsw, 256); read_statement(A, q, qf, 64, qwl, &nq, 256); read_statement(A, opt, of, 64, owl, &now_, 128);
+    if (yn_mode && s5(4096) && is_word_at(opt, "yes") && nep) yn_slot = state_verdict(A, hf, nh);   /* Y12 */
     if (getenv("STDBG")) { fprintf(stderr, "  STMT[%s]: %s\n", opt, st); for (int i = 0; i < nh; i++) { fprintf(stderr, "    %s%s%s", hf[i].flags & F_NEG ? "NOT " : "", hf[i].flags & F_PAST ? "[past] " : hf[i].flags & F_PRES ? "[now] " : "", hf[i].verb < OPEN ? A->t.voc[hf[i].verb].word : "-");
         for (int a_ = 0; a_ < hf[i].narg; a_++) fprintf(stderr, " %s%s%s=%s", hf[i].a[a_].role == A_AGENT ? "who" : hf[i].a[a_].role == A_PAT ? "what" : hf[i].a[a_].role == A_ATTR ? "is" : "pp", hf[i].a[a_].prep < OPEN ? ":" : "", hf[i].a[a_].prep < OPEN ? A->t.voc[hf[i].a[a_].prep].word : "", hf[i].a[a_].head < OPEN ? A->t.voc[hf[i].a[a_].head].word : "?"); fprintf(stderr, "\n"); } }   /* docs/YESNO.md dev trace */
     QW Q[256], O[128]; qwords(A, qwl, nq, Q);
@@ -798,17 +801,51 @@ static void ep_read(Know *k, const char *text) {
    yn_state is 1 true, 2 false, 3 unknown for SHOW (docs/SPEAK.md W3 will say "I don't know"). */
 static int yn_state; static double YTHIN = 0.05, YTHIN2 = 0.1;
 static int yn_opt(const char *o) { return is_word_at(o, "yes") ? 1 : is_word_at(o, "no") ? 2 : 0; }
+/* Y12: "Is John in the kitchen?" when the episode's current state says John is in the garden: one state per slot (docs/STATE.md), so
+   a current fact of the same slot with another value says no, with the same value yes. Only the statement's own state slot, only
+   facts not superseded. */
+static int state_verdict(Know *A, Frame *hf, int nh) {
+    for (int i = 0; i < nh; i++) { KF hk; frame_kf(A, &hf[i], &hk); uint32_t sj, v; int k = state_key(&hk, &sj, &v); if (!k || !state_stmt(&hk) || v == NONE || sj == NONE) continue;
+        int same = 0, other = 0;
+        for (uint32_t e = 0; e < nep; e++) { if (ep_sup[e] || (ep[e].flags & F_NEG)) continue; uint32_t s2, v2; if (state_key(&ep[e], &s2, &v2) != k || s2 != sj || v2 == NONE) continue; if (v2 == v) same = 1; else other = 1; }
+        if (same) return 1; if (other) return -1; }
+    return 0;
+}
 static void yesno_judge(BParts *P, int yes) {
     if (getenv("YTHIN")) YTHIN = atof(getenv("YTHIN")); if (getenv("YTHIN2")) YTHIN2 = atof(getenv("YTHIN2"));
     int no = 1 - yes;
     if (s5(1) && P[0].active && P[1].active) {
         int thin = fabs(P[0].efact) < YTHIN && fabs(P[0].eopen) < YTHIN && fabs(P[1].efact) < YTHIN && fabs(P[1].eopen) < YTHIN;
         if (!thin) for (int o = 0; o < 2; o++) { P[o].fact = EPW * P[o].efact; P[o].joint = EPW * P[o].ejoint; P[o].open = EPW * P[o].eopen; P[o].optr = P[o].eptr; } }
+    if (s5(4096) && yn_slot) { yn_state = yn_slot > 0 ? 1 : 2; for (int o = 0; o < 2; o++) P[o].fact = P[o].joint = P[o].open = 0; P[yn_slot > 0 ? yes : no].fact = EPW; return; }   /* Y12: the state decides */
     if (s5(2)) {
         double ev = (BW[0] * P[yes].fact + BW[1] * P[yes].joint + BW[2] * P[yes].open) - (BW[0] * P[no].fact + BW[1] * P[no].joint + BW[2] * P[no].open);
         if (s5(2048) && P[0].active && P[1].active) ev = EPW * (P[yes].efact - P[no].efact);   /* Y10: the judgement is the passage's facts alone (open book and the shelf are at the prior's precision, docs/YESNO.md) */
         yn_state = ev > YTHIN2 ? 1 : ev < -YTHIN2 ? 2 : 3;
         if (yn_state == 3) { for (int o = 0; o < 2; o++) P[o].fact = P[o].joint = P[o].open = 0; P[yes].fact = 1e-6; } }
+}
+/* ---- docs/SPEAK.md W1 + W2: answer in words --------------------------------------------------------------------- */
+/* The question is read as a frame with a hole (the reader marks the asked slot with an OPEN head: "Where is Mary?" → be who=mary
+   pp:in=_). The episode fact closest to that frame which fills the slot gives the answer: the word in that slot, said as the
+   text said it (its lemma for now). A yes/no question is judged as the choice reader judges "yes" against "no". */
+static int ask_answer(Know *A, const char *q, char *out, size_t cap) {
+    if (yesno_q(q)) { BParts P[2]; yn_slot = 0; bg_option(A, q, "yes", &P[0]); A->t.ntok = 0; bg_option(A, q, "no", &P[1]); A->t.ntok = 0;
+        yn_state = 0; if (s5(3)) yesno_judge(P, 0); double sc[2]; scores(q, P, 2, sc); snprintf(out, cap, "%s", sc[0] >= sc[1] ? "yes" : "no"); return 1; }
+    TextContext *t = &A->t; uint32_t n0 = t->ntok; Refs keep = A->R.refs; text_take(t, NULL, q, strlen(q)); A->R.question = 1;
+    Frame hf[8]; int wh = -1; int nh = read_span(&A->R, t->tok, n0, t->ntok, hf, 8, &wh); t->ntok = n0; t->src_len = 0; A->R.refs = keep; A->R.question = 0;
+    int fi = -1, slot = -1; for (int i = 0; i < nh && fi < 0; i++) for (int a = 0; a < hf[i].narg; a++) if (hf[i].a[a].head == OPEN) { fi = i; slot = a; break; }
+    if (fi < 0 && nh > 0 && wh >= 0 && wh < hf[0].narg) { fi = 0; slot = wh; }
+    if (fi < 0) { snprintf(out, cap, "-"); return 0; }
+    uint8_t role = hf[fi].a[slot].role; uint32_t prep = hf[fi].a[slot].prep < OPEN ? lx_id(A->t.voc[hf[fi].a[slot].prep].word, 0) : NONE;
+    double best = 0; const KF *bf = 0;
+    for (uint32_t e = 0; e < nep; e++) { const KF *f = &ep[e]; int has = 0; for (int j = 0; j < f->narg; j++) has |= f->role[j] == role; if (!has || (f->flags & F_NEG)) continue;
+        double s = kfact_sim(A, &hf[fi], f) * conf(f); if (ep_sup[e]) s *= SUPW;
+        if (s > best || (s == best && bf && ep_ord[e] > ep_ord[bf - ep])) { best = s; bf = f; } }   /* equally close: the later one */
+    if (!bf) { snprintf(out, cap, "-"); return 0; }
+    int j0 = -1; for (int j = 0; j < bf->narg && j0 < 0; j++) if (bf->role[j] == role && (role != A_PP || prep == NONE || bf->prep[j] == prep)) j0 = j;
+    for (int j = 0; j < bf->narg && j0 < 0; j++) if (bf->role[j] == role) j0 = j;
+    if (getenv("ASKDBG")) fprintf(stderr, "  ASK %s -> frame %d slot %d role %d best %.3f fact %s\n", q, fi, slot, role, best, bf->verb != NONE ? LX.s[bf->verb] : "-");
+    snprintf(out, cap, "%s", LX.s[bf->head[j0]]); return 1;
 }
 static int run_passages(int nfile, char **files) {
     Know A; answer_ctx(&A); Know k; memset(&k, 0, sizeof k); text_init(&k.t); r2_init(&k.R, &k.t, &k.wm);
@@ -816,19 +853,24 @@ static int run_passages(int nfile, char **files) {
     static FILE *dump; if (!dump && getenv("DUMP")) dump = fopen(getenv("DUMP"), "a");
     for (int fi = 0; fi < nfile; fi++) {
         FILE *f = fopen(files[fi], "r"); if (!f) { perror(files[fi]); return 1; }
-        static char line[1 << 18]; double ok = 0; int n = 0, open = 0; double t0 = now();
+        static char line[1 << 18]; double ok = 0; int n = 0, open = 0, nasked = 0; double t0 = now();
         const char *bn = strrchr(files[fi], '/'); bn = bn ? bn + 1 : files[fi];
         while (fgets(line, sizeof line, f)) {
             size_t L = strlen(line); while (L && (line[L - 1] == '\n' || line[L - 1] == '\r')) line[--L] = 0;
             if (line[0] == 'S') { if (open) ep_end(); ep_begin(); open = 1; cx_epst = 0x2545F4914F6CDD1Dull; continue; }
             if (line[0] == 'T') { ep_read(&k, line + 2); continue; }
+            if (line[0] == 'A') {                                      /* A id question answer: the answer in words (docs/SPEAK.md) */
+                char *fld[4]; int nf = 0; for (char *p = strtok(line, "\t"); p && nf < 4; p = strtok(0, "\t")) fld[nf++] = p; if (nf < 4) continue;
+                char ans[256]; ask_answer(&A, fld[2], ans, sizeof ans); A.t.ntok = 0; int okq = !strcasecmp(ans, fld[3]); ok += okq; nasked++;
+                if (getenv("SHOW")) printf("  %s\t%s\tsaid=%s\tright=%s\t%s\n", fld[1], fld[2], ans, fld[3], okq ? "OK" : "WRONG");
+                n++; continue; }
             if (line[0] != 'Q') continue;
             char *fld[MAXO + 4]; int nf = 0; for (char *p = strtok(line, "\t"); p && nf < MAXO + 4; p = strtok(0, "\t")) fld[nf++] = p;
             if (nf < 6) continue;                                   /* Q id question option option… letters: 2 to MAXO options, one or more right letters ("AC") */
             int no = nf - 4; const char *ans = fld[nf - 1]; const char *q = fld[2]; int want = ans[0] - 'A'; BParts P[MAXO]; double sc[MAXO];
             int right[MAXO]; for (int o = 0; o < no; o++) right[o] = strchr(ans, 'A' + o) != 0;
             for (int o = 0; o < no; o++) { bg_option(&A, q, fld[3 + o], &P[o]); A.t.ntok = 0; }
-            yn_state = 0; if (s5(3) && no == 2 && (yesno_q(q) || (s5(32) && !wh_q(q))) && yn_opt(fld[3]) && yn_opt(fld[4])) yesno_judge(P, yn_opt(fld[3]) == 1 ? 0 : 1);   /* docs/YESNO.md */
+            yn_state = 0; yn_slot = 0; if (s5(3) && no == 2 && (yesno_q(q) || (s5(32) && !wh_q(q))) && yn_opt(fld[3]) && yn_opt(fld[4])) yesno_judge(P, yn_opt(fld[3]) == 1 ? 0 : 1);   /* docs/YESNO.md */
             { int ex = 0; for (int o = 0; o < no; o++) ex += P[o].active && P[o].fact >= FX * EPW * 0.5;     /* F5: one option said almost whole by the passage: the fact decides */
                 if (ex == 1) for (int o = 0; o < no; o++) { P[o].open *= FO; P[o].joint *= FO; } }
             scores(q, P, no, sc);
@@ -843,7 +885,7 @@ static int run_passages(int nfile, char **files) {
         if (open) ep_end();
         fclose(f); if (dump) fflush(dump);
         printf("%-22s %5d q   %6.2f%%   (episode weight %.2f)  %.1f ms/q\n", bn, n, 100 * ok / (n ? n : 1), EPW, 1000 * (now() - t0) / (n ? n : 1));
-        printf("RESULT bgpass file=%s n=%d acc=%.2f epw=%.2f\n", bn, n, 100 * ok / (n ? n : 1), EPW);
+        printf("RESULT %s file=%s n=%d acc=%.2f epw=%.2f\n", nasked ? "bgask" : "bgpass", bn, n, 100 * ok / (n ? n : 1), EPW);
     }
     return 0;
 }

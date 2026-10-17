@@ -97,6 +97,12 @@ right). The "no" cases read so far are inferences ("not in the Oyster zone" → 
 a sequel" → no second film; "not able to qualify" → not in the cup; "not featured in the original works" → not in the
 book) or need the negated fact's complement, which the reader hangs on a participle clause.
 
+**Y12. The current state of the slot decides (bit 4096).** "Is John in the kitchen?" when the episode's current state
+(docs/STATE.md: one state per slot, superseded facts set aside) has John in the garden: no; in the kitchen: yes. Only for
+a state statement (someone's place, a thing's holder, what a thing is made of), only from facts not superseded. Tiny
+brain, bAbI train in words: task 6 52 → 83, task 9 59 → 82 (docs/SPEAK.md); the choice version is untouched for now
+(its yes/no questions carry a third option, "maybe", and the judge takes two).
+
 ## Dev run 1 (2026-10-17, Colab, `brain-school-cx4`; `results/yesno_dev.txt`)
 
 | S5 | BoolQ train | says yes | bAbI train | dev stories | MC160 / MC500 / RACE-M dev |

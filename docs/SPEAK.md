@@ -91,6 +91,16 @@ test splits are hidden). The owner's private tests are never developed on.
   counting and dates (with bAbI 7 counting, which is 42 today) → W5 last, on the stories and a conversation with the
   owner, judged by the owner.
 
+## First measurement (2026-10-17, droplet, tiny brain; `bg passages` on A lines, `tools/babi_words.py`)
+
+W1 + W2 in their first form: the question read as a frame with a hole (the reader's own wh slot), the episode fact
+closest to it that fills the slot, the filler's lemma said. bAbI train in words, STATE's seven tasks, 200 each:
+**73.3** (task 1 where-is 99, 2 a carried thing 78, 3 "before" 14, 6 yes/no 83, 9 negation 82, 11 he/she 73, 13 they
+84). The yes/no tasks were 52 / 59 until the judgement used STATE's one-value-per-slot rule (docs/YESNO.md Y12: the
+current state of the asked slot says yes with the same value, no with another). The roles reader of 10-12 had 94 on
+these in words; the frames here are the general reader's, not bAbI's. Not run on the full brain yet (Colab, with the
+next YESNO dev run).
+
 ## When
 
 After the understanding program's steps (BoolQ next), or when the owner says so. Each understanding step from here
