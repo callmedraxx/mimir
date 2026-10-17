@@ -42,11 +42,12 @@ else:
     if not os.path.exists("data/understand/race/dev_middle.txt"): sh("python3 tools/race_fetch.py")
     if not os.path.exists("data/understand/survey/babi_train.txt"): sh("python3 tools/survey_fetch.py babi_train")
     if not os.path.exists("data/understand/survey/babi_words_train.txt"): sh("python3 tools/babi_words.py train 1 2 3 6 9 11 13")   # docs/SPEAK.md: answered in words
+    if not os.path.exists("data/understand/survey/babi_words20_train.txt"): sh("BABI_WORDS_NAME=babi_words20_train python3 tools/babi_words.py train")   # all twenty tasks, train split, 200 each
     sh("python3 tools/stories.py /content/st"); sh("python3 tools/general_tests.py >/dev/null 2>&1; ls data/dev_sets")
     OUT = "/content/yesno_dev.txt"; general_done = set()
     for m in sys.argv[2:]:
         env = {"S5": m, "EPDUMP": "1", "DUMP": "/content/yesno_dev_%s.dump" % m}   # the parts of every option, episode apart (tools/yesno_notes.py)
-        for f in ["data/understand/survey/boolq_train.txt", "data/understand/survey/babi_train.txt", "data/understand/survey/babi_words_train.txt", "/content/st/smart_tests.txt /content/st/dev_stories.txt /content/st/clock.txt /content/st/bakery.txt",
+        for f in ["data/understand/survey/boolq_train.txt", "data/understand/survey/babi_train.txt", "data/understand/survey/babi_words_train.txt", "data/understand/survey/babi_words20_train.txt", "/content/st/smart_tests.txt /content/st/dev_stories.txt /content/st/clock.txt /content/st/bakery.txt",
                   "data/understand/mctest/mc160.dev.txt data/understand/mctest/mc500.dev.txt data/understand/race/dev_middle.txt"]:
             r = sh("SHOW=1 ./bg passages %s %s 2>/dev/null" % (BRAIN, f), OUT, env)
             for l in r.stdout.split("\n"):

@@ -7,7 +7,8 @@ import os, sys
 split = sys.argv[1] if len(sys.argv) > 1 else "train"
 tasks = [int(a) for a in sys.argv[2:] if a.isdigit() and int(a) <= 20] or list(range(1, 21))
 N = int(sys.argv[-1]) if len(sys.argv) > 2 and int(sys.argv[-1]) > 20 else 200
-out = open("data/understand/survey/babi_words_%s.txt" % split, "w"); nq = 0
+name = os.environ.get("BABI_WORDS_NAME", "babi_words_%s" % split)
+out = open("data/understand/survey/%s.txt" % name, "w"); nq = 0
 for t in tasks:
     story, n, sid = [], 0, 0
     for l in open("data/understand/babi/qa%d_%s.txt" % (t, split)):
@@ -20,4 +21,4 @@ for t in tasks:
             out.write("A\tbabiw%d_%d\t%s\t%s\n" % (t, sid, q.strip(), a.strip().replace(",", " "))); n += 1; nq += 1
             if n >= N: break
         else: story.append(rest.strip())
-out.close(); print("babi_words_%s: %d questions, tasks %s" % (split, nq, tasks))
+out.close(); print("%s: %d questions, tasks %s" % (name, nq, tasks))
