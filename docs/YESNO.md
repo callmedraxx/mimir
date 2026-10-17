@@ -87,6 +87,26 @@ say?" answered "no": a wh-question, not a judgement; Y6 now leaves wh-questions 
 reader fixes Y7 + Y8 keep BoolQ and lift MC500 dev 0.5 and MMLU dev 0.5 with nothing down; Y5 costs bAbI train 3.7 (its
 "not" about the same things fires on bAbI's yes/no tasks) and is out. Dev run 3 (the last): mask 234 with the fixed Y6.
 
+| 234, Y6 fixed (run 3) | 61.00 | 97% | 67.07 | 67/70 | 52.78 / 57.75 / 40.69 |
+
+## Where dev ends (2026-10-17, after three runs)
+
+The candidate is `S5=234`: Y4, Y2, Y6, Y7, Y8. Against the choice rule: BoolQ train +13.9 (47.1 → 61.0) ✓; bAbI train
+−0.8 ✓; dev stories 67/70 ✓; passage dev mean +0.2 ✓; general dev none worse than 0.2 ✓; **says "yes" 97%: ✗** (the rule
+asked for 50-75%). The judgement reads: true 471 (right 63%), false 22 (right 36%), unknown 503 (answered yes, right
+60%). The prior is 62% yes, so the three states tell nothing beyond it: the whole gain is the removal of Y4's
+artefact plus the prior, and the yes-rate condition was written to catch exactly that. What this says about Mimir:
+on Wikipedia prose it finds almost no evidence against a statement (22 "false" in 1,000, and those are more often
+wrong than right), because the negated facts lose their arguments in the reading (passives, participles, hyphens,
+"as", long noun phrases) and because many answers are inferences, not statements. BoolQ's skill is the next step's
+skill (inference) on top of a reader for harder prose.
+
+Worth keeping on their own terms, whatever the owner decides: Y4 is a bug fix (the two answers were scored on
+different words); Y7 and Y8 are reader fixes that lift MC500 dev +0.5 and MMLU dev +0.5 with nothing down; Y2 is the
+true / false / unknown judgement docs/SPEAK.md W3 needs; Y6 extends yes/no to questions without an auxiliary. The
+owner's call: run the test once with S5=234 and judge adoption on it (the program's rule, nothing falls, is met), or
+drop the BoolQ claim and keep only Y4 + Y7 + Y8 as a reading fix.
+
 Ties (the two statements scored alike) count half in the accuracy and go to "yes" in the picks. With Y2 the judgement
 was true 354 (right 64%), false 16 (right 44%), unknown 582 (answered yes, right 59%): the passage's evidence tells
 "true" a little better than the prior (62%) and "false" worse. Y1 (the passage alone) costs 1.3. Dev run 2: masks

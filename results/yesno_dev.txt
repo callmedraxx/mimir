@@ -67,3 +67,13 @@
 ==> S5 250 RESULT bgpass file=boolq_train.txt n=1000 acc=61.30 epw=4.00
 ==> S5 250 RESULT bgpass file=babi_train.txt n=1400 acc=64.21 epw=4.00   (Y5 costs bAbI 3.7: out)
 ==> S5 250 dev stories 95/95/100/90
+=== dev run 3 (08:16-08:45 UTC; mask 234 with Y6 leaving wh-questions alone, commit a178258)
+==> S5 234 RESULT bgpass file=boolq_train.txt n=1000 acc=61.00 epw=4.00   (says yes 97%: true 471 right 63%, false 22 right 36%, unknown 503 answered yes right 60%)
+==> S5 234 RESULT bgpass file=babi_train.txt n=1400 acc=67.07 epw=4.00
+==> S5 234 RESULT bgpass file=smart_tests.txt n=20 acc=95.00 epw=4.00
+==> S5 234 RESULT bgpass file=dev_stories.txt n=30 acc=96.67 epw=4.00
+==> S5 234 RESULT bgpass file=clock.txt n=10 acc=100.00 epw=4.00
+==> S5 234 RESULT bgpass file=bakery.txt n=10 acc=90.00 epw=4.00
+==> S5 234 RESULT bgpass file=mc160.dev.txt n=120 acc=52.78 epw=4.00
+==> S5 234 RESULT bgpass file=mc500.dev.txt n=200 acc=57.75 epw=4.00
+==> S5 234 RESULT bgpass file=dev_middle.txt n=1436 acc=40.69 epw=4.00
