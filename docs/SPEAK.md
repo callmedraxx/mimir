@@ -101,6 +101,13 @@ current state of the asked slot says yes with the same value, no with another). 
 these in words; the frames here are the general reader's, not bAbI's. Not run on the full brain yet (Colab, with the
 next YESNO dev run).
 
+Then three answers from STATE's slots (W1b, W1c): "Where was the football before the bathroom?" (the subject's place
+facts in the order said: the last value before the named one), "What is Mary carrying?" (every thing whose current
+holder is Mary, "nothing" when none) and "How many objects is Mary carrying?" (their count as a word). All twenty tasks
+in words, 200 each, tiny brain: **62.6** (1:99 2:78 3:55 4:36 5:74 6:83 7:80 8:81 9:82 10:82 11:73 12:90 13:84 14:72 15:24
+16:0 17:46 18:52 19:0 20:58). Left: relations (4 "east of"), deduction (15), induction (16 "what colour is Greg": by his
+kind), positions (17), size (18), paths (19), motives (20, "will go"), and the pronoun tasks at 73-84.
+
 ## When
 
 After the understanding program's steps (BoolQ next), or when the owner says so. Each understanding step from here

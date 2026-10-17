@@ -837,6 +837,25 @@ static int ask_answer(Know *A, const char *q, char *out, size_t cap) {
     if (fi < 0 && nh > 0 && wh >= 0 && wh < hf[0].narg) { fi = 0; slot = wh; }
     if (fi < 0) { snprintf(out, cap, "-"); return 0; }
     uint8_t role = hf[fi].a[slot].role; uint32_t prep = hf[fi].a[slot].prep < OPEN ? lx_id(A->t.voc[hf[fi].a[slot].prep].word, 0) : NONE;
+    KF qk; frame_kf(A, &hf[fi], &qk); uint32_t qs = NONE, qv = NONE; int qkind = 0;     /* the question as a state with a hole: 1 "where is S" (place), 2 "what does S hold" (holder) */
+    { uint32_t who = NONE; for (int a_ = 0; a_ < qk.narg && who == NONE; a_++) if (qk.role[a_] == A_AGENT || qk.role[a_] == A_PAT) who = qk.head[a_];
+      if (who == NONE && qk.narg) who = qk.head[0];
+      if (role == A_PP && (qk.verb == G_be || gin(G_motion, qk.verb))) { qkind = 1; qs = who; }
+      else if (role == A_PAT && (qk.verb == G_have || gin(G_take, qk.verb))) { qkind = 2; qs = NONE; qv = who; } }
+    if (getenv("ASKDBG")) { fprintf(stderr, "  ASKQ %s -> nh %d frame %d slot %d role %d kind %d subj %s val %s | verb %s", q, nh, fi, slot, role, qkind, qs < LX.n ? LX.s[qs] : "?", qv < LX.n ? LX.s[qv] : "?", qk.verb < LX.n ? LX.s[qk.verb] : "-");
+        for (int a_ = 0; a_ < qk.narg; a_++) fprintf(stderr, " r%d:%s%s", qk.role[a_], qk.prep[a_] < LX.n ? LX.s[qk.prep[a_]] : "", qk.head[a_] < LX.n ? LX.s[qk.head[a_]] : "_"); fprintf(stderr, "\n"); }
+    { /* W1b: "Where was the football before the bathroom?": the state before that one. The subject's state facts in the order said; the latest
+         with the named value, and the last different value before it. */
+        const char *bef = strcasestr(q, " before "); if (bef && qkind == 1 && qs != NONE) { char w[64]; const char *x = bef + 8; if (is_word_at(x, "the")) x += 4; int n = 0; while (*x && *x != ' ' && *x != '?' && n < 63) w[n++] = *x++; w[n] = 0;
+            uint32_t X = lx_id(w, 0); uint32_t at = 0, pv = NONE, po = 0;
+            for (uint32_t e = 0; e < nep; e++) { uint32_t s2, v2; if ((ep[e].flags & F_NEG) || state_key(&ep[e], &s2, &v2) != 1 || s2 != qs) continue; if (v2 == X && ep_ord[e] > at) at = ep_ord[e]; }
+            if (at) for (uint32_t e = 0; e < nep; e++) { uint32_t s2, v2; if ((ep[e].flags & F_NEG) || state_key(&ep[e], &s2, &v2) != 1 || s2 != qs || v2 == X) continue; if (ep_ord[e] < at && ep_ord[e] > po) { po = ep_ord[e]; pv = v2; } }
+            if (pv != NONE) { snprintf(out, cap, "%s", LX.s[pv]); return 1; } } }
+    if (qkind == 2) {   /* W1c: what someone holds now: "What is Mary carrying?" the things, "How many objects is Mary carrying?" their count */
+        uint32_t holder = qv; uint32_t things[32]; int nt = 0; static const char *NUM[] = { "none", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten" };
+        if (holder != NONE) for (uint32_t e = 0; e < nep; e++) { uint32_t s2, v2; if (ep_sup[e] || (ep[e].flags & F_NEG) || state_key(&ep[e], &s2, &v2) != 2 || v2 != holder) continue; int dup = 0; for (int i = 0; i < nt; i++) dup |= things[i] == s2; if (!dup && nt < 32) things[nt++] = s2; }
+        if (is_word_at(q, "how many")) { snprintf(out, cap, "%s", NUM[nt > 10 ? 10 : nt]); return 1; }
+        if (holder != NONE && role == A_PAT) { if (!nt) { snprintf(out, cap, "nothing"); return 1; } size_t L = 0; for (int i = 0; i < nt && L + 2 < cap; i++) L += (size_t)snprintf(out + L, cap - L, "%s%s", i ? " " : "", LX.s[things[i]]); return 1; } }
     double best = 0; const KF *bf = 0;
     for (uint32_t e = 0; e < nep; e++) { const KF *f = &ep[e]; int has = 0; for (int j = 0; j < f->narg; j++) has |= f->role[j] == role; if (!has || (f->flags & F_NEG)) continue;
         double s = kfact_sim(A, &hf[fi], f) * conf(f); if (ep_sup[e]) s *= SUPW;
