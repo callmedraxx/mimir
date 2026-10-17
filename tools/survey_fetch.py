@@ -183,12 +183,24 @@ def copy_local(name, src):
             n += 1
         out.write(l)
     out.close(); print("%-14s %6d questions (copied)" % (name, n), flush=True)
+def boolq_train():
+    """docs/YESNO.md dev set: the first 1,000 of BoolQ train, from the SuperGLUE release (the HF rows API gave 502s); the
+    validation split is the survey's test and is not developed on"""
+    import zipfile, io
+    z = zipfile.ZipFile(io.BytesIO(fetch("https://dl.fbaipublicfiles.com/glue/superglue/data/v2/BoolQ.zip")))
+    w = W("boolq_train")
+    for i, l in enumerate(z.open("BoolQ/train.jsonl").read().decode().split("\n")):
+        if i >= 1000 or not l.strip(): break
+        r = json.loads(l); q = clean(r["question"]); q = q[0].upper() + q[1:] + ("" if q.endswith("?") else "?")
+        w.passage(r["passage"]); w.q("boolqt_%d" % i, q, ["yes", "no"], 0 if r["label"] else 1)
+    w.done()
 ALL = [("wsc273", wsc), ("winogrande", winogrande), ("storycloze", storycloze), ("boolq", boolq), ("dream", dream), ("cosmosqa", cosmos), ("multirc", multirc), ("record", record), ("lambada", lambada), ("cbt", cbt), ("quality", quality), ("babi", babi)]
 if __name__ == "__main__":
     want = sys.argv[1:] or [n for n, _ in ALL] + ["race_high", "sciq"]   # sciq: HuggingFace too (the repo's data/understand is not in git)
     if "race_high" in want: copy_local("race_high", "data/understand/race/test_high.txt")
     if "sciq" in want: sciq()
     if "babi_train" in want: babi("train", (1, 2, 3, 6, 9, 11, 13), "babi_train")   # docs/STATE.md dev set
+    if "boolq_train" in want: boolq_train()   # docs/YESNO.md dev set
     failed = []
     for name, fn in ALL:
         if name not in want: continue
