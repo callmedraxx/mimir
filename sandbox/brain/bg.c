@@ -932,6 +932,10 @@ static int ask_surface(const KF *f, int j, char *out, size_t cap) {
         if (ismod || cap_) st--; else break; }
     size_t len = we[hit] - ws[st]; if (len + 1 > cap) len = cap - 1; memcpy(out, epbuf + ws[st], len); out[len] = 0; return 1;
 }
+static int timelike(const char *w) {                     /* a number word, a month, a day of the week, a time of day */
+    static const char *X[] = { "january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday", "morning", "afternoon", "evening", "night", "noon", "midnight", "yesterday", "today", "tomorrow", "week", "month", "year", "century", "summer", "winter", "spring", "autumn", "fall", 0 };
+    static const char *N[] = { "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety", "hundred", "thousand", 0 };
+    for (int i = 0; X[i]; i++) if (!strcmp(w, X[i])) return 1; for (int i = 0; N[i]; i++) { size_t L = strlen(N[i]); if (!strncmp(w, N[i], L) && (w[L] == 0 || w[L] == '-')) return 1; } return 0; }
 static int ask_answer(Know *A, const char *q, char *out, size_t cap) {
     if (yesno_q(q)) { BParts P[2]; yn_slot = 0; bg_option(A, q, "yes", &P[0]); A->t.ntok = 0; bg_option(A, q, "no", &P[1]); A->t.ntok = 0;
         yn_state = 0; if (yn_slot == 2) { snprintf(out, cap, "maybe"); return 1; } if (s5(3)) yesno_judge(P, 0); double sc[2]; scores(q, P, 2, sc); snprintf(out, cap, "%s", sc[0] >= sc[1] ? "yes" : "no"); return 1; }
@@ -949,7 +953,7 @@ static int ask_answer(Know *A, const char *q, char *out, size_t cap) {
     { uint32_t who = NONE; for (int a_ = 0; a_ < qk.narg && who == NONE; a_++) if (qk.role[a_] == A_AGENT || qk.role[a_] == A_PAT) who = qk.head[a_];
       if (who == NONE && qk.narg) who = qk.head[0];
       if (role == A_PP && (qk.verb == G_be || gin(G_motion, qk.verb))) { qkind = 1; qs = who; }
-      else if (role == A_PAT && (qk.verb == G_have || gin(G_take, qk.verb))) { qkind = 2; qs = NONE; qv = who; } }
+      else if (role == A_PAT && (gin(G_take, qk.verb) || (qk.verb == G_have && ntracked))) { qkind = 2; qs = NONE; qv = who; } }   /* "what is Mary carrying", "how many objects does she have": holding, when things are held in the text */
     if (getenv("ASKDBG")) { fprintf(stderr, "  ASKQ %s -> nh %d frame %d slot %d role %d kind %d subj %s val %s | verb %s", q, nh, fi, slot, role, qkind, qs < LX.n ? LX.s[qs] : "?", qv < LX.n ? LX.s[qv] : "?", qk.verb < LX.n ? LX.s[qk.verb] : "-");
         for (int a_ = 0; a_ < qk.narg; a_++) fprintf(stderr, " r%d:%s%s", qk.role[a_], qk.prep[a_] < LX.n ? LX.s[qk.prep[a_]] : "", qk.head[a_] < LX.n ? LX.s[qk.head[a_]] : "_"); fprintf(stderr, "\n"); }
     { /* W1b: "Where was the football before the bathroom?": the state before that one. The subject's state facts in the order said; the latest
@@ -966,7 +970,8 @@ static int ask_answer(Know *A, const char *q, char *out, size_t cap) {
         if (holder != NONE && role == A_PAT) { if (!nt) { snprintf(out, cap, "nothing"); return 1; } size_t L = 0; for (int i = 0; i < nt && L + 2 < cap; i++) L += (size_t)snprintf(out + L, cap - L, "%s%s", i ? " " : "", LX.s[things[i]]); return 1; } }
     uint32_t wtype = hf[fi].a[slot].mod < OPEN ? hf[fi].a[slot].mod : NONE; const char *wtw = wtype != NONE ? A->t.voc[wtype].word : "";
     int want_adj = !strcmp(wtw, "color") || !strcmp(wtw, "colour") || !strcmp(wtw, "size") || !strcmp(wtw, "shape");   /* "what colour is Greg": an adjective, not his kind */
-#define FILLER_OK(f_, j_) (!want_adj || wclass(LX.s[(f_)->head[j_]], strlen(LX.s[(f_)->head[j_]])) == 'J')
+    int want_time = !strcmp(wtw, "day") || !strcmp(wtw, "date") || !strcmp(wtw, "year") || !strcmp(wtw, "month") || !strcmp(wtw, "time") || is_word_at(q, "when");   /* "what day", "what year": a number, a month, a day */
+#define FILLER_OK(f_, j_) ((!want_adj || wclass(LX.s[(f_)->head[j_]], strlen(LX.s[(f_)->head[j_]])) == 'J') && (!want_time || timelike(LX.s[(f_)->head[j_]]) || ((f_)->mod[j_] != NONE && timelike(LX.s[(f_)->mod[j_]]))))
     double best = 0; const KF *bf = 0;
     int stateq = qkind || qk.verb == G_be || qk.verb == G_have;      /* a derived state ("has", "is in") answers a question about a state, not about who gave or took */
     for (uint32_t e = 0; e < nep; e++) { const KF *f = &ep[e]; int has = 0; for (int j = 0; j < f->narg; j++) has |= f->role[j] == role && FILLER_OK(f, j) && (!dirprep || f->prep[j] == prep); if (!has || (f->flags & F_NEG) || (ep_der[e] && !stateq)) continue;   /* a direction asked is that direction, not another */
