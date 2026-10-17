@@ -89,3 +89,9 @@
   fact only  T=0.10 true 378 (65% right) false 30 (53%) unknown 592 -> 62.1 | T=1.0 true 258 (66%) false 16 (69%) unknown 726 -> 62.5
   weighted   T=0.10 true 307 (65%) false 27 (52%) unknown 666 -> 62.0 | T=0.4 true 242 (65%) false 19 (68%) unknown 739 -> 62.6
   "true" is right 65-67% at every threshold (the answer is yes 62%); "false" fires on 8-35 questions, right 50-88%. The cap is the prior.
+=== dev run 5 (10:28-11:00 UTC; mask 32234 = Y2 Y4 Y6 Y7 Y8 Y9 Y10 Y11 Y12 Y13 Y14; commit 8e5bff0)
+==> S5 32234 RESULT bgpass file=boolq_train.txt n=1000 acc=61.40 epw=4.00
+==> S5 32234 RESULT bgpass file=babi_train.txt n=1400 acc=83.64 epw=4.00   (adopted 67.86: Y12 the state slot decides a yes/no, Y13 the order bug, Y14 pronouns)
+==> S5 32234 RESULT bgask file=babi_words_train.txt n=1400 acc=95.57 epw=4.00   (docs/SPEAK.md: answered in words, first full-brain run)
+==> S5 32234 dev stories 95/96.67/100/90 (67/70) | mc160.dev 51.94 (-0.84: a mix of wins and losses, one net) mc500.dev 58.25 (+1.0) dev_middle 40.74 (+0.12)
+==> general S5 32234 easy_dev 47.19 challenge_dev 18.26 obqa_dev 25.25 mmlu_hs_dev 30.07 csqa_traindev 30.65   (adopted 47.19/18.26/25.05/30.07/30.55)

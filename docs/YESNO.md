@@ -129,6 +129,13 @@ looked for along chains, crossing the orthogonal relation either way (what is le
 you). A relation the text does not give holds not. Tiny brain, bAbI in words: task 17 46 → 100, task 18 52 → 99; the
 dev stories unchanged. These are general rules of relations (inverse, transitivity), not bAbI's.
 
+## Dev run 5 (2026-10-17, full brain, `S5=32234`: Y2 Y4 Y6 Y7 Y8 Y9 Y10 Y11 Y12 Y13 Y14)
+
+BoolQ train 61.4; **bAbI train (choice) 67.9 → 83.6**; bAbI train in words 95.6 (docs/SPEAK.md); dev stories 67/70;
+MC160 dev 52.8 → 51.9 (one question net, wins and losses mixed), MC500 dev 57.3 → 58.25, RACE-M dev 40.6 → 40.7; general
+dev 47.19 / 18.26 / 25.25 / 30.07 / 30.65 against 47.19 / 18.26 / 25.05 / 30.07 / 30.55. Nothing falls by the rule; the
+passage dev mean is +0.1. Dev run 6 adds Y15 and Y16 (`S5=130538`) and bAbI in words on all twenty tasks.
+
 ## Dev run 4 and the threshold scan (2026-10-17): where BoolQ stands
 
 Full brain, masks 490 (Y9 added) / 1514 (+ Y5b, Y11) / 3562 (+ Y10): BoolQ train 61.9 / 61.9 / 61.7; bAbI train
