@@ -935,6 +935,24 @@ static int ask_answer(Know *A, const char *q, char *out, size_t cap) {
     for (uint32_t e = 0; e < nep; e++) { const KF *f = &ep[e]; int has = 0; for (int j = 0; j < f->narg; j++) has |= f->role[j] == role && FILLER_OK(f, j) && (!dirprep || f->prep[j] == prep); if (!has || (f->flags & F_NEG)) continue;   /* a direction asked is that direction, not another */
         double s = kfact_sim(A, &hf[fi], f) * conf(f); if (ep_sup[e]) s *= SUPW;
         if (s > best || (s == best && bf && ep_ord[e] > ep_ord[bf - ep])) { best = s; bf = f; } }   /* equally close: the later one */
+    /* W1f: "How do you go from the kitchen to the garden?": a path over the places' relations (north / south / east / west), the
+       moves said in order ("south east"). Each relation fact "A is north of B" is a step north from B to A and south from A to B. */
+    if (is_word_at(q, "how") && strcasestr(q, " from ") && strcasestr(q, " to ")) {
+        char xw[64] = "", yw[64] = ""; const char *fx = strcasestr(q, " from ") + 6, *fy = strcasestr(q, " to ") + 4; if (is_word_at(fx, "the")) fx += 4; if (is_word_at(fy, "the")) fy += 4;
+        int n = 0; while (*fx && *fx != ' ' && *fx != '?' && n < 63) xw[n++] = *fx++; xw[n] = 0; n = 0; while (*fy && *fy != ' ' && *fy != '?' && n < 63) yw[n++] = *fy++; yw[n] = 0;
+        uint32_t X = lx_id(xw, 0), Y = lx_id(yw, 0);
+        if (X != NONE && Y != NONE && X != Y) { static const char *D[] = { "north", "south", "east", "west", 0 }; static const char *INVD[] = { "south", "north", "west", "east", 0 };
+            uint32_t at[64]; int from[64], via[64], nq_ = 0, head = 0; at[nq_] = X; from[nq_] = -1; via[nq_++] = -1;
+            while (head < nq_ && nq_ < 60) { uint32_t cur = at[head];
+                for (uint32_t e = 0; e < nep && nq_ < 60; e++) { const KF *f = &ep[e]; if ((f->flags & F_NEG) || f->narg < 2 || f->verb != G_be) continue;
+                    for (int j = 1; j < f->narg; j++) { if (f->role[j] != A_PP || f->prep[j] == NONE) continue; int d = -1; for (int i = 0; D[i]; i++) if (!strcmp(LX.s[f->prep[j]], D[i])) d = i; if (d < 0) continue;
+                        uint32_t A_ = f->head[0], B_ = f->head[j]; uint32_t nxt = NONE; int mv = -1;
+                        if (B_ == cur) { nxt = A_; mv = d; } else if (A_ == cur) { nxt = B_; mv = d ^ 1; }     /* from B north to A; from A the other way */
+                        if (nxt == NONE) continue; int seen = 0; for (int k = 0; k < nq_; k++) seen |= at[k] == nxt; if (seen) continue;
+                        at[nq_] = nxt; from[nq_] = head; via[nq_] = mv; nq_++;
+                        if (nxt == Y) { int path[8], np = 0, k = nq_ - 1; while (from[k] >= 0 && np < 8) { path[np++] = via[k]; k = from[k]; }
+                            size_t L = 0; for (int i = np - 1; i >= 0 && L + 8 < cap; i--) L += (size_t)snprintf(out + L, cap - L, "%s%s", i == np - 1 ? "" : " ", D[path[i]]); return 1; } } }
+                head++; } } }
     /* W1e: "What is the kitchen south of?" when the text says "the office is north of the kitchen": the relation read the other way */
     if ((!bf || best < 0.3) && role == A_AGENT && qk.narg) {                   /* "What is east of the hallway?": the thing whose west is the hallway */
         for (int a_ = 0; a_ < qk.narg; a_++) if (qk.role[a_] == A_PP && qk.prep[a_] != NONE && qk.head[a_] != NONE) { static const char *INV2[][2] = { { "north", "south" }, { "east", "west" }, { "above", "below" }, { "left", "right" }, { 0, 0 } };

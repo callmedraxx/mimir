@@ -112,8 +112,9 @@ W1e, a relation read the other way ("the office is north of the kitchen" answers
 twenty **80.3** (1:100 2:84 3:97 4:100 5:76 6:86 7:86 8:83 9:84 10:84 11:100 12:99 13:99 14:72 15:100 16:96 17:46 18:52
 19:0 20:60). Every rule here is a general reading rule (a kind's facts hold for its members; a relation has its inverse),
 none is bAbI's: they are what the shelf's facts will need too. With Y15 (states follow the time words said: "yesterday … this
-morning …", docs/YESNO.md) task 14 72 → 97 and all twenty **81.5**. With Y16 (relations, inverses and chains) positions 46 → 100 and sizes 52 → 99: all twenty **86.5**. Still open:
-paths (19), and motives (20: "Sumit is tired. Where will Sumit go?" needs the world's knowledge that tired people go to bed;
+morning …", docs/YESNO.md) task 14 72 → 97 and all twenty **81.5**. With Y16 (relations, inverses and chains) positions 46 → 100 and sizes 52 → 99: all twenty **86.5**. With W1f, a path
+over the places' relations ("How do you go from the kitchen to the garden?" → "south east", bAbI 19 0 → 100): **91.5**. Still open:
+three-argument facts (5), counting and lists (7, 8), "maybe" (10), and motives (20: "Sumit is tired. Where will Sumit go?" needs the world's knowledge that tired people go to bed;
 only the shelf can give that). Left: relations (4 "east of"), deduction (15), induction (16 "what colour is Greg": by his
 kind), positions (17), size (18), paths (19), motives (20, "will go"), and the pronoun tasks at 73-84.
 

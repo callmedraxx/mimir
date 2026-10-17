@@ -18,7 +18,9 @@ for t in tasks:
             q, a, _ = rest.split("\t")
             if fresh: out.write("S\tbabiw%d.%d\nT\t%s\n" % (t, sid, " ".join(story))); fresh = False
             else: out.write("S\tbabiw%d.%d\nT\t%s\n" % (t, sid, " ".join(story)))
-            out.write("A\tbabiw%d_%d\t%s\t%s\n" % (t, sid, q.strip(), a.strip().replace(",", " "))); n += 1; nq += 1
+            ans = a.strip().replace(",", " ")
+            if t == 19: ans = " ".join({"n": "north", "s": "south", "e": "east", "w": "west"}.get(w, w) for w in ans.split())   # the path as words
+            out.write("A\tbabiw%d_%d\t%s\t%s\n" % (t, sid, q.strip(), ans)); n += 1; nq += 1
             if n >= N: break
         else: story.append(rest.strip())
 out.close(); print("%s: %d questions, tasks %s" % (name, nq, tasks))
