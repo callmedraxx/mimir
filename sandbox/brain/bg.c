@@ -877,6 +877,9 @@ static int rel_verdict(Know *A, Frame *hf, int nh) {
             uint32_t p = lx_id(A->t.voc[F->a[0].head].word, 0), pm = F->a[0].mod < OPEN ? lx_id(A->t.voc[F->a[0].mod].word, 0) : NONE;
             uint32_t q = lx_id(A->t.voc[F->a[j].head].word, 0), qm = F->a[j].mod < OPEN ? lx_id(A->t.voc[F->a[j].mod].word, 0) : NONE;
             if (flip) { uint32_t t = p; p = q; q = t; t = pm; pm = qm; qm = t; }
+            int told = 0; for (uint32_t e = 0; e < nep && !told; e++) { const KF *f = &ep[e]; if ((f->flags & F_NEG) || f->narg < 2 || !(f->verb == G_be || !strcmp(LX.s[f->verb], "fit"))) continue;
+                for (int k = 1; k < f->narg && !told; k++) { if (f->role[k] != A_PP || f->prep[k] == NONE) continue; int fl, rr = rel_of(LX.s[f->prep[k]], &fl); told = rr == r && !(!strcmp(LX.s[f->prep[k]], "in") && f->verb == G_be); } }
+            if (!told) continue;                                      /* the text tells no such relations: nothing to judge by */
             int v = rel_reach(r, p, pm, q, qm, 0, 0) ? 1 : -1;   /* a relation asked that the text does not give holds not (positions and sizes are told whole) */
             if (getenv("RELDBG")) fprintf(stderr, "  REL %s: %s(%s) -> %s(%s) = %d\n", A->t.voc[F->a[j].prep].word, LX.s[p], pm != NONE ? LX.s[pm] : "-", LX.s[q], qm != NONE ? LX.s[qm] : "-", v);
             return v; } }
