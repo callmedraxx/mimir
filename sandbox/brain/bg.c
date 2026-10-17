@@ -630,8 +630,9 @@ static int asks_opposite(const char *q);
 static int yesno_q(const char *q) { static const char *AUX[] = { "do", "does", "did", "is", "are", "was", "were", "can", "could", "will", "would", "has", "have", "had", 0 };
     for (int i = 0; AUX[i]; i++) if (is_word_at(q, AUX[i])) return 1; return 0; }
 static int yn_bare(const char *o) { return (is_word_at(o, "yes") && !o[3]) || (is_word_at(o, "no") && !o[2]); }
+static int wh_q(const char *q) { static const char *W[] = { "what", "which", "who", "whom", "where", "when", "why", "how", 0 }; for (int i = 0; W[i]; i++) if (is_word_at(q, W[i])) return 1; return 0; }   /* "What did the mayor say?" + yes / no: the word said, not a judgement */
 static void bg_option(Know *A, const char *q, const char *opt, BParts *P) {
-    yn_mode = yn_bare(opt) && (yesno_q(q) || s5(32));   /* Y6: a bare yes/no answers a yes/no question whatever its first word */
+    yn_mode = yn_bare(opt) && (yesno_q(q) || (s5(32) && !wh_q(q)));   /* Y6: a bare yes/no answers a yes/no question whatever its first word */
     char st[4096]; statement(q, opt, st, sizeof st);
     static Frame hf[64], qf[64], of[64]; uint32_t sw[256], qwl[256], owl[128]; int nsw, nq, now_;
     int nh = read_statement(A, st, hf, 64, sw, &nsw, 256); read_statement(A, q, qf, 64, qwl, &nq, 256); read_statement(A, opt, of, 64, owl, &now_, 128);
@@ -821,7 +822,7 @@ static int run_passages(int nfile, char **files) {
             int no = nf - 4; const char *ans = fld[nf - 1]; const char *q = fld[2]; int want = ans[0] - 'A'; BParts P[MAXO]; double sc[MAXO];
             int right[MAXO]; for (int o = 0; o < no; o++) right[o] = strchr(ans, 'A' + o) != 0;
             for (int o = 0; o < no; o++) { bg_option(&A, q, fld[3 + o], &P[o]); A.t.ntok = 0; }
-            yn_state = 0; if (s5(3) && no == 2 && (yesno_q(q) || s5(32)) && yn_opt(fld[3]) && yn_opt(fld[4])) yesno_judge(P, yn_opt(fld[3]) == 1 ? 0 : 1);   /* docs/YESNO.md */
+            yn_state = 0; if (s5(3) && no == 2 && (yesno_q(q) || (s5(32) && !wh_q(q))) && yn_opt(fld[3]) && yn_opt(fld[4])) yesno_judge(P, yn_opt(fld[3]) == 1 ? 0 : 1);   /* docs/YESNO.md */
             { int ex = 0; for (int o = 0; o < no; o++) ex += P[o].active && P[o].fact >= FX * EPW * 0.5;     /* F5: one option said almost whole by the passage: the fact decides */
                 if (ex == 1) for (int o = 0; o < no; o++) { P[o].open *= FO; P[o].joint *= FO; } }
             scores(q, P, no, sc);
