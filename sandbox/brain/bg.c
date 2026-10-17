@@ -642,6 +642,7 @@ static void bg_option(Know *A, const char *q, const char *opt, BParts *P) {
         for (int i = 0; i < nh && !direct_neg; i++) { if (!(hf[i].flags & F_NEG) || hf[i].verb >= OPEN) continue; uint32_t g = lx_id(A->t.voc[hf[i].verb].word, 0);
             for (uint32_t e = 0; e < nep && !direct_neg; e++) direct_neg = (ep[e].flags & F_NEG) && ep[e].verb == g; } }
     if (asks_opposite(q) && !direct_neg) for (int i = 0; i < nh; i++) hf[i].flags &= (uint8_t)~F_NEG;   /* (not "why ... not": a reason is asked) */
+    if (s5(8) && no && yesno_q(q) && (is_word_at(opt, "yes") || is_word_at(opt, "no")) && !opt[is_word_at(opt, "yes") ? 3 : 2]) no = 0;   /* docs/YESNO.md Y4: a bare "yes" is no content word of its own ("no" is glue and never was): both answers are about the question's words */
     if (!no && (is_word_at(opt, "no") || is_word_at(opt, "yes") || strstr(opt, "not") || strstr(opt, "n't"))) {   /* "no, she was not sad": by its yes or no */
         for (int i = 0; i < nq && i < 128; i++) O[no++] = Q[i]; }
     else if (nep && yesno_q(q)) for (int i = 0; i < nq && no < 128; i++) { int dup = 0; for (int j = 0; j < no; j++) dup |= O[j].g == Q[i].g; if (!dup) O[no++] = Q[i]; }   /* F1: a yes/no question is about its own words, not the option's extras ("the man") */

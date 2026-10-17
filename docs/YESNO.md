@@ -21,7 +21,7 @@ come up, and on this brain they come up "no".
 For speaking (docs/SPEAK.md W3) this step must leave behind a judgement with three values, **true / false / unknown**,
 with a strength, taken from the passage.
 
-## Steps (switch `S5`; `S5=0` identical to the adopted reader)
+## Steps (switch `S5`: 1 Y1, 2 Y2, 4 Y3, 8 Y4; `S5=0` identical to the adopted reader)
 
 **Y0. Diagnose (no change).** One Colab run of the adopted reader on BoolQ train with the parts dumped (fact, joint,
 open book, meaning, fit, for both statements, episode and shelf apart) and every pick shown: which part decides, with
@@ -43,6 +43,23 @@ question asked of a text is more often yes (BoolQ 62%, the dev set's prior enter
 more; "is" / "has" / "does" weigh 0.3 and so "X is not Y" against "X is Y" sometimes keeps a third of the score
 instead of turning around. For a be/have/do statement the turn-around applies when the subject and the attribute
 match. Taken only if Y0 shows the fact part misreading "not" in the passage.
+
+**Y4. A bare "yes" has no words of its own (bit 8).** Found by Y0: "yes" is read as a content word of the option
+while "no" is a glue word and is dropped, so the "yes" statement's option words were {yes} + the question's and the
+"no" statement's just the question's. Every coverage score (joint, open book, meaning) then ran lower for "yes",
+since no fact or sentence holds the word "yes". With Y4 both answers are about the question's words alone, and only
+the facts' "not" logic tells them apart.
+
+## Y0 result (2026-10-17, Colab, `brain-school-cx4`, BoolQ train 1,000; `tools/yesno_notes.py`)
+
+acc 47.1, picks "yes" 28% (the answer is yes 62%). Which part leans which way, over the 1,000 questions: fact favours
+yes 523 / no 48 / same 429; **joint favours no 999**; open book favours no 848 / yes 151; meaning same 915; fit same
+916. The parts come mostly from the shelf (fact 1,452 of 2,000 option-parts, joint 1,586, open 1,536), not the
+passage. Judged by the passage's parts alone the accuracy is 47.8, so the shelf is not the cause either: the cause
+is the coverage asymmetry of Y4. The passage states something for both statements in 916 questions and nothing in
+84 (acc 44.0 there, yes 52%). Y2 on the passage's evidence alone: THIN2 0.1 → true 207 / false 595 / unknown 198,
+acc 49.2; THIN2 0.4 → true 180 / false 53 / unknown 767, acc 60.8 (that is mostly the prior). So the first dev run
+is Y4 alone, then Y4 + Y1, Y4 + Y1 + Y2, all four.
 
 ## Rules
 
