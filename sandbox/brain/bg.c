@@ -149,9 +149,9 @@ enum { EPFID = 63 };                                  /* pointers into the episo
 static KF *ep; static uint32_t nep, capep; static char *epbuf; static size_t neb, capeb;
 static uint8_t *epword; static uint32_t nepword;     /* words the episode holds */
 /* docs/STATE.md: each episode fact's order of saying (ep_ord) and whether a later fact of the same state supersedes it (ep_sup) */
-static uint8_t *ep_sup, *ep_der; static uint32_t *ep_ord, ep_seq; static double SUPW = 0.25; static int ep_deriving;   /* ep_der: a fact derived from another (S2, S3), not said by the text */
+static uint8_t *ep_sup, *ep_der; static uint32_t *ep_ord, ep_seq, ep_derive_ord; static double SUPW = 0.25; static int ep_deriving;   /* ep_der: a fact derived from another (S2, S3), not said by the text */
 static void ep_add(const KF *f, uint64_t ptr) {
-    for (uint32_t i = 0; i < nep; i++) if (kf_same(&ep[i], f)) { ep[i].count++; ep[i].s += 1; if (ep[i].count == 2) ep[i].ptr[1] = ptr; ep_ord[i] = ++ep_seq; return; }
+    for (uint32_t i = 0; i < nep; i++) if (kf_same(&ep[i], f)) { ep[i].count++; ep[i].s += 1; if (ep[i].count == 2) ep[i].ptr[1] = ptr; ep_ord[i] = ep_deriving && s5(8192) ? (ep_derive_ord > ep_ord[i] ? ep_derive_ord : ep_ord[i]) : ++ep_seq; return; }   /* Y13: a derived fact said again keeps its source's order, not a fresh one (it was marked latest of all and superseded the real latest state) */
     if (nep == capep) { capep = capep ? capep * 2 : 256; ep = realloc(ep, capep * sizeof *ep); ep_sup = realloc(ep_sup, capep); ep_der = realloc(ep_der, capep); ep_ord = realloc(ep_ord, capep * 4); }
     KF *e = &ep[nep++]; *e = *f; e->count = 1; e->s = 1; e->L = (uint32_t)CLK; e->ptr[0] = ptr; e->ptr[1] = ~0ull; ep_sup[nep - 1] = 0; ep_der[nep - 1] = (uint8_t)ep_deriving; ep_ord[nep - 1] = ++ep_seq;
 }
@@ -182,6 +182,7 @@ static void ep_derive(uint32_t ord, uint32_t verb, uint8_t flags, uint32_t who, 
     f.role[0] = A_AGENT; f.prep[0] = NONE; f.head[0] = who; f.mod[0] = NONE;
     f.role[1] = prep == NONE ? A_PAT : A_PP; f.prep[1] = prep; f.head[1] = what; f.mod[1] = NONE;
     if (f.role[1] < f.role[0]) { f.role[0] = f.role[1]; f.prep[0] = prep; f.head[0] = what; f.role[1] = A_AGENT; f.prep[1] = NONE; f.head[1] = who; }   /* roles in order, as to_kf keeps them */
+    ep_derive_ord = ord;
     uint32_t n0 = nep; ep_deriving = 1; ep_add(&f, ptr); ep_deriving = 0; if (nep > n0) ep_ord[nep - 1] = ord;   /* said when its source was said */
     if (nep == n0) for (uint32_t i = 0; i < nep; i++) if (kf_same(&ep[i], &f)) { if (ep_ord[i] < ord) ep_ord[i] = ord; break; }
 }
@@ -787,6 +788,8 @@ static void ep_read(Know *k, const char *text) {
     memcpy(epbuf + neb, text, L); epbuf[neb + L] = '\n'; size_t off = neb; neb += L + 1; epbuf[neb] = 0;
     memset(&k->R.refs, 0, sizeof k->R.refs); k->R.refs.plthing = NONE; EPREAD = 1; read_block(k, epbuf + off, L + 1, EPFID, off); EPREAD = 0;
     ep_states();
+    if (getenv("EPDBG")) for (uint32_t e = 0; e < nep; e++) { fprintf(stderr, "  ep%u ord=%u%s%s %s%s", e, ep_ord[e], ep_sup[e] ? " SUP" : "", ep_der[e] ? " der" : "", ep[e].flags & F_NEG ? "NOT " : "", ep[e].verb != NONE ? LX.s[ep[e].verb] : "-");
+        for (int a = 0; a < ep[e].narg; a++) fprintf(stderr, " %s%s%s=%s", ep[e].role[a] == A_AGENT ? "who" : ep[e].role[a] == A_PAT ? "what" : ep[e].role[a] == A_ATTR ? "is" : "pp", ep[e].prep[a] != NONE ? ":" : "", ep[e].prep[a] != NONE ? LX.s[ep[e].prep[a]] : "", LX.s[ep[e].head[a]]); fprintf(stderr, "\n"); }   /* dev trace */
     for (uint32_t i = 0; i < ncxjr; i++) if (!cxjr[i].which) { uint32_t g = cxjr[i].g; float n = cx_dot(CXU(g), CXU(g)); cxinv[g] = n > 0 ? 1 / sqrtf(n) : 0; }
     if (nepword < LX.n) { epword = realloc(epword, LX.n); memset(epword + nepword, 0, LX.n - nepword); nepword = LX.n; }
     for (uint32_t e = 0; e < nep; e++) { uint32_t w[8]; int n = kf_words(&ep[e], w); for (int j = 0; j < n; j++) if (w[j] < nepword) epword[w[j]] = 1; }
