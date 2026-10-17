@@ -783,10 +783,30 @@ static void ep_end(void) {                                /* the passage is over
     LX.n = ep_lxn;
     for (uint32_t i = 0; i < nl2g; i++) if (l2g[i] != NONE - 1 && l2g[i] >= ep_lxn) l2g[i] = NONE - 1;   /* the reader's word map, the same */
 }
+/* docs/YESNO.md Y15 (for docs/STATE.md): when the sentences carry time words ("Yesterday Julie went to the office. This morning she
+   went to the school."), the states follow the times, not the telling: each fact's order becomes its sentence's time rank first
+   (yesterday 1, last night 2, this morning 3, today 4, this afternoon 5, this evening 6, tonight 7; none: 4), its saying second. */
+static int ep_time_rank(const char *s, size_t n) {
+    static const struct { const char *w; int r; } T[] = { { "yesterday", 1 }, { "last night", 2 }, { "this morning", 3 }, { "today", 4 }, { "this afternoon", 5 }, { "this evening", 6 }, { "tonight", 7 }, { 0, 0 } };
+    for (int i = 0; T[i].w; i++) { size_t L = strlen(T[i].w); for (size_t j = 0; j + L <= n; j++) if (!strncasecmp(s + j, T[i].w, L) && (j == 0 || !isalpha((unsigned char)s[j - 1])) && (j + L == n || !isalpha((unsigned char)s[j + L]))) return T[i].r; }
+    return 0;
+}
+static void ep_time_order(void) {
+    int any = 0; static int *rank; static uint32_t cap; if (cap < nep) { cap = nep; rank = realloc(rank, cap * sizeof *rank); }
+    for (uint32_t e = 0; e < nep; e++) { rank[e] = 0; uint64_t p = ep[e].ptr[0]; if (p == ~0ull || (int)(p >> FID_SHIFT) != EPFID) continue;
+        size_t off = (size_t)(p & ((1ull << FID_SHIFT) - 1)); if (off >= neb) continue;
+        size_t a = off; while (a > 0 && epbuf[a - 1] != '.' && epbuf[a - 1] != '!' && epbuf[a - 1] != '?' && epbuf[a - 1] != '\n') a--;
+        size_t b = off; while (b < neb && epbuf[b] != '.' && epbuf[b] != '!' && epbuf[b] != '?' && epbuf[b] != '\n') b++;
+        rank[e] = ep_time_rank(epbuf + a, b - a); any |= rank[e] != 0; }
+    if (!any) return;
+    for (uint32_t e = 0; e < nep; e++) ep_ord[e] = (uint32_t)(rank[e] ? rank[e] : 4) * 100000u + ep_ord[e];
+    ep_seq += 800000u;                                   /* later facts stay later than every timed one */
+}
 static void ep_read(Know *k, const char *text) {
     size_t L = strlen(text); if (neb + L + 2 > capeb) { capeb = (neb + L + 2) * 2; epbuf = realloc(epbuf, capeb); }
     memcpy(epbuf + neb, text, L); epbuf[neb + L] = '\n'; size_t off = neb; neb += L + 1; epbuf[neb] = 0;
     memset(&k->R.refs, 0, sizeof k->R.refs); k->R.refs.plthing = NONE; EPREAD = 1; read_block(k, epbuf + off, L + 1, EPFID, off); EPREAD = 0;
+    if (s5(32768)) ep_time_order();                      /* Y15: "yesterday … this morning …": the order of saying is the order of the times said */
     ep_states();
     if (getenv("EPDBG")) for (uint32_t e = 0; e < nep; e++) { fprintf(stderr, "  ep%u ord=%u%s%s %s%s", e, ep_ord[e], ep_sup[e] ? " SUP" : "", ep_der[e] ? " der" : "", ep[e].flags & F_NEG ? "NOT " : "", ep[e].verb != NONE ? LX.s[ep[e].verb] : "-");
         for (int a = 0; a < ep[e].narg; a++) fprintf(stderr, " %s%s%s=%s", ep[e].role[a] == A_AGENT ? "who" : ep[e].role[a] == A_PAT ? "what" : ep[e].role[a] == A_ATTR ? "is" : "pp", ep[e].prep[a] != NONE ? ":" : "", ep[e].prep[a] != NONE ? LX.s[ep[e].prep[a]] : "", LX.s[ep[e].head[a]]); fprintf(stderr, "\n"); }   /* dev trace */

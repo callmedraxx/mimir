@@ -115,6 +115,12 @@ Afterwards she travelled to the office. Mary went to the kitchen. Then she went 
 woman over someone who might be one" sent the last "she" to Sandra. The latest person named keeps the pronoun when
 their sex is not known to differ. Tiny brain: task 11 in words 78 → 99.5; the 70 dev-story questions unchanged.
 
+**Y15. States follow the times said (bit 32768, for STATE).** "Bill went to the cinema yesterday. Julie went to the school
+this morning. Yesterday Julie went to the office.": the order of telling is not the order of events. When the sentences
+carry time words (yesterday, last night, this morning, today, this afternoon, this evening, tonight) each fact's order is
+its sentence's time first, its saying second; the derived states follow. Tiny brain: bAbI task 14 in words 72 → 97, the
+dev stories unchanged.
+
 ## Dev run 4 and the threshold scan (2026-10-17): where BoolQ stands
 
 Full brain, masks 490 (Y9 added) / 1514 (+ Y5b, Y11) / 3562 (+ Y10): BoolQ train 61.9 / 61.9 / 61.7; bAbI train
