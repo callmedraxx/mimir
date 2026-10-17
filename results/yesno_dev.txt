@@ -101,3 +101,5 @@
 ==> S5 130538 RESULT bgask file=babi_words_train.txt n=1400 acc=95.57 epw=4.00
 ==> S5 130538 RESULT bgask file=babi_words20_train.txt n=4000 acc=87.80 epw=4.00   (all twenty tasks in words, first full-brain run)
 ==> S5 130538 dev stories 67/70 | mc160.dev 51.94 mc500.dev 58.25 dev_middle 40.74
+==> general S5 130538 easy_dev 47.19 challenge_dev 18.26 obqa_dev 25.25 mmlu_hs_dev 30.07 csqa_traindev 30.65   (= run 5)
+=== dev run 7 (11:46 UTC; mask 1965546 = 130538 + Y17 262144 + W2/do-question 524288 + Y18 1048576, with Y16 restricted; commit e28a009)
