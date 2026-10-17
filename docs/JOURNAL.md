@@ -79,7 +79,8 @@ uses them; say if they should go too.
 
 The standard reading tests, once (docs/SURVEY.md, 2026-10-16, `brain-school-cx4`; chance in brackets): SciQ 89.5 (25),
 MultiRC 59.5 (~40), Story Cloze 55.5 (50), Winograd 49.6 (50), WinoGrande 50.4 (50), BoolQ 46.7 (50), DREAM 43.0 (33),
-bAbI choice version 42.8 → **57.0 with STATE** (task 1 "where is" 66 → 97, he/they 8-10 → 70-72, deduction 0; 94 in words on 10-12), CBT names 31.7 /
+bAbI choice version 42.8 → **57.0 with STATE** (task 1 "where is" 66 → 97, he/they 8-10 → 70-72, deduction 0; 94 in words on 10-12; the
+other sixteen tests within 0.1 after STATE, rerun 2026-10-17), CBT names 31.7 /
 nouns 29.5 / verbs 16.5 / prepositions 4.3 (10), RACE-High 30.7 (25), QuALITY 23.4 (25), ReCoRD 23.1 (~8), CosmosQA
 18.6 (25), LAMBADA 10-choice 16.0 (10). Not run: SQuAD, CoQA, QuAC, DROP, NarrativeQA (an answer must be written out).
 
@@ -179,9 +180,10 @@ Lessons that keep coming back:
 
 ## Log
 
+* 2026-10-17: the survey rerun after STATE (Colab, once, 17 files, 21:50-00:08 UTC): bAbI 42.8 → 57.0, every other test
+  within 0.1 of before (results/survey.txt STATE column; docs/SURVEY.md). Runtime deleted. Next in the program: BoolQ.
 * 2026-10-16: STATE adopted (owner: "we will adopt it"): the S4 switch and the EPDBG trace removed (byte-identical to
-  S4=31 on the tiny brain), tools/state_colab.py deleted, no brain rebuild (episode facts only). The survey's seventeen
-  files rerun once in Colab as the running scorecard (results/survey.txt, STATE column). Next in the program: BoolQ.
+  S4=31 on the tiny brain), tools/state_colab.py deleted, no brain rebuild (episode facts only).
 * 2026-10-16: STATE tested once in Colab (S4=31, brain-school-cx4): bAbI test 42.8 → 57.0 (task 1 66 → 97, task 2
   22 → 74, he/she 8 → 70, they 10 → 72); new state stories 15 → 16 of 30; the fifteen older stories 121 of 150 both;
   MC160 58.2 → 58.7, MC500 52.1 → 52.3, RACE-M 40.7 → 40.8; general tests the same. results/state_test.txt. The natural phrasings of a state ("the key is with X now", "has a zinc roof", "not

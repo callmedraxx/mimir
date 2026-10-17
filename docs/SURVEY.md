@@ -66,29 +66,33 @@ own right and goes to the journal's Open list.
 * Nothing here is a dev set for later steps unless the owner says so; the published dev splits used here are
   named so a later step can choose its dev and test halves.
 
-## Results (2026-10-16, Colab, once, `brain-school-cx4`; `results/survey.txt`)
+## Results (2026-10-16, Colab, once, `brain-school-cx4`; `results/survey.txt`; the STATE column: the rerun after STATE's adoption, 2026-10-16/17)
 
-| test | n | Mimir | chance | published | what the misses show |
-|---|---|---|---|---|---|
-| SciQ (support paragraph) | 884 | **89.5** | 25 | | the paragraph states the answer in the question's words: the exact fact and the word parts work |
-| MultiRC (one pick a question) | 950 | 59.5 | ~40 | GPT-3 72.9 F1 | options restate a sentence; misses are inferences ("Total memory loss") |
-| Story Cloze | 1,871 | 55.5 | 50 | GPT-2 86.4 | picks the ending with the story's words; the right one is a consequence ("ate the whole pie" → "got sick") |
-| Winograd Schema | 273 | 49.6 | 50 | GPT-2 70.7 | picks the subject nearly every time: "_ was too small" needs what fits into what, not a fact in the sentence |
-| WinoGrande | 1,267 | 50.4 | 50 | GPT-3 70.2 | the same: "the _ was canceled" (class, not story) is knowledge of the world joined to the sentence |
-| BoolQ | 3,270 | 46.7 | 50 | GPT-3 60.5 | says "no" 70% of the time while 62% of the answers are yes: when the fact support is thin the yes/no judging falls to "no" |
-| DREAM (dialogue) | 2,041 | 43.0 | 33 | BERT 63.2 | "What does the man mean?", "Where does the conversation take place?": inference from turns; picks the option with the dialogue's words |
-| bAbI, 20 tasks, choice version | 4,000 | 42.8 | varies | 94 in words (10-12) | task 1 "Where is Sandra?" 66%: every move is a fact ("go … to kitchen"), the latest does not beat the earlier ones and "is" does not match "go"; he/they 8 / 10%, deduction 0, path 8 |
-| CBT named entities | 1,000 | 31.7 | 10 | GPT-2 89.1 | three times chance: a fact's shape carries ("the King", "the Princess"); misses pick another character of the same kind |
-| RACE-High | 3,498 | 30.7 | 25 | GPT-3 45.5 | longer passages, "the passage mainly suggests": inference over the whole text |
-| CBT common nouns | 1,000 | 29.5 | 10 | GPT-2 93.3 | as named entities; misses are nouns in a new role ("at the top of his shrill little _" → voice) |
-| QuALITY (whole stories) | 1,000 | 23.4 | 25 | RoBERTa 39.5 | motives and reasons over 5,000 words; at chance |
-| ReCoRD (entity cloze) | 2,000 | 23.1 | ~8 | GPT-3 90.2 | the query paraphrases a sentence; picks a frequent entity of the right kind |
-| CosmosQA | 2,985 | 18.6 | 25 | BERT 68.3 | **below chance**: the right answer is an inference in other words ("he likely fell"), the wrong ones reuse the passage's words, and Mimir follows the words |
-| CBT verbs | 1,000 | 16.5 | 10 | ~70 | the blank is the verb: facts are keyed by their verb, so none matches; picks a verb seen in the passage |
-| LAMBADA (10-choice) | 2,000 | 16.0 | 10 | GPT-2 63.2 (prediction) | "said _": who is speaking needs the turn-taking of the dialogue; picks a frequent word |
-| CBT prepositions | 1,000 | 4.3 | 10 | ~70 | **below chance**: a preposition is no fact; the candidates that look like content words win |
+| test | n | Mimir (FOLLOW) | + STATE | chance | published | what the misses show |
+|---|---|---|---|---|---|---|
+| SciQ (support paragraph) | 884 | **89.5** | 89.5 | 25 | | the paragraph states the answer in the question's words: the exact fact and the word parts work |
+| MultiRC (one pick a question) | 950 | 59.5 | 59.5 | ~40 | GPT-3 72.9 F1 | options restate a sentence; misses are inferences ("Total memory loss") |
+| Story Cloze | 1,871 | 55.5 | 55.5 | 50 | GPT-2 86.4 | picks the ending with the story's words; the right one is a consequence ("ate the whole pie" → "got sick") |
+| Winograd Schema | 273 | 49.6 | 49.6 | 50 | GPT-2 70.7 | picks the subject nearly every time: "_ was too small" needs what fits into what, not a fact in the sentence |
+| WinoGrande | 1,267 | 50.4 | 50.4 | 50 | GPT-3 70.2 | the same: "the _ was canceled" (class, not story) is knowledge of the world joined to the sentence |
+| BoolQ | 3,270 | 46.7 | 46.7 | 50 | GPT-3 60.5 | says "no" 70% of the time while 62% of the answers are yes: when the fact support is thin the yes/no judging falls to "no" |
+| DREAM (dialogue) | 2,041 | 43.0 | 43.0 | 33 | BERT 63.2 | "What does the man mean?", "Where does the conversation take place?": inference from turns; picks the option with the dialogue's words |
+| bAbI, 20 tasks, choice version | 4,000 | 42.8 | **57.0** | varies | 94 in words (10-12) | task 1 "Where is Sandra?" 66%: every move is a fact ("go … to kitchen"), the latest does not beat the earlier ones and "is" does not match "go"; he/they 8 / 10%, deduction 0, path 8 |
+| CBT named entities | 1,000 | 31.7 | 31.7 | 10 | GPT-2 89.1 | three times chance: a fact's shape carries ("the King", "the Princess"); misses pick another character of the same kind |
+| RACE-High | 3,498 | 30.7 | 30.7 | 25 | GPT-3 45.5 | longer passages, "the passage mainly suggests": inference over the whole text |
+| CBT common nouns | 1,000 | 29.5 | 29.5 | 10 | GPT-2 93.3 | as named entities; misses are nouns in a new role ("at the top of his shrill little _" → voice) |
+| QuALITY (whole stories) | 1,000 | 23.4 | 23.5 | 25 | RoBERTa 39.5 | motives and reasons over 5,000 words; at chance |
+| ReCoRD (entity cloze) | 2,000 | 23.1 | 23.0 | ~8 | GPT-3 90.2 | the query paraphrases a sentence; picks a frequent entity of the right kind |
+| CosmosQA | 2,985 | 18.6 | 18.7 | 25 | BERT 68.3 | **below chance**: the right answer is an inference in other words ("he likely fell"), the wrong ones reuse the passage's words, and Mimir follows the words |
+| CBT verbs | 1,000 | 16.5 | 16.4 | 10 | ~70 | the blank is the verb: facts are keyed by their verb, so none matches; picks a verb seen in the passage |
+| LAMBADA (10-choice) | 2,000 | 16.0 | 16.0 | 10 | GPT-2 63.2 (prediction) | "said _": who is speaking needs the turn-taking of the dialogue; picks a frequent word |
+| CBT prepositions | 1,000 | 4.3 | 4.2 | 10 | ~70 | **below chance**: a preposition is no fact; the candidates that look like content words win |
 
 Not run (the answer must be written out): SQuAD, CoQA, QuAC, DROP, NarrativeQA.
+
+**After STATE (2026-10-17):** bAbI 42.8 → 57.0 (by task: 1 97, 2 74, 3 34, 6 68, 9 74, 11 70, 12 88, 13 72; 15 still 0, 19 still 8);
+every other test within a tenth of a point (BoolQ 46.73 → 46.70, CosmosQA 18.62 → 18.69, ReCoRD 23.07 → 23.02, CBT-P 4.31 → 4.21,
+QuALITY 23.36 → 23.46, the rest identical). The program's rule held: nothing fell more than a point.
 
 **What this says about Mimir.** It answers when the passage states the answer in words close to the question's
 (SciQ 89.5, MultiRC 59.5, MCTest 58 / 52, the hand-written stories). It is at or below chance wherever the answer
