@@ -67,6 +67,36 @@ a noun and its verb is a modifier. Tiny brain: the probes read right; dev storie
 the same; MC160 dev 52.4 → 53.2, MC500 dev 57.4 → 57.9; BoolQ train's passage-side judgement barely moves (the
 "no" evidence stays at 24 of 1,000: the Wikipedia prose is lost in more ways than these two).
 
+**Y9. The question's subject is a noun phrase (bit 256).** Found by tracing the statements: "Does a penalty shoot out
+goal count towards the golden boot?" became "a penalty does shoot out goal count …", "Can you use oyster card at epsom
+station?" became "you use oyster card can at epsom station": the subject finder stopped at the first word that could
+be a verb. Now the subject runs to the main verb: a verb-like word belongs to it while a noun follows (a finite verb
+after a singular noun would be inflected, and in a do-question the bare verb is followed by its complement), particles
+go with it ("shoot out goal"), "and" joins two subjects, "of" stays inside, a pronoun is the whole subject, and after
+the head noun a determiner or adjective starts the predicate ("the same as", "legal tender"). 23 of the 25 traced
+statements read right (left: "travel" classed as a noun, a prepositional phrase after a pronoun).
+
+**Y5b. A negation with the same subject counts against (bit 512).** Y5 restricted so bAbI keeps its score: the fact
+is negated, the statement's subject matches at 0.8 or more, one more of its things matches, the verbs differ: "the
+certificate is not considered proof of identity" against "the certificate is a valid form of id". Tiny brain: no
+change anywhere (its cortex has no word similarity; the full brain decides).
+
+**Y11. A hyphenated word is one word (bit 1024, reader).** "shoot-out", "tie-breaker": the tokens were two words and
+"shoot" was read as the verb. With Y8 over a multi-word noun phrase, "Converted shoot-out penalties are not considered
+…" now reads NOT consider what=penalty(shoot-out).
+
+**Y10. The judgement is the passage's facts alone (bit 2048).** Measured on the tiny brain (`results/yesno_dev.txt`):
+the passage's fact fit for "yes" at 0.4 or more is right 77% (71 questions), at 0.5 or more 92% (26); open book and
+the shelf sit at the prior's precision (62-63%) at every threshold. So the three states are read from the fact fit:
+true / false / unknown by `YTHIN2` on EPW × (efact yes − efact no), unknown answered yes. The threshold is read off
+the full brain's dump (dev run 4 writes it).
+
+Tiny brain, masks 490 / 1514 / 3562: dev stories 6 wrong of 70 (as the adopted reader), bAbI train 67.56 (= adopted),
+MC160 dev 52.4 → 53.2, MC500 dev 57.4 → 57.9; BoolQ train's passage-side "no" evidence 23 → 28-30 of 1,000 (half
+right). The "no" cases read so far are inferences ("not in the Oyster zone" → cannot use the card; "cancelled plans for
+a sequel" → no second film; "not able to qualify" → not in the cup; "not featured in the original works" → not in the
+book) or need the negated fact's complement, which the reader hangs on a participle clause.
+
 ## Dev run 1 (2026-10-17, Colab, `brain-school-cx4`; `results/yesno_dev.txt`)
 
 | S5 | BoolQ train | says yes | bAbI train | dev stories | MC160 / MC500 / RACE-M dev |

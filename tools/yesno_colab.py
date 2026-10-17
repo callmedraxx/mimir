@@ -42,15 +42,17 @@ else:
     if not os.path.exists("data/understand/race/dev_middle.txt"): sh("python3 tools/race_fetch.py")
     if not os.path.exists("data/understand/survey/babi_train.txt"): sh("python3 tools/survey_fetch.py babi_train")
     sh("python3 tools/stories.py /content/st"); sh("python3 tools/general_tests.py >/dev/null 2>&1; ls data/dev_sets")
-    OUT = "/content/yesno_dev.txt"
+    OUT = "/content/yesno_dev.txt"; general_done = set()
     for m in sys.argv[2:]:
-        env = {"S5": m}
+        env = {"S5": m, "EPDUMP": "1", "DUMP": "/content/yesno_dev_%s.dump" % m}   # the parts of every option, episode apart (tools/yesno_notes.py)
         for f in ["data/understand/survey/boolq_train.txt", "data/understand/survey/babi_train.txt", "/content/st/smart_tests.txt /content/st/dev_stories.txt /content/st/clock.txt /content/st/bakery.txt",
                   "data/understand/mctest/mc160.dev.txt data/understand/mctest/mc500.dev.txt data/understand/race/dev_middle.txt"]:
             r = sh("SHOW=1 ./bg passages %s %s 2>/dev/null" % (BRAIN, f), OUT, env)
             for l in r.stdout.split("\n"):
                 if l.startswith("RESULT"): print("==> S5", m, l, flush=True); open(OUT, "a").write("==> S5 %s %s\n" % (m, l))
-        if not int(m) & (4 | 64 | 128): continue   # Y1, Y2, Y4, Y5, Y6 touch only yes/no passage questions: the general sets cannot move; Y3, Y7, Y8 read for everything
+        g = int(m) & (4 | 64 | 128 | 1024)   # only Y3, Y7, Y8, Y11 read for everything: the general sets move with those bits alone
+        if not g or g in general_done: continue
+        general_done.add(g)
         r = sh("./bg arc %s data/dev_sets/easy_dev.tsv data/dev_sets/challenge_dev.tsv data/dev_sets/obqa_dev.tsv data/dev_sets/mmlu_hs_dev.tsv data/dev_sets/csqa_traindev.tsv 2>/dev/null | grep RESULT" % BRAIN, OUT, env)
         for l in r.stdout.split("\n"):
             if l.startswith("RESULT"): print("==> general S5", m, l, flush=True); open(OUT, "a").write("==> general S5 %s %s\n" % (m, l))
