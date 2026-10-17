@@ -902,6 +902,14 @@ static void yesno_judge(BParts *P, int yes) {
 /* The question is read as a frame with a hole (the reader marks the asked slot with an OPEN head: "Where is Mary?" → be who=mary
    pp:in=_). The episode fact closest to that frame which fills the slot gives the answer: the word in that slot, said as the
    text said it (its lemma for now). A yes/no question is judged as the choice reader judges "yes" against "no". */
+/* SQuAD's word F1 between what was said and a right answer: words lower-cased, articles and punctuation dropped */
+static int f1_words(const char *s, char w[32][48]) { int n = 0; const char *p = s; while (*p && n < 32) { while (*p && !isalnum((unsigned char)*p)) p++; if (!*p) break; int L = 0; while (*p && isalnum((unsigned char)*p) && L < 47) w[n][L++] = (char)tolower((unsigned char)*p++); w[n][L] = 0;
+        if (strcmp(w[n], "a") && strcmp(w[n], "an") && strcmp(w[n], "the")) n++; } return n; }
+static double word_f1(const char *said, const char *gold) {
+    char a[32][48], b[32][48]; int na = f1_words(said, a), nb = f1_words(gold, b); if (!na || !nb) return na == nb;
+    int used[32] = { 0 }, hit = 0; for (int i = 0; i < na; i++) for (int j = 0; j < nb; j++) if (!used[j] && !strcmp(a[i], b[j])) { used[j] = 1; hit++; break; }
+    if (!hit) return 0; double pr = (double)hit / na, rc = (double)hit / nb; return 2 * pr * rc / (pr + rc);
+}
 static int ask_answer(Know *A, const char *q, char *out, size_t cap) {
     if (yesno_q(q)) { BParts P[2]; yn_slot = 0; bg_option(A, q, "yes", &P[0]); A->t.ntok = 0; bg_option(A, q, "no", &P[1]); A->t.ntok = 0;
         yn_state = 0; if (yn_slot == 2) { snprintf(out, cap, "maybe"); return 1; } if (s5(3)) yesno_judge(P, 0); double sc[2]; scores(q, P, 2, sc); snprintf(out, cap, "%s", sc[0] >= sc[1] ? "yes" : "no"); return 1; }
@@ -1002,7 +1010,7 @@ static int run_passages(int nfile, char **files) {
     static FILE *dump; if (!dump && getenv("DUMP")) dump = fopen(getenv("DUMP"), "a");
     for (int fi = 0; fi < nfile; fi++) {
         FILE *f = fopen(files[fi], "r"); if (!f) { perror(files[fi]); return 1; }
-        static char line[1 << 18]; double ok = 0; int n = 0, open = 0, nasked = 0; double t0 = now();
+        static char line[1 << 18]; double ok = 0, f1sum = 0; int n = 0, open = 0, nasked = 0; double t0 = now();
         const char *bn = strrchr(files[fi], '/'); bn = bn ? bn + 1 : files[fi];
         while (fgets(line, sizeof line, f)) {
             size_t L = strlen(line); while (L && (line[L - 1] == '\n' || line[L - 1] == '\r')) line[--L] = 0;
@@ -1010,7 +1018,10 @@ static int run_passages(int nfile, char **files) {
             if (line[0] == 'T') { ep_read(&k, line + 2); continue; }
             if (line[0] == 'A') {                                      /* A id question answer: the answer in words (docs/SPEAK.md) */
                 char *fld[4]; int nf = 0; for (char *p = strtok(line, "\t"); p && nf < 4; p = strtok(0, "\t")) fld[nf++] = p; if (nf < 4) continue;
-                char ans[256]; ask_answer(&A, fld[2], ans, sizeof ans); A.t.ntok = 0; int okq = !strcasecmp(ans, fld[3]); ok += okq; nasked++;
+                char ans[256]; ask_answer(&A, fld[2], ans, sizeof ans); A.t.ntok = 0;
+                int okq = 0; double f1 = 0;                               /* several right answers "a || b": exact match on any; word F1 the best (SQuAD's measures) */
+                for (char *g = fld[3]; g; ) { char *sep = strstr(g, " || "); if (sep) *sep = 0; okq |= !strcasecmp(ans, g); double f = word_f1(ans, g); if (f > f1) f1 = f; if (sep) { *sep = ' '; g = sep + 4; } else break; }
+                ok += okq; f1sum += f1; nasked++;
                 if (getenv("SHOW")) printf("  %s\t%s\tsaid=%s\tright=%s\t%s\n", fld[1], fld[2], ans, fld[3], okq ? "OK" : "WRONG");
                 n++; continue; }
             if (line[0] != 'Q') continue;
@@ -1034,7 +1045,8 @@ static int run_passages(int nfile, char **files) {
         if (open) ep_end();
         fclose(f); if (dump) fflush(dump);
         printf("%-22s %5d q   %6.2f%%   (episode weight %.2f)  %.1f ms/q\n", bn, n, 100 * ok / (n ? n : 1), EPW, 1000 * (now() - t0) / (n ? n : 1));
-        printf("RESULT %s file=%s n=%d acc=%.2f epw=%.2f\n", nasked ? "bgask" : "bgpass", bn, n, 100 * ok / (n ? n : 1), EPW);
+        if (nasked) printf("RESULT bgask file=%s n=%d acc=%.2f f1=%.2f epw=%.2f\n", bn, n, 100 * ok / (n ? n : 1), 100 * f1sum / (n ? n : 1), EPW);
+        else printf("RESULT bgpass file=%s n=%d acc=%.2f epw=%.2f\n", bn, n, 100 * ok / (n ? n : 1), EPW);
     }
     return 0;
 }
