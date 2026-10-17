@@ -103,6 +103,18 @@ a state statement (someone's place, a thing's holder, what a thing is made of), 
 brain, bAbI train in words: task 6 52 → 83, task 9 59 → 82 (docs/SPEAK.md); the choice version is untouched for now
 (its yes/no questions carry a third option, "maybe", and the judge takes two).
 
+**Y13. A derived state said again keeps its order (bit 8192, a STATE bug).** Found through the answering path: "Mary
+moved to the bathroom. Following that she went back to the bedroom." answered bathroom. A derived fact (docs/STATE.md
+S2: "went to" → "is in") that already existed from an earlier sentence was given a fresh, latest order number when it
+came up again, so it superseded the real latest state. It now keeps its source sentence's order. Tiny brain: bAbI in
+words 62.6 → 67.4 (task 3 55 → 97, 12 90 → 99, 13 84 → 99), the choice version's train 75.4 → 80.2, stories and
+MCTest unchanged.
+
+**Y14. The person just spoken of over an older known man (bit 16384, pronouns).** "Sandra went to the bathroom.
+Afterwards she travelled to the office. Mary went to the kitchen. Then she went to the bedroom.": FOLLOW's rule "a known
+woman over someone who might be one" sent the last "she" to Sandra. The latest person named keeps the pronoun when
+their sex is not known to differ. Tiny brain: task 11 in words 78 → 99.5; the 70 dev-story questions unchanged.
+
 ## Dev run 1 (2026-10-17, Colab, `brain-school-cx4`; `results/yesno_dev.txt`)
 
 | S5 | BoolQ train | says yes | bAbI train | dev stories | MC160 / MC500 / RACE-M dev |

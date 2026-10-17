@@ -392,10 +392,10 @@ static int resolve(Reader2 *R, NP *np, uint32_t *out) {
             for (int i = 0; i < R->refs.nppl; i++) { uint32_t p = R->refs.ppl[i]; if (np->obj && p == R->subj) continue;
                 int sx = sex_get(R, p); if (sx && sx != want) continue;
                 if (pick < 0) pick = i; else if (seen < 3 && R->refs.cnt[i] > 2 * R->refs.cnt[pick]) pick = i;   /* the main character over a passer-by */
-                else if (seen < 3 && sx == want && !sex_get(R, R->refs.ppl[pick]) && !(s5(16384) && pick == 0 && !np->obj)) pick = i;              /* F4a: a known man over someone who might be one; Y14: not over the person just spoken of when the pronoun is the subject ("John travelled to the bathroom. After that he …") */
+                else if (seen < 3 && sx == want && !sex_get(R, R->refs.ppl[pick]) && !(s5(16384) && pick == 0)) pick = i;              /* F4a: a known man over someone who might be one; Y14: not over the person just spoken of when the pronoun is the subject ("John travelled to the bathroom. After that he …") */
                 if (++seen >= 3) break; }
             if (pick >= 0) { uint32_t p = R->refs.ppl[pick]; if (!sex_get(R, p)) sex_set(R, p, want); if (R->npres < 16) R->pres[R->npres++] = p;
-                if (getenv("PRDBG")) { fprintf(stderr, "    [%s -> %s |", R->t->voc[np->head].word, R->t->voc[p].word); for (int i = 0; i < R->refs.nppl; i++) fprintf(stderr, " %s:%d/%u", R->t->voc[R->refs.ppl[i]].word, sex_get(R, R->refs.ppl[i]), R->refs.cnt[i]); fprintf(stderr, "]\n"); }
+                if (getenv("PRDBG")) { fprintf(stderr, "    [%s -> %s (obj %d pick %d s5 %d) |", R->t->voc[np->head].word, R->t->voc[p].word, np->obj, pick, s5(16384) ? 1 : 0); for (int i = 0; i < R->refs.nppl; i++) fprintf(stderr, " %s:%d/%u", R->t->voc[R->refs.ppl[i]].word, sex_get(R, R->refs.ppl[i]), R->refs.cnt[i]); fprintf(stderr, "]\n"); }
                 out[0] = p; return 1; }
         }
         if (!it && R->refs.person != NONE) { out[0] = R->refs.person; return 1; }
