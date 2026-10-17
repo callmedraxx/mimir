@@ -1,0 +1,47 @@
+# docs/YESNO.md dev runs, Colab, brain-school-cx4 with its shelf, 2026-10-17 (tools/yesno_colab.py dev). S5: 1 Y1 the passage
+# judges, 2 Y2 true/false/unknown (unknown -> yes), 4 Y3 "not" turns around from 0.35, 8 Y4 a bare yes has no words of its own,
+# 16 Y5, 32 Y6, 64 Y7 "as" + noun phrase, 128 Y8 opening participle. Adopted reader (S5=0): BoolQ train 47.10 (Y0 run),
+# babi_train 67.86, dev stories 67/70, mc160.dev 52.78, mc500.dev 57.25, dev_middle 40.62; general dev 47.19/18.26/25.05/30.07/30.55.
+=== dev run 1 (05:52-07:10 UTC)
+==> S5 8 RESULT bgpass file=boolq_train.txt n=1000 acc=54.70 epw=4.00
+==> S5 8 RESULT bgpass file=babi_train.txt n=1400 acc=67.07 epw=4.00
+==> S5 8 RESULT bgpass file=smart_tests.txt n=20 acc=95.00 epw=4.00
+==> S5 8 RESULT bgpass file=dev_stories.txt n=30 acc=96.67 epw=4.00
+==> S5 8 RESULT bgpass file=clock.txt n=10 acc=100.00 epw=4.00
+==> S5 8 RESULT bgpass file=bakery.txt n=10 acc=90.00 epw=4.00
+==> S5 8 RESULT bgpass file=mc160.dev.txt n=120 acc=52.78 epw=4.00
+==> S5 8 RESULT bgpass file=mc500.dev.txt n=200 acc=57.25 epw=4.00
+==> S5 8 RESULT bgpass file=dev_middle.txt n=1436 acc=40.62 epw=4.00
+==> S5 9 RESULT bgpass file=boolq_train.txt n=1000 acc=53.35 epw=4.00
+==> S5 9 RESULT bgpass file=babi_train.txt n=1400 acc=67.07 epw=4.00
+==> S5 9 RESULT bgpass file=smart_tests.txt n=20 acc=95.00 epw=4.00
+==> S5 9 RESULT bgpass file=dev_stories.txt n=30 acc=96.67 epw=4.00
+==> S5 9 RESULT bgpass file=clock.txt n=10 acc=100.00 epw=4.00
+==> S5 9 RESULT bgpass file=bakery.txt n=10 acc=90.00 epw=4.00
+==> S5 9 RESULT bgpass file=mc160.dev.txt n=120 acc=52.78 epw=4.00
+==> S5 9 RESULT bgpass file=mc500.dev.txt n=200 acc=57.25 epw=4.00
+==> S5 9 RESULT bgpass file=dev_middle.txt n=1436 acc=40.62 epw=4.00
+==> S5 11 RESULT bgpass file=boolq_train.txt n=1000 acc=59.00 epw=4.00
+==> S5 11 RESULT bgpass file=babi_train.txt n=1400 acc=67.07 epw=4.00
+==> S5 11 RESULT bgpass file=smart_tests.txt n=20 acc=95.00 epw=4.00
+==> S5 11 RESULT bgpass file=dev_stories.txt n=30 acc=96.67 epw=4.00
+==> S5 11 RESULT bgpass file=clock.txt n=10 acc=100.00 epw=4.00
+==> S5 11 RESULT bgpass file=bakery.txt n=10 acc=90.00 epw=4.00
+==> S5 11 RESULT bgpass file=mc160.dev.txt n=120 acc=52.78 epw=4.00
+==> S5 11 RESULT bgpass file=mc500.dev.txt n=200 acc=57.25 epw=4.00
+==> S5 11 RESULT bgpass file=dev_middle.txt n=1436 acc=40.62 epw=4.00
+==> S5 15 RESULT bgpass file=boolq_train.txt n=1000 acc=59.40 epw=4.00
+==> S5 15 RESULT bgpass file=babi_train.txt n=1400 acc=67.00 epw=4.00
+==> S5 15 RESULT bgpass file=smart_tests.txt n=20 acc=95.00 epw=4.00
+==> S5 15 RESULT bgpass file=dev_stories.txt n=30 acc=96.67 epw=4.00
+==> S5 15 RESULT bgpass file=clock.txt n=10 acc=100.00 epw=4.00
+==> S5 15 RESULT bgpass file=bakery.txt n=10 acc=90.00 epw=4.00
+==> S5 15 RESULT bgpass file=mc160.dev.txt n=120 acc=52.78 epw=4.00
+==> S5 15 RESULT bgpass file=mc500.dev.txt n=200 acc=58.25 epw=4.00
+==> S5 15 RESULT bgpass file=dev_middle.txt n=1436 acc=40.55 epw=4.00
+==> general S5 15 RESULT bgarc file=easy_dev.tsv n=570 acc=47.19 facts=32471614
+==> general S5 15 RESULT bgarc file=challenge_dev.tsv n=299 acc=18.26 facts=32471614
+==> general S5 15 RESULT bgarc file=obqa_dev.tsv n=500 acc=24.85 facts=32471614
+==> general S5 15 RESULT bgarc file=mmlu_hs_dev.tsv n=370 acc=30.34 facts=32471614
+==> general S5 15 RESULT bgarc file=csqa_traindev.tsv n=1000 acc=30.45 facts=32471614
+=== picks (SHOW): S5 8 says yes 92%, 9 92%, 11 94% (true 354 right 64%, false 16 right 44%, unknown 582 answered yes right 59%)

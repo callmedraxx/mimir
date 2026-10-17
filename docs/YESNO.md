@@ -74,7 +74,8 @@ the same; MC160 dev 52.4 → 53.2, MC500 dev 57.4 → 57.9; BoolQ train's passag
 | 0 (adopted) | 47.10 | 28% | 67.86 | 67/70 | 52.78 / 57.25 / 40.62 |
 | 8 Y4 | 54.70 | 92% | 67.07 | 67/70 | 52.78 / 57.25 / 40.62 |
 | 9 Y4 + Y1 | 53.35 | 92% | 67.07 | 67/70 | 52.78 / 57.25 / 40.62 |
-| 11 Y4 + Y1 + Y2 | 59.00 | 94% | 67.07 | 67/70 | (below) |
+| 11 Y4 + Y1 + Y2 | 59.00 | 94% | 67.07 | 67/70 | 52.78 / 57.25 / 40.62 |
+| 15 + Y3 | 59.40 | | 67.00 | 67/70 | 52.78 / 58.25 / 40.55; general dev 47.19 / 18.26 / 24.85 / 30.34 / 30.45 (was 47.19 / 18.26 / 25.05 / 30.07 / 30.55) |
 
 Ties (the two statements scored alike) count half in the accuracy and go to "yes" in the picks. With Y2 the judgement
 was true 354 (right 64%), false 16 (right 44%), unknown 582 (answered yes, right 59%): the passage's evidence tells
