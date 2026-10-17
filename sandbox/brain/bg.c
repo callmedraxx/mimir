@@ -910,6 +910,28 @@ static double word_f1(const char *said, const char *gold) {
     int used[32] = { 0 }, hit = 0; for (int i = 0; i < na; i++) for (int j = 0; j < nb; j++) if (!used[j] && !strcmp(a[i], b[j])) { used[j] = 1; hit++; break; }
     if (!hit) return 0; double pr = (double)hit / na, rc = (double)hit / nb; return 2 * pr * rc / (pr + rc);
 }
+/* docs/SPEAK.md W2: the filler said as the text said it. The fact points into the episode's text; in its sentence the word whose
+   lemma is the filler's (or begins with it: panthers / panther) is found, and the capitalised or modifying words just before it
+   are kept ("Carolina Panthers", "Levi Stadium"); a number word's digits are found by its value. */
+static int ask_surface(const KF *f, int j, char *out, size_t cap) {
+    uint64_t p = f->ptr[0]; if (p == ~0ull || (int)(p >> FID_SHIFT) != EPFID) return 0; size_t off = (size_t)(p & ((1ull << FID_SHIFT) - 1)); if (off >= neb) return 0;
+    size_t a = off; while (a > 0 && epbuf[a - 1] != '.' && epbuf[a - 1] != '!' && epbuf[a - 1] != '?' && epbuf[a - 1] != '\n') a--;
+    size_t b = off; while (b < neb && epbuf[b] != '.' && epbuf[b] != '!' && epbuf[b] != '?' && epbuf[b] != '\n') b++;
+    const char *lem = LX.s[f->head[j]]; size_t L = strlen(lem); const char *mod = f->mod[j] != NONE ? LX.s[f->mod[j]] : 0;
+    static const char *NUMW[] = { "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", 0 }; int numv = -1; for (int i = 0; NUMW[i]; i++) if (!strcmp(lem, NUMW[i])) numv = i;
+    size_t ws[128], we[128]; int nw = 0;                   /* the sentence's words */
+    for (size_t i = a; i < b && nw < 128; ) { while (i < b && !isalnum((unsigned char)epbuf[i])) i++; if (i >= b) break; size_t s0 = i; while (i < b && (isalnum((unsigned char)epbuf[i]) || epbuf[i] == '\'')) i++; ws[nw] = s0; we[nw++] = i; }
+    int hit = -1;
+    for (int w = 0; w < nw && hit < 0; w++) { size_t wl = we[w] - ws[w]; char t[64]; if (wl >= sizeof t) continue; for (size_t x = 0; x < wl; x++) t[x] = (char)tolower((unsigned char)epbuf[ws[w] + x]); t[wl] = 0;
+        if (!strcmp(t, lem) || (wl > L && !strncmp(t, lem, L) && wl - L <= 2) || (numv >= 0 && atoi(t) == numv && isdigit((unsigned char)t[0]))) hit = w; }
+    if (hit < 0) return 0;
+    int st = hit;                                           /* the words before: the modifier, or capitalised words (a name) */
+    while (st > 0) { size_t wl = we[st - 1] - ws[st - 1]; char t[64]; if (wl >= sizeof t) break; for (size_t x = 0; x < wl; x++) t[x] = (char)tolower((unsigned char)epbuf[ws[st - 1] + x]); t[wl] = 0;
+        int ismod = mod && (!strcmp(t, mod) || (wl > strlen(mod) && !strncmp(t, mod, strlen(mod)) && wl - strlen(mod) <= 2));
+        int cap_ = isupper((unsigned char)epbuf[ws[st - 1]]) && isupper((unsigned char)epbuf[ws[hit]]) && hit - st < 3;
+        if (ismod || cap_) st--; else break; }
+    size_t len = we[hit] - ws[st]; if (len + 1 > cap) len = cap - 1; memcpy(out, epbuf + ws[st], len); out[len] = 0; return 1;
+}
 static int ask_answer(Know *A, const char *q, char *out, size_t cap) {
     if (yesno_q(q)) { BParts P[2]; yn_slot = 0; bg_option(A, q, "yes", &P[0]); A->t.ntok = 0; bg_option(A, q, "no", &P[1]); A->t.ntok = 0;
         yn_state = 0; if (yn_slot == 2) { snprintf(out, cap, "maybe"); return 1; } if (s5(3)) yesno_judge(P, 0); double sc[2]; scores(q, P, 2, sc); snprintf(out, cap, "%s", sc[0] >= sc[1] ? "yes" : "no"); return 1; }
@@ -1001,6 +1023,7 @@ static int ask_answer(Know *A, const char *q, char *out, size_t cap) {
     for (int j = 0; j < bf->narg && j0 < 0; j++) if (bf->role[j] == role && FILLER_OK(bf, j)) j0 = j;
     if (j0 < 0) { snprintf(out, cap, "-"); return 0; }
 #undef FILLER_OK
+    if (s5(524288) && ask_surface(bf, j0, out, cap)) return 1;   /* W2: said as the text said it */
     if (getenv("ASKDBG")) fprintf(stderr, "  ASK %s -> frame %d slot %d role %d best %.3f fact %s\n", q, fi, slot, role, best, bf->verb != NONE ? LX.s[bf->verb] : "-");
     snprintf(out, cap, "%s", LX.s[bf->head[j0]]); return 1;
 }

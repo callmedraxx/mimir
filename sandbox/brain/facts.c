@@ -269,7 +269,10 @@ static int chunk(Reader2 *R, Tk *k, int n, Chunk *ch, int max) {
         if (k[i].sp == SP_THERE && !(i + 1 < n && k[i + 1].c == 'X')) k[i].c = 'R';
         /* after a determiner, possessive or adjective, a verb or adjective that ends the phrase is a noun ("the left") */
         int art = i && (k[i - 1].sp == SP_THE || k[i - 1].sp == SP_A || k[i - 1].sp == SP_POSS || (k[i - 1].sp == SP_HER && k[i - 1].c == 'D') || k[i - 1].poss);
-        if (art && (k[i].c == 'V' || k[i].c == 'R' || k[i].c == 'X') && !(i + 1 < n && is_nounish(&k[i + 1]))) k[i].c = 'N';
+        /* docs/SPEAK.md: "Who did the Denver Broncos defeat?": in a do-question the bare verb that ends the subject's phrase is the verb, not a noun */
+        int doq = s5(524288) && n > 2 && ((k[0].c == 'X' && k[0].vb == R->w_do) || (k[1].c == 'X' && k[1].vb == R->w_do)) && k[i].vb < OPEN && k[i].vb != NONE && (k[i].c == 'N' || k[i].c == 'V') && k[i].sp == SP_NONE && i > 1 && is_nounish(&k[i - 1]) && (i + 1 >= n || k[i + 1].c == 'I' || k[i + 1].c == 'D' || k[i + 1].c == 'R');
+        if (doq) k[i].c = 'V';
+        if (art && (k[i].c == 'V' || k[i].c == 'R' || k[i].c == 'X') && !(i + 1 < n && is_nounish(&k[i + 1])) && !doq) k[i].c = 'N';
         if (i && (k[i - 1].c == 'D' || k[i - 1].poss || k[i - 1].c == 'J') && k[i].c == 'V' && i + 1 < n && is_nounish(&k[i + 1])) k[i].c = 'J';
         /* docs/YESNO.md Y8: "Converted penalties are not considered": a participle opening the sentence before a noun and its verb describes the noun */
         if (s5(128) && i == 0 && k[0].c == 'V' && k[0].vb != k[0].id && n > 2 && is_nounish(&k[1])) { int j = 1; while (j < n && is_nounish(&k[j])) j++; if (j < n && (k[j].c == 'X' || k[j].c == 'M' || k[j].c == 'V')) k[0].c = 'J'; }
