@@ -840,6 +840,10 @@ static int ask_answer(Know *A, const char *q, char *out, size_t cap) {
     if (fi < 0 && nh > 0 && wh >= 0 && wh < hf[0].narg) { fi = 0; slot = wh; }
     if (fi < 0) { snprintf(out, cap, "-"); return 0; }
     uint8_t role = hf[fi].a[slot].role; uint32_t prep = hf[fi].a[slot].prep < OPEN ? lx_id(A->t.voc[hf[fi].a[slot].prep].word, 0) : NONE;
+    { int haswho = 0, haspp = 0; for (int a_ = 0; a_ < hf[fi].narg; a_++) { haswho |= hf[fi].a[a_].role == A_AGENT && hf[fi].a[a_].head != OPEN; haspp |= hf[fi].a[a_].role == A_PP; }
+      if (role == A_ATTR && !haswho && haspp && hf[fi].verb == A->R.w_be) role = A_AGENT; }      /* "What is east of the hallway?": the thing asked is the subject */
+    static const char *DIRS[] = { "north", "south", "east", "west", "above", "below", "left", "right", 0 }; int dirprep = 0;
+    if (prep != NONE) for (int i = 0; DIRS[i]; i++) dirprep |= !strcmp(LX.s[prep], DIRS[i]);
     KF qk; frame_kf(A, &hf[fi], &qk); uint32_t qs = NONE, qv = NONE; int qkind = 0;     /* the question as a state with a hole: 1 "where is S" (place), 2 "what does S hold" (holder) */
     { uint32_t who = NONE; for (int a_ = 0; a_ < qk.narg && who == NONE; a_++) if (qk.role[a_] == A_AGENT || qk.role[a_] == A_PAT) who = qk.head[a_];
       if (who == NONE && qk.narg) who = qk.head[0];
@@ -863,7 +867,7 @@ static int ask_answer(Know *A, const char *q, char *out, size_t cap) {
     int want_adj = !strcmp(wtw, "color") || !strcmp(wtw, "colour") || !strcmp(wtw, "size") || !strcmp(wtw, "shape");   /* "what colour is Greg": an adjective, not his kind */
 #define FILLER_OK(f_, j_) (!want_adj || wclass(LX.s[(f_)->head[j_]], strlen(LX.s[(f_)->head[j_]])) == 'J')
     double best = 0; const KF *bf = 0;
-    for (uint32_t e = 0; e < nep; e++) { const KF *f = &ep[e]; int has = 0; for (int j = 0; j < f->narg; j++) has |= f->role[j] == role && FILLER_OK(f, j); if (!has || (f->flags & F_NEG)) continue;
+    for (uint32_t e = 0; e < nep; e++) { const KF *f = &ep[e]; int has = 0; for (int j = 0; j < f->narg; j++) has |= f->role[j] == role && FILLER_OK(f, j) && (!dirprep || f->prep[j] == prep); if (!has || (f->flags & F_NEG)) continue;   /* a direction asked is that direction, not another */
         double s = kfact_sim(A, &hf[fi], f) * conf(f); if (ep_sup[e]) s *= SUPW;
         if (s > best || (s == best && bf && ep_ord[e] > ep_ord[bf - ep])) { best = s; bf = f; } }   /* equally close: the later one */
     /* W1e: "What is the kitchen south of?" when the text says "the office is north of the kitchen": the relation read the other way */

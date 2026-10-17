@@ -109,7 +109,7 @@ in words, 200 each, tiny brain: **62.6** (1:99 2:78 3:55 4:36 5:74 6:83 7:80 8:8
 all twenty 67.4. Then W1d, what is said of the subject's kind (deduction: "Gertrude is a mouse. Mice are afraid of wolves")
 or of the other members of its kind (induction: the commonest value; "what colour" takes an adjective, not the kind), and
 W1e, a relation read the other way ("the office is north of the kitchen" answers "what is the kitchen south of"): all
-twenty **79.3** (1:100 2:84 3:97 4:80 5:76 6:86 7:86 8:83 9:84 10:84 11:100 12:99 13:99 14:72 15:100 16:96 17:46 18:52
+twenty **80.3** (1:100 2:84 3:97 4:100 5:76 6:86 7:86 8:83 9:84 10:84 11:100 12:99 13:99 14:72 15:100 16:96 17:46 18:52
 19:0 20:60). Every rule here is a general reading rule (a kind's facts hold for its members; a relation has its inverse),
 none is bAbI's: they are what the shelf's facts will need too. Left: relations (4 "east of"), deduction (15), induction (16 "what colour is Greg": by his
 kind), positions (17), size (18), paths (19), motives (20, "will go"), and the pronoun tasks at 73-84.
