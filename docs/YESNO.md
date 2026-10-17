@@ -50,6 +50,37 @@ while "no" is a glue word and is dropped, so the "yes" statement's option words 
 since no fact or sentence holds the word "yes". With Y4 both answers are about the question's words alone, and only
 the facts' "not" logic tells them apart.
 
+**Y5. A "not" about the same things counts against (bit 16).** For a yes/no judgement, a negated passage fact whose
+arguments match the statement's counts against it at half even when the verb differs ("are not considered" against
+"count"); today such a fact keeps 0.3 of its score *for* the statement.
+
+**Y6. A yes/no question by its answers (bit 32).** "Calcium carbide is the raw material for acetylene?" does not
+begin with an auxiliary; with bare yes/no options it is a yes/no question all the same (48 of the 1,000 were not judged).
+
+**Y7. "As" before a noun phrase is a preposition (bit 64, reader).** "not considered as goals", "known as the queen",
+"works as a teacher": the reader classed "as" as a subordinator and dropped the phrase; now it is kept as pp:as.
+Not before a clause ("as he left").
+
+**Y8. An opening participle describes the noun (bit 128, reader).** "Converted penalties are not considered": the
+reader took "Converted" as the verb and the negated fact lost its subject; a participle opening the sentence before
+a noun and its verb is a modifier. Tiny brain: the probes read right; dev stories 6 wrong of 70 as before; bAbI train
+the same; MC160 dev 52.4 → 53.2, MC500 dev 57.4 → 57.9; BoolQ train's passage-side judgement barely moves (the
+"no" evidence stays at 24 of 1,000: the Wikipedia prose is lost in more ways than these two).
+
+## Dev run 1 (2026-10-17, Colab, `brain-school-cx4`; `results/yesno_dev.txt`)
+
+| S5 | BoolQ train | says yes | bAbI train | dev stories | MC160 / MC500 / RACE-M dev |
+|---|---|---|---|---|---|
+| 0 (adopted) | 47.10 | 28% | 67.86 | 67/70 | 52.78 / 57.25 / 40.62 |
+| 8 Y4 | 54.70 | 92% | 67.07 | 67/70 | 52.78 / 57.25 / 40.62 |
+| 9 Y4 + Y1 | 53.35 | 92% | 67.07 | 67/70 | 52.78 / 57.25 / 40.62 |
+| 11 Y4 + Y1 + Y2 | 59.00 | 94% | 67.07 | 67/70 | (below) |
+
+Ties (the two statements scored alike) count half in the accuracy and go to "yes" in the picks. With Y2 the judgement
+was true 354 (right 64%), false 16 (right 44%), unknown 582 (answered yes, right 59%): the passage's evidence tells
+"true" a little better than the prior (62%) and "false" worse. Y1 (the passage alone) costs 1.3. Dev run 2: masks
+10 (Y4 + Y2), 42 (+ Y6), 234 (+ Y7 + Y8), 250 (+ Y5).
+
 ## Y0 result (2026-10-17, Colab, `brain-school-cx4`, BoolQ train 1,000; `tools/yesno_notes.py`)
 
 acc 47.1, picks "yes" 28% (the answer is yes 62%). Which part leans which way, over the 1,000 questions: fact favours

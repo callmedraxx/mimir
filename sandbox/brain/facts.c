@@ -230,6 +230,10 @@ static int is_nounish(const Tk *k) { return k->c == 'N' || k->c == 'P' || k->c =
 static int is_verbish(const Tk *k) { return k->c == 'V' || k->c == 'X' || k->c == 'M'; }
 
 /* one sentence's tokens → chunks */
+/* docs/YESNO.md: the switch S5 (1 Y1 the passage judges a yes/no question, 2 Y2 true / false / unknown, 4 Y3 "not" turns around from 0.35,
+   8 Y4 a bare yes has no words, 16 Y5, 32 Y6, 64 Y7 "as" + noun phrase a preposition, 128 Y8 an opening participle describes the noun) */
+static int S5 = -1; static int s5(int bit) { if (S5 < 0) { const char *e = getenv("S5"); S5 = e ? atoi(e) : 0; } return S5 & bit; }
+static int is_w(Reader2 *R, uint32_t id, const char *w);
 static int chunk(Reader2 *R, Tk *k, int n, Chunk *ch, int max) {
     int m = 0;
     /* class fixes from neighbours */
@@ -263,6 +267,8 @@ static int chunk(Reader2 *R, Tk *k, int n, Chunk *ch, int max) {
         int art = i && (k[i - 1].sp == SP_THE || k[i - 1].sp == SP_A || k[i - 1].sp == SP_POSS || (k[i - 1].sp == SP_HER && k[i - 1].c == 'D') || k[i - 1].poss);
         if (art && (k[i].c == 'V' || k[i].c == 'R' || k[i].c == 'X') && !(i + 1 < n && is_nounish(&k[i + 1]))) k[i].c = 'N';
         if (i && (k[i - 1].c == 'D' || k[i - 1].poss || k[i - 1].c == 'J') && k[i].c == 'V' && i + 1 < n && is_nounish(&k[i + 1])) k[i].c = 'J';
+        /* docs/YESNO.md Y8: "Converted penalties are not considered": a participle opening the sentence before a noun and its verb describes the noun */
+        if (s5(128) && i == 0 && k[0].c == 'V' && k[0].vb != k[0].id && n > 2 && is_nounish(&k[1]) && (k[2].c == 'X' || k[2].c == 'M' || k[2].c == 'V')) k[0].c = 'J';
     }
     /* a noun or adjective that can be a verb is the verb when a subject came before and no verb yet */
     { int sawverb = 0, sawnp = 0;
@@ -295,6 +301,7 @@ static int chunk(Reader2 *R, Tk *k, int n, Chunk *ch, int max) {
             c.type = CH_TIME; c.tc = k[i + 1].sp == SP_MORNING ? 2 : k[i + 1].sp == SP_AFTERNOON ? 3 : 4; ch[m++] = c; i += 2; continue; }
         if (x->c == 'G' || x->sp == SP_NOT) { c.type = CH_NEG; ch[m++] = c; i++; continue; }
         if ((x->sp == SP_BEFORE || x->sp == SP_AFTER) && !(i + 1 < n && (k[i + 1].c == 'D' || is_nounish(&k[i + 1])))) { c.type = CH_SUB; ch[m++] = c; i++; continue; }
+        if (s5(64) && x->c == 'S' && is_w(R, x->id, "as") && i + 1 < n && (k[i + 1].c == 'D' || k[i + 1].c == 'J' || is_nounish(&k[i + 1])) && !(i + 2 < n && k[i + 1].c != 'D' && (k[i + 2].c == 'X' || k[i + 2].c == 'V'))) x->c = 'I';   /* docs/YESNO.md Y7: "as" + a noun phrase is a preposition ("considered as goals"), not "as he left" */
         if (x->sp == SP_SUB || x->c == 'S') { c.type = CH_SUB; ch[m++] = c; i++; continue; }
         if (x->sp == SP_REL) { if (i + 1 < n && is_nounish(&k[i + 1])) x->c = 'D'; else { c.type = CH_REL; ch[m++] = c; i++; continue; } }
         if (x->sp == SP_TO && i + 1 < n && (k[i + 1].c == 'V' || k[i + 1].c == 'X')) {   /* to + verb: a purpose clause */
@@ -793,8 +800,6 @@ static int yesno_statement(const char *q, const char *opt, char *out, size_t cap
     return 1;
 }
 /* the statement an option makes: the option put where the question asks */
-/* docs/YESNO.md: the switch S5 (1 Y1 the passage judges a yes/no question, 2 Y2 true / false / unknown, 4 Y3 "not" turns around from 0.35) */
-static int S5 = -1; static int s5(int bit) { if (S5 < 0) { const char *e = getenv("S5"); S5 = e ? atoi(e) : 0; } return S5 & bit; }
 static int opt_prep(const char *o) { const char *e = o; while (*e && *e != ' ') e++; return e > o && wclass(o, (size_t)(e - o)) == 'I'; }   /* "in the lost box": says where already */
 static void statement(const char *q, const char *opt, char *out, size_t cap) {
     static const char *WH[] = { "what", "which", "who", "whom", "where", "when", "why", "how", 0 };

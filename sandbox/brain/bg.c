@@ -535,6 +535,7 @@ static double FX = 0.85, FO = 0.25;   /* F5: an option matched by an episode fac
 static int direct_neg;           /* F1: this question's "not" is matched directly, not turned around */
 /* a statement's fact (answering context ids) against a known fact, 0..1 (as know.c fact_sim); below 0 when it matches
    but says the opposite */
+static int yn_mode;   /* docs/YESNO.md: the option being scored is a bare yes or no */
 static float kfact_sim(Know *A, const Frame *h, const KF *f) {
     double num = 0, den = 0, vs = 1;
     if (h->verb != NONE) { int light = h->verb == A->R.w_be || h->verb == A->R.w_have || h->verb == A->R.w_do; double w = light ? 0.3 : 1.0;
@@ -545,7 +546,7 @@ static float kfact_sim(Know *A, const Frame *h, const KF *f) {
             double s = role_fit(&aa, &b) * fmax(qsim(&x, f->head[j]), f->mod[j] != NONE ? 0.6 * qsim(&x, f->mod[j]) : 0); if (s > best) best = s; }
         num += best; den += 1; }
     if (den <= 0) return 0;
-    double s = num / den; if ((h->flags & F_NEG) != (f->flags & F_NEG) && s > (s5(4) ? 0.35 : 0.5)) s = vs >= 0.5 ? -s : s * 0.3;   /* it says the opposite (of the same doing); Y3: from 0.35 */
+    double s = num / den; if ((h->flags & F_NEG) != (f->flags & F_NEG) && s > (s5(4) ? 0.35 : 0.5)) s = vs >= 0.5 ? -s : (yn_mode && s5(16)) ? -0.5 * s : s * 0.3;   /* it says the opposite (of the same doing); Y3: from 0.35; Y5: for a yes/no judgement a "not" about the same things counts against even with another verb */
     if ((h->flags & F_TENSE) && (f->flags & F_TENSE) && (h->flags & F_TENSE) != (f->flags & F_TENSE)) s *= TENSEW;   /* F2: said of another time */
     return (float)s;
 }
@@ -628,7 +629,9 @@ static void score_cands(Know *A, Frame *hf, int nh, int focus, const QW *Q, int 
 static int asks_opposite(const char *q);
 static int yesno_q(const char *q) { static const char *AUX[] = { "do", "does", "did", "is", "are", "was", "were", "can", "could", "will", "would", "has", "have", "had", 0 };
     for (int i = 0; AUX[i]; i++) if (is_word_at(q, AUX[i])) return 1; return 0; }
+static int yn_bare(const char *o) { return (is_word_at(o, "yes") && !o[3]) || (is_word_at(o, "no") && !o[2]); }
 static void bg_option(Know *A, const char *q, const char *opt, BParts *P) {
+    yn_mode = yn_bare(opt) && (yesno_q(q) || s5(32));   /* Y6: a bare yes/no answers a yes/no question whatever its first word */
     char st[4096]; statement(q, opt, st, sizeof st);
     static Frame hf[64], qf[64], of[64]; uint32_t sw[256], qwl[256], owl[128]; int nsw, nq, now_;
     int nh = read_statement(A, st, hf, 64, sw, &nsw, 256); read_statement(A, q, qf, 64, qwl, &nq, 256); read_statement(A, opt, of, 64, owl, &now_, 128);
@@ -642,7 +645,7 @@ static void bg_option(Know *A, const char *q, const char *opt, BParts *P) {
         for (int i = 0; i < nh && !direct_neg; i++) { if (!(hf[i].flags & F_NEG) || hf[i].verb >= OPEN) continue; uint32_t g = lx_id(A->t.voc[hf[i].verb].word, 0);
             for (uint32_t e = 0; e < nep && !direct_neg; e++) direct_neg = (ep[e].flags & F_NEG) && ep[e].verb == g; } }
     if (asks_opposite(q) && !direct_neg) for (int i = 0; i < nh; i++) hf[i].flags &= (uint8_t)~F_NEG;   /* (not "why ... not": a reason is asked) */
-    if (s5(8) && no && yesno_q(q) && (is_word_at(opt, "yes") || is_word_at(opt, "no")) && !opt[is_word_at(opt, "yes") ? 3 : 2]) no = 0;   /* docs/YESNO.md Y4: a bare "yes" is no content word of its own ("no" is glue and never was): both answers are about the question's words */
+    if (s5(8) && no && yn_mode) no = 0;   /* docs/YESNO.md Y4: a bare "yes" is no content word of its own ("no" is glue and never was): both answers are about the question's words */
     if (!no && (is_word_at(opt, "no") || is_word_at(opt, "yes") || strstr(opt, "not") || strstr(opt, "n't"))) {   /* "no, she was not sad": by its yes or no */
         for (int i = 0; i < nq && i < 128; i++) O[no++] = Q[i]; }
     else if (nep && yesno_q(q)) for (int i = 0; i < nq && no < 128; i++) { int dup = 0; for (int j = 0; j < no; j++) dup |= O[j].g == Q[i].g; if (!dup) O[no++] = Q[i]; }   /* F1: a yes/no question is about its own words, not the option's extras ("the man") */
@@ -818,7 +821,7 @@ static int run_passages(int nfile, char **files) {
             int no = nf - 4; const char *ans = fld[nf - 1]; const char *q = fld[2]; int want = ans[0] - 'A'; BParts P[MAXO]; double sc[MAXO];
             int right[MAXO]; for (int o = 0; o < no; o++) right[o] = strchr(ans, 'A' + o) != 0;
             for (int o = 0; o < no; o++) { bg_option(&A, q, fld[3 + o], &P[o]); A.t.ntok = 0; }
-            yn_state = 0; if (s5(3) && no == 2 && yesno_q(q) && yn_opt(fld[3]) && yn_opt(fld[4])) yesno_judge(P, yn_opt(fld[3]) == 1 ? 0 : 1);   /* docs/YESNO.md */
+            yn_state = 0; if (s5(3) && no == 2 && (yesno_q(q) || s5(32)) && yn_opt(fld[3]) && yn_opt(fld[4])) yesno_judge(P, yn_opt(fld[3]) == 1 ? 0 : 1);   /* docs/YESNO.md */
             { int ex = 0; for (int o = 0; o < no; o++) ex += P[o].active && P[o].fact >= FX * EPW * 0.5;     /* F5: one option said almost whole by the passage: the fact decides */
                 if (ex == 1) for (int o = 0; o < no; o++) { P[o].open *= FO; P[o].joint *= FO; } }
             scores(q, P, no, sc);

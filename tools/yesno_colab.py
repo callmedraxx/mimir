@@ -33,7 +33,7 @@ else:
             r = sh("SHOW=1 ./bg passages %s %s 2>/dev/null" % (BRAIN, f), OUT, env)
             for l in r.stdout.split("\n"):
                 if l.startswith("RESULT"): print("==> S5", m, l, flush=True); open(OUT, "a").write("==> S5 %s %s\n" % (m, l))
-        if not int(m) & 4: continue   # Y1, Y2, Y4 touch only yes/no passage questions: the general sets cannot move
+        if not int(m) & (4 | 64 | 128): continue   # Y1, Y2, Y4, Y5, Y6 touch only yes/no passage questions: the general sets cannot move; Y3, Y7, Y8 read for everything
         r = sh("./bg arc %s data/dev_sets/easy_dev.tsv data/dev_sets/challenge_dev.tsv data/dev_sets/obqa_dev.tsv data/dev_sets/mmlu_hs_dev.tsv data/dev_sets/csqa_traindev.tsv 2>/dev/null | grep RESULT" % BRAIN, OUT, env)
         for l in r.stdout.split("\n"):
             if l.startswith("RESULT"): print("==> general S5", m, l, flush=True); open(OUT, "a").write("==> general S5 %s %s\n" % (m, l))
