@@ -18,6 +18,23 @@ BRAIN = "/content/cx4.brain"
 if not os.path.exists(BRAIN): brain_release.get(BRAIN)
 if not os.path.exists("data/understand/survey/boolq_train.txt"): sh("python3 tools/survey_fetch.py boolq_train")
 mode = sys.argv[1] if len(sys.argv) > 1 else "diag"
+if mode == "test":
+    """after the freeze, once: python3 tools/yesno_colab.py test <S5 frozen>. BoolQ validation, the 18 test stories (S5=0 too, so the
+    yes/no questions can be scored apart), MC160 / MC500 / RACE-M tests, bAbI test, the five general tests -> /content/yesno_test.txt"""
+    FROZEN = sys.argv[2]; OUT = "/content/yesno_test.txt"; open(OUT, "w").write("=== choice: S5=%s (frozen; docs/YESNO.md)\n" % FROZEN)
+    if not os.path.exists("data/understand/mctest/mc500.test.txt"): sh("python3 -c \"import sys; sys.path.insert(0, 'tools'); import understand_fetch as u; u.mctest()\"")
+    if not os.path.exists("data/understand/race/test_middle.txt"): sh("python3 tools/race_fetch.py")
+    if not os.path.exists("data/understand/survey/babi.txt"): sh("python3 tools/survey_fetch.py babi")
+    if not os.path.exists("data/understand/survey/boolq.txt"): sh("python3 tools/survey_fetch.py boolq")
+    sh("python3 tools/stories.py /content/st")
+    ST = " ".join("/content/st/%s.txt" % t for t in ("state_tests", "follow_tests", "read2_tests", "comprehend_tests", "episode_tests", "story_tests"))
+    for label, cmd in [("S5=0 stories", "S5=0 SHOW=1 ./bg passages %s %s" % (BRAIN, ST)),
+                       ("S5=%s stories + BoolQ validation + bAbI test + MCTest + RACE-M tests" % FROZEN, "S5=%s SHOW=1 ./bg passages %s %s data/understand/survey/boolq.txt data/understand/survey/babi.txt data/understand/mctest/mc160.test.txt data/understand/mctest/mc500.test.txt data/understand/race/test_middle.txt" % (FROZEN, BRAIN, ST)),
+                       ("S5=%s general tests" % FROZEN, "S5=%s ./bg arc %s %s" % (FROZEN, BRAIN, " ".join("data/arc_tests/%s.tsv" % t for t in ("mmlu_hs_test", "csqa_dev", "easy_test", "challenge_test", "obqa_test"))))]:
+        open(OUT, "a").write("=== %s\n" % label); r = sh(cmd + " 2>/dev/null", OUT)
+        for l in r.stdout.split("\n"):
+            if l.startswith("RESULT"): print("==> test S5", FROZEN, l, flush=True)
+    print("done", flush=True); sys.exit(0)
 if mode == "diag":
     sh("SHOW=1 EPDUMP=1 DUMP=/content/yesno_diag.dump ./bg passages %s data/understand/survey/boolq_train.txt > /content/yesno_diag.show 2>/dev/null; grep RESULT /content/yesno_diag.show" % BRAIN)
 else:
