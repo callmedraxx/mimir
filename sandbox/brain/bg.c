@@ -859,13 +859,46 @@ static int ask_answer(Know *A, const char *q, char *out, size_t cap) {
         if (holder != NONE) for (uint32_t e = 0; e < nep; e++) { uint32_t s2, v2; if (ep_sup[e] || (ep[e].flags & F_NEG) || state_key(&ep[e], &s2, &v2) != 2 || v2 != holder) continue; int dup = 0; for (int i = 0; i < nt; i++) dup |= things[i] == s2; if (!dup && nt < 32) things[nt++] = s2; }
         if (is_word_at(q, "how many")) { snprintf(out, cap, "%s", NUM[nt > 10 ? 10 : nt]); return 1; }
         if (holder != NONE && role == A_PAT) { if (!nt) { snprintf(out, cap, "nothing"); return 1; } size_t L = 0; for (int i = 0; i < nt && L + 2 < cap; i++) L += (size_t)snprintf(out + L, cap - L, "%s%s", i ? " " : "", LX.s[things[i]]); return 1; } }
+    uint32_t wtype = hf[fi].a[slot].mod < OPEN ? hf[fi].a[slot].mod : NONE; const char *wtw = wtype != NONE ? A->t.voc[wtype].word : "";
+    int want_adj = !strcmp(wtw, "color") || !strcmp(wtw, "colour") || !strcmp(wtw, "size") || !strcmp(wtw, "shape");   /* "what colour is Greg": an adjective, not his kind */
+#define FILLER_OK(f_, j_) (!want_adj || wclass(LX.s[(f_)->head[j_]], strlen(LX.s[(f_)->head[j_]])) == 'J')
     double best = 0; const KF *bf = 0;
-    for (uint32_t e = 0; e < nep; e++) { const KF *f = &ep[e]; int has = 0; for (int j = 0; j < f->narg; j++) has |= f->role[j] == role; if (!has || (f->flags & F_NEG)) continue;
+    for (uint32_t e = 0; e < nep; e++) { const KF *f = &ep[e]; int has = 0; for (int j = 0; j < f->narg; j++) has |= f->role[j] == role && FILLER_OK(f, j); if (!has || (f->flags & F_NEG)) continue;
         double s = kfact_sim(A, &hf[fi], f) * conf(f); if (ep_sup[e]) s *= SUPW;
         if (s > best || (s == best && bf && ep_ord[e] > ep_ord[bf - ep])) { best = s; bf = f; } }   /* equally close: the later one */
+    /* W1e: "What is the kitchen south of?" when the text says "the office is north of the kitchen": the relation read the other way */
+    if ((!bf || best < 0.3) && role == A_AGENT && qk.narg) {                   /* "What is east of the hallway?": the thing whose west is the hallway */
+        for (int a_ = 0; a_ < qk.narg; a_++) if (qk.role[a_] == A_PP && qk.prep[a_] != NONE && qk.head[a_] != NONE) { static const char *INV2[][2] = { { "north", "south" }, { "east", "west" }, { "above", "below" }, { "left", "right" }, { 0, 0 } };
+            const char *pw = LX.s[qk.prep[a_]]; const char *inv = 0; for (int i = 0; INV2[i][0]; i++) { if (!strcmp(pw, INV2[i][0])) inv = INV2[i][1]; if (!strcmp(pw, INV2[i][1])) inv = INV2[i][0]; }
+            if (!inv) continue; uint32_t ip = lx_id(inv, 0), Y = qk.head[a_];
+            for (uint32_t e = 0; e < nep; e++) { const KF *f = &ep[e]; if ((f->flags & F_NEG) || f->narg < 2 || f->head[0] != Y) continue;
+                for (int j = 1; j < f->narg; j++) if (f->role[j] == A_PP && f->prep[j] == ip) { snprintf(out, cap, "%s", LX.s[f->head[j]]); return 1; } } } }
+    if ((!bf || best < 0.3) && role == A_PP && prep != NONE && qk.narg) { static const char *INV[][2] = { { "north", "south" }, { "east", "west" }, { "above", "below" }, { "left", "right" }, { "inside", "outside" }, { 0, 0 } };
+        const char *pw = LX.s[prep]; const char *inv = 0; for (int i = 0; INV[i][0]; i++) { if (!strcmp(pw, INV[i][0])) inv = INV[i][1]; if (!strcmp(pw, INV[i][1])) inv = INV[i][0]; }
+        if (inv) { uint32_t ip = lx_id(inv, 0); uint32_t X = qk.head[0];
+            for (uint32_t e = 0; e < nep; e++) { const KF *f = &ep[e]; if ((f->flags & F_NEG) || f->narg < 2) continue;
+                for (int j = 1; j < f->narg; j++) if (f->role[j] == A_PP && f->prep[j] == ip && f->head[j] == X) { snprintf(out, cap, "%s", LX.s[f->head[0]]); return 1; } } } }
+    /* W1d: nothing said of the subject itself: what is said of its kind ("Gertrude is a mouse. Mice are afraid of wolves": deduction), or of
+       the other members of its kind ("Lily is a swan. Lily is green. Greg is a swan. What colour is Greg?": induction, the commonest value) */
+    if ((!bf || best < 0.3) && qk.narg) { uint32_t X = qk.head[0]; uint32_t kinds[8]; int nk = 0;
+        for (uint32_t e = 0; e < nep && nk < 8; e++) if (ep[e].verb == G_be && !(ep[e].flags & F_NEG) && ep[e].narg >= 2 && ep[e].head[0] == X && ep[e].role[1] == A_ATTR) { int dup = 0; for (int i = 0; i < nk; i++) dup |= kinds[i] == ep[e].head[1]; if (!dup) kinds[nk++] = ep[e].head[1]; }
+        uint32_t vals[32]; int cnt[32], nv = 0;
+        for (int ki = 0; ki < nk; ki++) { uint32_t K = kinds[ki];
+            for (uint32_t e = 0; e < nep; e++) { const KF *f = &ep[e]; if ((f->flags & F_NEG) || ep_sup[e] || f->narg < 2) continue;
+                int about_kind = f->head[0] == K, about_member = 0;
+                if (!about_kind) { for (uint32_t e2 = 0; e2 < nep && !about_member; e2++) about_member = ep[e2].verb == G_be && ep[e2].narg >= 2 && ep[e2].head[0] == f->head[0] && ep[e2].role[1] == A_ATTR && ep[e2].head[1] == K && f->head[0] != X; }
+                if (!about_kind && !about_member) continue;
+                if (f->head[1] == K && f->verb == G_be) continue;                                   /* "Lily is a swan" itself */
+                KF g = *f; g.head[0] = X;                                                          /* said of the kind, taken as said of X */
+                double s = kfact_sim(A, &hf[fi], &g) * (about_kind ? 1.0 : 0.8); if (s < 0.3) continue;
+                int j = -1; for (int a_ = 0; a_ < f->narg && j < 0; a_++) if (f->role[a_] == role && (role != A_PP || prep == NONE || f->prep[a_] == prep) && FILLER_OK(f, a_)) j = a_;
+                if (j < 0) continue; uint32_t v = f->head[j]; int found = 0; for (int i = 0; i < nv; i++) if (vals[i] == v) { cnt[i] += about_kind ? 3 : 1; found = 1; } if (!found && nv < 32) { vals[nv] = v; cnt[nv++] = about_kind ? 3 : 1; } } }
+        if (nv) { int bi = 0; for (int i = 1; i < nv; i++) if (cnt[i] > cnt[bi]) bi = i; if (getenv("ASKDBG")) fprintf(stderr, "  ASK kind: %d kinds, %d values, best %s\n", nk, nv, LX.s[vals[bi]]); snprintf(out, cap, "%s", LX.s[vals[bi]]); return 1; } }
     if (!bf) { snprintf(out, cap, "-"); return 0; }
-    int j0 = -1; for (int j = 0; j < bf->narg && j0 < 0; j++) if (bf->role[j] == role && (role != A_PP || prep == NONE || bf->prep[j] == prep)) j0 = j;
-    for (int j = 0; j < bf->narg && j0 < 0; j++) if (bf->role[j] == role) j0 = j;
+    int j0 = -1; for (int j = 0; j < bf->narg && j0 < 0; j++) if (bf->role[j] == role && (role != A_PP || prep == NONE || bf->prep[j] == prep) && FILLER_OK(bf, j)) j0 = j;
+    for (int j = 0; j < bf->narg && j0 < 0; j++) if (bf->role[j] == role && FILLER_OK(bf, j)) j0 = j;
+    if (j0 < 0) { snprintf(out, cap, "-"); return 0; }
+#undef FILLER_OK
     if (getenv("ASKDBG")) fprintf(stderr, "  ASK %s -> frame %d slot %d role %d best %.3f fact %s\n", q, fi, slot, role, best, bf->verb != NONE ? LX.s[bf->verb] : "-");
     snprintf(out, cap, "%s", LX.s[bf->head[j0]]); return 1;
 }

@@ -106,7 +106,12 @@ facts in the order said: the last value before the named one), "What is Mary car
 holder is Mary, "nothing" when none) and "How many objects is Mary carrying?" (their count as a word). All twenty tasks
 in words, 200 each, tiny brain: **62.6** (1:99 2:78 3:55 4:36 5:74 6:83 7:80 8:81 9:82 10:82 11:73 12:90 13:84 14:72 15:24
 16:0 17:46 18:52 19:0 20:58). With Y13 (a STATE order bug found through this path) and Y14 (pronouns), tiny brain: task 3 97, 11 99.5, 12 99, 13 99;
-all twenty about 68. Left: relations (4 "east of"), deduction (15), induction (16 "what colour is Greg": by his
+all twenty 67.4. Then W1d, what is said of the subject's kind (deduction: "Gertrude is a mouse. Mice are afraid of wolves")
+or of the other members of its kind (induction: the commonest value; "what colour" takes an adjective, not the kind), and
+W1e, a relation read the other way ("the office is north of the kitchen" answers "what is the kitchen south of"): all
+twenty **80.4** (1:100 2:84 3:97 4:93 5:76 6:86 7:86 8:83 9:84 10:84 11:100 12:99 13:99 14:72 15:100 16:96 17:46 18:52
+19:0 20:60). Every rule here is a general reading rule (a kind's facts hold for its members; a relation has its inverse),
+none is bAbI's: they are what the shelf's facts will need too. Left: relations (4 "east of"), deduction (15), induction (16 "what colour is Greg": by his
 kind), positions (17), size (18), paths (19), motives (20, "will go"), and the pronoun tasks at 73-84.
 
 ## When
