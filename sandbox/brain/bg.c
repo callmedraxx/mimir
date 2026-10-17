@@ -804,6 +804,7 @@ static int run_passages(int nfile, char **files) {
             ok += (double)nbr / nb;
             if (dump) { fprintf(dump, "%s\t%d\t%d\t%d", bn, want, no, asks_opposite(q));
                 for (int o = 0; o < no; o++) fprintf(dump, "\t%.5f %.5f %.5f %.5f %.5f %d", P[o].fact, P[o].joint, P[o].open, P[o].mean, P[o].fit, P[o].active);
+                if (getenv("EPDUMP")) for (int o = 0; o < no; o++) fprintf(dump, "\t%.5f %.5f %.5f", P[o].efact, P[o].ejoint, P[o].eopen);   /* docs/YESNO.md Y0: the episode's own parts */
                 fprintf(dump, "\n"); }
             if (getenv("SHOW")) { int pick = 0; for (int o = 1; o < no; o++) if (sc[o] > sc[pick] + 1e-9) pick = o; printf("  %s\t%s\tpick=%s\tright=%s\t%s\n", fld[1], q, fld[3 + pick], want >= 0 && want < no ? fld[3 + want] : ans, right[pick] ? "OK" : "WRONG"); }
             n++; }
