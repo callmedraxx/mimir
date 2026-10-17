@@ -221,6 +221,9 @@ static int timeword(TextContext *t, uint32_t id) { static const char *X[] = { "t
 static int reporting(TextContext *t, uint32_t id) { static const char *X[] = { "say", "tell", "think", "know", "believe", "hear", "see", "find", "notice", "hope", "feel", "learn", "remember", "forget", "decide", "explain", "promise", "fear", "guess", "wish", "realize", "realise", "discover", "show", "prove", "admit", "agree", "answer", "reply", "shout", "whisper", "write", "read", 0 };
     if (id >= OPEN) return 0; for (int i = 0; X[i]; i++) if (!strcmp(t->voc[id].word, X[i])) return 1; return 0; }
 /* F2: a time word in the sentence says past ("last year", "long ago") or present ("now", "today", "still", "these days") */
+static int numword(TextContext *t, uint32_t id) {        /* "twenty", "four-ten" (24-10 as the tokens make it), "hundred" */
+    static const char *X[] = { "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety", "hundred", "thousand", "million", 0 };
+    if (id >= OPEN) return 0; const char *w = t->voc[id].word; for (int i = 0; X[i]; i++) { size_t L = strlen(X[i]); if (!strncmp(w, X[i], L) && (w[L] == 0 || w[L] == '-')) return 1; } return 0; }
 static int sent_time(Reader2 *R, const Tk *k, int n) {
     for (int i = 0; i < n; i++) { if (k[i].id >= OPEN) continue; const char *w = R->t->voc[k[i].id].word;
         if (!strcmp(w, "ago") || !strcmp(w, "once") || !strcmp(w, "formerly") || !strcmp(w, "previously")) return 1;
@@ -272,6 +275,11 @@ static int chunk(Reader2 *R, Tk *k, int n, Chunk *ch, int max) {
         /* docs/SPEAK.md: "Who did the Denver Broncos defeat?": in a do-question the bare verb that ends the subject's phrase is the verb, not a noun */
         int doq = s5(524288) && n > 2 && ((k[0].c == 'X' && k[0].vb == R->w_do) || (k[1].c == 'X' && k[1].vb == R->w_do)) && k[i].vb < OPEN && k[i].vb != NONE && (k[i].c == 'N' || k[i].c == 'V') && k[i].sp == SP_NONE && i > 1 && is_nounish(&k[i - 1]) && (i + 1 >= n || k[i + 1].c == 'I' || k[i + 1].c == 'D' || k[i + 1].c == 'R');
         if (doq) k[i].c = 'V';
+        /* docs/SPEAK.md Y18: "defeated the Panthers 24-10", "won the game 102-98": a number right after a noun phrase's head, with no noun
+           after it, is an aside (a score, a year), not the thing itself */
+        if (s5(1048576) && (k[i].c == 'Q' || numword(R->t, k[i].id)) && i > 1 && is_nounish(&k[i - 1]) && k[i - 1].c != 'Q' && !numword(R->t, k[i - 1].id)) {
+            int j = i; while (j < n && (k[j].c == 'Q' || numword(R->t, k[j].id))) j++;
+            if (j >= n || k[j].c == 'I' || k[j].c == ',' || k[j].sp == SP_TO || k[j].c == 'S') for (int x = i; x < j; x++) k[x].c = 'R'; }
         if (art && (k[i].c == 'V' || k[i].c == 'R' || k[i].c == 'X') && !(i + 1 < n && is_nounish(&k[i + 1])) && !doq) k[i].c = 'N';
         if (i && (k[i - 1].c == 'D' || k[i - 1].poss || k[i - 1].c == 'J') && k[i].c == 'V' && i + 1 < n && is_nounish(&k[i + 1])) k[i].c = 'J';
         /* docs/YESNO.md Y8: "Converted penalties are not considered": a participle opening the sentence before a noun and its verb describes the noun */
