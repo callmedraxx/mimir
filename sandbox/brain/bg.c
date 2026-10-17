@@ -869,8 +869,8 @@ static int run_passages(int nfile, char **files) {
             if (nf < 6) continue;                                   /* Q id question option option… letters: 2 to MAXO options, one or more right letters ("AC") */
             int no = nf - 4; const char *ans = fld[nf - 1]; const char *q = fld[2]; int want = ans[0] - 'A'; BParts P[MAXO]; double sc[MAXO];
             int right[MAXO]; for (int o = 0; o < no; o++) right[o] = strchr(ans, 'A' + o) != 0;
-            for (int o = 0; o < no; o++) { bg_option(&A, q, fld[3 + o], &P[o]); A.t.ntok = 0; }
-            yn_state = 0; yn_slot = 0; if (s5(3) && no == 2 && (yesno_q(q) || (s5(32) && !wh_q(q))) && yn_opt(fld[3]) && yn_opt(fld[4])) yesno_judge(P, yn_opt(fld[3]) == 1 ? 0 : 1);   /* docs/YESNO.md */
+            yn_slot = 0; for (int o = 0; o < no; o++) { bg_option(&A, q, fld[3 + o], &P[o]); A.t.ntok = 0; }
+            yn_state = 0; if (s5(3) && no == 2 && (yesno_q(q) || (s5(32) && !wh_q(q))) && yn_opt(fld[3]) && yn_opt(fld[4])) yesno_judge(P, yn_opt(fld[3]) == 1 ? 0 : 1);   /* docs/YESNO.md */
             { int ex = 0; for (int o = 0; o < no; o++) ex += P[o].active && P[o].fact >= FX * EPW * 0.5;     /* F5: one option said almost whole by the passage: the fact decides */
                 if (ex == 1) for (int o = 0; o < no; o++) { P[o].open *= FO; P[o].joint *= FO; } }
             scores(q, P, no, sc);
