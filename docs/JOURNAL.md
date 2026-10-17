@@ -190,6 +190,11 @@ Lessons that keep coming back:
 
 ## Log
 
+* 2026-10-17 12:00: paused by the owner ("stop for now"). State: YESNO dev candidate S5=4062698 (docs/YESNO.md Y2-Y18 less
+  Y1/Y3/Y5/Y5b, plus docs/SPEAK.md's answering path); dev run 7 cut short (rerun it, then freeze and test once). Full-brain
+  dev so far: bAbI train choice 67.9 → 83.6, bAbI in words 95.6 (seven tasks) / 87.8 (twenty), BoolQ 61.3 (the prior; no real
+  "no" signal in the passage, the inference step's work), MC500 dev +1.0, nothing down. Answering in words (docs/SPEAK.md W1,
+  W2) exists: bAbI all twenty 90.3 on the tiny brain, SQuAD harness ready (1 of 40 right on the tiny brain; backlog listed).
 * 2026-10-17: YESNO (docs/YESNO.md) dev: the "no" lean was an artefact ("yes" counted as an option word, "no" not); with it
   fixed and two reader fixes ("as" + noun phrase, an opening participle) BoolQ train 47.1 → 61.0 and nothing falls, but it
   says yes 97%: the gain is the prior. Owner: "it should reflect real judgement; don't stop until Mimir passes those tests at
