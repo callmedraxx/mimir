@@ -784,15 +784,46 @@ static void be_statement(const char *x, const char *aux, const char *opt, char *
 }
 /* docs/COMPREHEND.md: a yes/no question ("Was Nadia sad?") and an option that answers it ("no, she was not
    sad") → "Nadia was not sad. she was not sad"; other options follow the question said as a statement */
+/* docs/YESNO.md Y9: where the subject of an inverted question ends. "Does a penalty shoot out goal count towards the golden
+   boot?": the subject is the noun phrase after the auxiliary, and a word that could be a verb belongs to it while a noun follows
+   it ("shoot out goal"), since a finite verb would be inflected after a singular noun and in a do-question the bare main verb is
+   followed by its complement (a preposition, a determiner, an adverb, the end), not by a noun. A pronoun is the whole subject.
+   After the head noun a determiner or an adjective begins the predicate ("the same as", "legal tender"); "of" stays inside. */
+static const char *yn_subject_end(const char *r, int doq) {
+    static const char *PRON[] = { "you", "it", "they", "he", "she", "we", "i", "there", "this", "that", "these", "those", "someone", "anyone", "everyone", 0 };
+    static const char *PART[] = { "out", "up", "off", "down", "over", "back", "away", 0 };
+    const char *p = r; int n = 0, sawnoun = 0;
+    for (int i = 0; PRON[i]; i++) if (is_word_at(p, PRON[i])) { p += strlen(PRON[i]); while (*p == ' ') p++; return p; }
+    while (*p && *p != '?') {
+        const char *e = p; while (*e && *e != ' ' && *e != '?') e++; if (e == p) break;
+        char c = isupper((unsigned char)*p) ? 'P' : wclass(p, (size_t)(e - p)); size_t L = (size_t)(e - p);
+        const char *nx = e; while (*nx == ' ') nx++; const char *ne = nx; while (*ne && *ne != ' ' && *ne != '?') ne++;
+        char cn = ne > nx ? (isupper((unsigned char)*nx) ? 'P' : wclass(nx, (size_t)(ne - nx))) : 0; int nxnoun = cn == 'N' || cn == 'P' || cn == 'Q';
+        int stop = 0, skip = 0;
+        if (L == 2 && !strncasecmp(p, "of", 2)) stop = !sawnoun;
+        else if (L == 3 && !strncasecmp(p, "and", 3)) stop = !(sawnoun && (nxnoun || cn == 'D' || cn == 'J'));   /* "saline and sodium chloride": one subject */
+        else if (c == 'D' || c == 'Q') stop = sawnoun && c == 'D';
+        else if (c == 'J') stop = sawnoun;
+        else if (c == 'N' || c == 'P') sawnoun = 1;
+        else if (c == 'V') { int part = 0; for (int i = 0; PART[i]; i++) part |= cn && !strncasecmp(nx, PART[i], (size_t)(ne - nx)) && strlen(PART[i]) == (size_t)(ne - nx);
+            if (part) { const char *n2 = ne; while (*n2 == ' ') n2++; const char *e2 = n2; while (*e2 && *e2 != ' ' && *e2 != '?') e2++; char c2 = e2 > n2 ? wclass(n2, (size_t)(e2 - n2)) : 0; nxnoun = c2 == 'N' || c2 == 'P' || c2 == 'Q'; }
+            if (nxnoun && n) { sawnoun = 1; if (part) skip = 1; } else stop = 1; (void)doq; }   /* "shoot out goal": the particle goes with it */
+        else stop = 1;
+        if (stop) break;
+        n++; p = e; while (*p == ' ') p++;
+        if (skip) { p = ne; while (*p == ' ') p++; n++; } }
+    return n ? p : 0;
+}
 static int yesno_statement(const char *q, const char *opt, char *out, size_t cap) {
     static const char *AUX[] = { "do", "does", "did", "is", "are", "was", "were", "can", "could", "will", "would", "has", "have", "had", 0 };
     int a = -1; for (int i = 0; AUX[i] && a < 0; i++) if (is_word_at(q, AUX[i])) a = i; if (a < 0) return 0;
     const char *r = q + strlen(AUX[a]); while (*r == ' ') r++;
     const char *p = r; int first = 1;                    /* the subject: up to the first verb, adjective, adverb or preposition */
-    while (*p) { const char *e = p; while (*e && *e != ' ' && *e != '?') e++; if (e == p) break;
+    if (s5(256)) p = yn_subject_end(r, a <= 2);          /* docs/YESNO.md Y9: the subject is a noun phrase, read as one */
+    else while (*p) { const char *e = p; while (*e && *e != ' ' && *e != '?') e++; if (e == p) break;
         char c = isupper((unsigned char)*p) ? 'P' : wclass(p, (size_t)(e - p)); if (!first && (c == 'V' || c == 'J' || c == 'R' || c == 'I' || c == 'G')) break;
         first = 0; p = e; while (*p == ' ') p++; }
-    if (!*p || *p == '?') return 0;
+    if (!p || !*p || *p == '?') return 0;
     int no = is_word_at(opt, "no"), yes = is_word_at(opt, "yes"); const char *rest = opt;
     if (no || yes) { rest += no ? 2 : 3; while (*rest == ',' || *rest == ' ') rest++; }
     char body[1024]; snprintf(body, sizeof body, "%s", p); for (char *e = body + strlen(body); e > body && (e[-1] == '?' || e[-1] == ' '); ) *--e = 0;   /* F1: "goat?" + "." made "goat..", one sentence of the two */

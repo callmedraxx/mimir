@@ -636,6 +636,8 @@ static void bg_option(Know *A, const char *q, const char *opt, BParts *P) {
     char st[4096]; statement(q, opt, st, sizeof st);
     static Frame hf[64], qf[64], of[64]; uint32_t sw[256], qwl[256], owl[128]; int nsw, nq, now_;
     int nh = read_statement(A, st, hf, 64, sw, &nsw, 256); read_statement(A, q, qf, 64, qwl, &nq, 256); read_statement(A, opt, of, 64, owl, &now_, 128);
+    if (getenv("STDBG")) { fprintf(stderr, "  STMT[%s]: %s\n", opt, st); for (int i = 0; i < nh; i++) { fprintf(stderr, "    %s%s%s", hf[i].flags & F_NEG ? "NOT " : "", hf[i].flags & F_PAST ? "[past] " : hf[i].flags & F_PRES ? "[now] " : "", hf[i].verb < OPEN ? A->t.voc[hf[i].verb].word : "-");
+        for (int a_ = 0; a_ < hf[i].narg; a_++) fprintf(stderr, " %s%s%s=%s", hf[i].a[a_].role == A_AGENT ? "who" : hf[i].a[a_].role == A_PAT ? "what" : hf[i].a[a_].role == A_ATTR ? "is" : "pp", hf[i].a[a_].prep < OPEN ? ":" : "", hf[i].a[a_].prep < OPEN ? A->t.voc[hf[i].a[a_].prep].word : "", hf[i].a[a_].head < OPEN ? A->t.voc[hf[i].a[a_].head].word : "?"); fprintf(stderr, "\n"); } }   /* docs/YESNO.md dev trace */
     QW Q[256], O[128]; qwords(A, qwl, nq, Q);
     int no = 0; for (int i = 0; i < now_; i++) { int inq = 0; for (int j = 0; j < nq; j++) inq |= qwl[j] == owl[i]; if (!inq) { const char *s = A->t.voc[owl[i]].word; O[no].g = lx_id(s, 0); O[no++].mid = wmid(s); } }
     memset(P, 0, sizeof *P); P->optr = ~0ull;
