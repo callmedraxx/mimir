@@ -183,6 +183,30 @@ def copy_local(name, src):
             n += 1
         out.write(l)
     out.close(); print("%-14s %6d questions (copied)" % (name, n), flush=True)
+def cosmos_train():
+    """docs/INFER.md dev: the first 1,000 of CosmosQA train"""
+    w = W("cosmos_train"); last = None
+    for i, r in enumerate(rows("Samsoup/cosmos_qa", "default", "train", 1000)):
+        if r["context"] != last: w.passage(r["context"]); last = r["context"]
+        w.q("cosmost_%d" % i, r["question"], [r["answer%d" % k] for k in range(4)], int(r["label"]))
+    w.done()
+def storycloze_val():
+    """docs/INFER.md dev: Story Cloze 2016 validation (1,871)"""
+    w = W("storycloze_val")
+    for i, r in enumerate(rows("MoE-UNC/story_cloze", "default", "validation", 1871)):
+        w.passage(" ".join(r["input_sentence_%d" % k] for k in (1, 2, 3, 4)))
+        w.q("clozev_%d" % i, "What happened next?", [r["sentence_quiz1"], r["sentence_quiz2"]], int(r["answer_right_ending"]) - 1)
+    w.done()
+def dream_train():
+    """docs/INFER.md dev: the first 1,000 questions of DREAM train"""
+    w = W("dream_train"); d = json.loads(fetch("https://raw.githubusercontent.com/nlpdata/dream/master/data/train.json")); n = 0
+    for dlg, qs, did in d:
+        w.passage(" ".join(dlg))
+        for q in qs:
+            w.q("dreamt_%d" % n, q["question"], q["choice"], q["choice"].index(q["answer"])); n += 1
+            if n >= 1000: break
+        if n >= 1000: break
+    w.done()
 def boolq_train():
     """docs/YESNO.md dev set: the first 1,000 of BoolQ train, from the SuperGLUE release (the HF rows API gave 502s); the
     validation split is the survey's test and is not developed on"""
@@ -201,6 +225,9 @@ if __name__ == "__main__":
     if "sciq" in want: sciq()
     if "babi_train" in want: babi("train", (1, 2, 3, 6, 9, 11, 13), "babi_train")   # docs/STATE.md dev set
     if "boolq_train" in want: boolq_train()   # docs/YESNO.md dev set
+    if "cosmos_train" in want: cosmos_train()   # docs/INFER.md dev sets
+    if "storycloze_val" in want: storycloze_val()
+    if "dream_train" in want: dream_train()
     failed = []
     for name, fn in ALL:
         if name not in want: continue
