@@ -134,6 +134,17 @@ apple", "Mary left the milk there" (a thing she held): no longer held; "Bill is 
 "Is Bill in the office?": maybe (the answering path says it; the choice judge takes it as unknown). Tiny brain, bAbI in
 words: counting (7) 86 → 100, lists (8) 83 → 99, indefinite knowledge (10) 84 → 96.
 
+## Frozen (2026-10-19): `S5=4062698`
+
+Dev run 7 (full brain): BoolQ train 61.3; **bAbI train choice 67.9 → 83.6**; bAbI train in words 95.6 (seven tasks),
+**91.5 (all twenty)**; dev stories 67/70; MC160 dev 51.9 (−0.8), MC500 dev 57.75 (+0.5), RACE-M dev 41.0 (+0.4), the
+passage dev mean +0.02; general dev 47.28 / 18.26 / 25.25 / 30.07 / 30.65 against 47.19 / 18.26 / 25.05 / 30.07 /
+30.55. Nothing falls by the rule. Frozen with all of Y2 Y4 Y6 Y7 Y8 Y9 Y10 Y11 Y12 Y13 Y14 Y15 Y16 Y17 Y18 and
+docs/SPEAK.md's answering path (W1, W2). The claim is stated honestly: BoolQ moves from 46.7 to the prior (62%), not
+beyond it; the real judgement is in bAbI (choice and in words), MC500 and RACE-M. Test once: BoolQ validation, bAbI
+test (choice and in words, all twenty), the 18 test stories, MCTest and RACE-M tests, the general tests; then the
+survey rerun. Adoption is the owner's call.
+
 ## Dev run 5 (2026-10-17, full brain, `S5=32234`: Y2 Y4 Y6 Y7 Y8 Y9 Y10 Y11 Y12 Y13 Y14)
 
 BoolQ train 61.4; **bAbI train (choice) 67.9 → 83.6**; bAbI train in words 95.6 (docs/SPEAK.md); dev stories 67/70;

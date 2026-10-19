@@ -103,3 +103,10 @@
 ==> S5 130538 dev stories 67/70 | mc160.dev 51.94 mc500.dev 58.25 dev_middle 40.74
 ==> general S5 130538 easy_dev 47.19 challenge_dev 18.26 obqa_dev 25.25 mmlu_hs_dev 30.07 csqa_traindev 30.65   (= run 5)
 === dev run 7 (11:46 UTC; mask 1965546 = 130538 + Y17 262144 + W2/do-question 524288 + Y18 1048576, with Y16 restricted; commit e28a009)
+==> S5 4062698 RESULT bgpass file=boolq_train.txt n=1000 acc=61.30 epw=4.00
+==> S5 4062698 RESULT bgpass file=babi_train.txt n=1400 acc=83.57 epw=4.00
+==> S5 4062698 RESULT bgask file=babi_words_train.txt n=1400 acc=95.57 f1=95.57 epw=4.00
+==> S5 4062698 RESULT bgask file=babi_words20_train.txt n=4000 acc=91.53 f1=91.58 epw=4.00
+==> S5 4062698 dev stories 95/96.67/100/90 (67/70) | mc160.dev 51.94 mc500.dev 57.75 dev_middle 41.02
+==> general S5 4062698 easy_dev 47.28 challenge_dev 18.26 obqa_dev 25.25 mmlu_hs_dev 30.07 csqa_traindev 30.65
+=== FROZEN at S5=4062698 (2026-10-19 18:40 UTC): nothing falls by the rule (passage dev mean +0.02, general none worse than adopted); test once next.

@@ -27,9 +27,10 @@ if mode == "test":
     if not os.path.exists("data/understand/survey/babi.txt"): sh("python3 tools/survey_fetch.py babi")
     if not os.path.exists("data/understand/survey/boolq.txt"): sh("python3 tools/survey_fetch.py boolq")
     sh("python3 tools/stories.py /content/st")
+    if not os.path.exists("data/understand/survey/babi_words_test.txt"): sh("python3 tools/babi_words.py test")   # docs/SPEAK.md: all twenty tasks in words, test split
     ST = " ".join("/content/st/%s.txt" % t for t in ("state_tests", "follow_tests", "read2_tests", "comprehend_tests", "episode_tests", "story_tests"))
     for label, cmd in [("S5=0 stories", "S5=0 SHOW=1 ./bg passages %s %s" % (BRAIN, ST)),
-                       ("S5=%s stories + BoolQ validation + bAbI test + MCTest + RACE-M tests" % FROZEN, "S5=%s SHOW=1 ./bg passages %s %s data/understand/survey/boolq.txt data/understand/survey/babi.txt data/understand/mctest/mc160.test.txt data/understand/mctest/mc500.test.txt data/understand/race/test_middle.txt" % (FROZEN, BRAIN, ST)),
+                       ("S5=%s stories + BoolQ validation + bAbI test + MCTest + RACE-M tests" % FROZEN, "S5=%s SHOW=1 ./bg passages %s %s data/understand/survey/boolq.txt data/understand/survey/babi.txt data/understand/survey/babi_words_test.txt data/understand/mctest/mc160.test.txt data/understand/mctest/mc500.test.txt data/understand/race/test_middle.txt" % (FROZEN, BRAIN, ST)),
                        ("S5=%s general tests" % FROZEN, "S5=%s ./bg arc %s %s" % (FROZEN, BRAIN, " ".join("data/arc_tests/%s.tsv" % t for t in ("mmlu_hs_test", "csqa_dev", "easy_test", "challenge_test", "obqa_test"))))]:
         open(OUT, "a").write("=== %s\n" % label); r = sh(cmd + " 2>/dev/null", OUT)
         for l in r.stdout.split("\n"):
