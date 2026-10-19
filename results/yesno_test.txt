@@ -10,3 +10,9 @@
 ==> test S5 4062698 RESULT bgpass file=mc160.test.txt n=240 acc=59.17 epw=4.00   (before 58.65)
 ==> test S5 4062698 RESULT bgpass file=mc500.test.txt n=600 acc=52.28 epw=4.00   (before 52.28)
 ==> test S5 4062698 RESULT bgpass file=test_middle.txt n=1436 acc=40.40 epw=4.00   (before 40.83)
+==> test S5 4062698 RESULT bgarc file=mmlu_hs_test.tsv n=3420 acc=27.45 facts=32471614   (before 27.26)
+==> test S5 4062698 RESULT bgarc file=csqa_dev.tsv n=1221 acc=30.92 facts=32471614   (before 30.75)
+==> test S5 4062698 RESULT bgarc file=easy_test.tsv n=2376 acc=45.56 facts=32471614   (before 45.63)
+==> test S5 4062698 RESULT bgarc file=challenge_test.tsv n=1172 acc=23.62 facts=32471614   (before 23.66)
+==> test S5 4062698 RESULT bgarc file=obqa_test.tsv n=500 acc=23.80 facts=32471614   (before 23.80)
+=== done 19:25 UTC. Nothing fell more than half a point; adoption is the owner's call.

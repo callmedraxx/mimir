@@ -192,7 +192,7 @@ Lessons that keep coming back:
 
 * 2026-10-19 (later): YESNO frozen at S5=4062698 and tested once (docs/YESNO.md, results/yesno_test.txt): BoolQ 46.7 →
   61.9 (the prior), bAbI test 57.0 → 66.3, bAbI in words all twenty 91.4, stories 137/180 both, MCTest / RACE within half a
-  point, general tests pending at the time of writing; the owner's adoption call next. Then Y19 (docs/SPEAK.md): answer in
+  point, general tests 27.45 / 30.92 / 45.56 / 23.62 / 23.80 (none down more than 0.1); the owner's adoption call next. Then Y19 (docs/SPEAK.md): answer in
   words first and pick the single-word option that says it, when a rule decided it: bAbI train choice 83.2 → 92.8 on the tiny
   brain; the reader is snapshotted around a question read. REPLAY R1 and R2 measured (docs/REPLAY.md): no gain from a plain
   second pass or store-level consistency rules; the doubt must be about the answer; R3 is the next build.

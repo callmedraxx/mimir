@@ -154,7 +154,7 @@ survey rerun. Adoption is the owner's call.
 | bAbI test in words, 20 tasks (new, docs/SPEAK.md) | | **91.40** | ten tasks at 100; counting, lists, paths, deduction 100; motives 4 (the world's knowledge) |
 | the 18 test stories | 137/180 | 137/180 | follow +1, read2 −1 |
 | MC160 / MC500 / RACE-Middle | 58.65 / 52.28 / 40.83 | 59.17 / 52.28 / 40.40 | +0.5 / 0 / −0.4 |
-| MMLU / CSQA / ARC-E / ARC-C / OBQA | 27.26 / 30.75 / 45.63 / 23.66 / 23.80 | (below) | |
+| MMLU / CSQA / ARC-E / ARC-C / OBQA | 27.26 / 30.75 / 45.63 / 23.66 / 23.80 | 27.45 / 30.92 / 45.56 / 23.62 / 23.80 | +0.2 / +0.2 / −0.1 / 0 / 0 |
 
 The honest reading. BoolQ's number is the prior: the artefact that made Mimir say "no" 70% of the time is gone, and
 with it the score rises to what "yes" alone would give; the passage still yields no real evidence against a
