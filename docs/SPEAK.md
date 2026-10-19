@@ -122,6 +122,13 @@ story's. All twenty **90.9**, with that honest loss. Still open: three-argument 
 only the shelf can give that). Left: relations (4 "east of"), deduction (15), induction (16 "what colour is Greg": by his
 kind), positions (17), size (18), paths (19), motives (20, "will go"), and the pronoun tasks at 73-84.
 
+## bAbI in words, test (2026-10-19, Colab, once, full brain, the frozen YESNO candidate; `results/yesno_test.txt`)
+
+All twenty tasks, test split, 200 each: **91.4** exact match. By task: 1:100 2:90 3:92 4:100 5:76 6:100 7:100 8:100 9:85
+10:100 11:100 12:100 13:100 14:96 15:100 16:98 17:88 18:99 19:100 20:4. The roles reader of 10-12 had 94 on tasks 1-20
+in words with rules written for bAbI; these are the general reader's rules, and task 20's 4 is the honest number for
+"where will a tired person go" without the world's knowledge.
+
 ## SQuAD, first look (2026-10-17, tiny brain, the first 40 dev questions as a format check only)
 
 The harness runs (`tools/squad_words.py`, A lines with several right answers, exact match and word F1). Said right: "Cam

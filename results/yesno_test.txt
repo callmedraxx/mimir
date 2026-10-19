@@ -1,0 +1,12 @@
+# docs/YESNO.md test, once, Colab 2026-10-19 (18:25 UTC on), brain-school-cx4 with its shelf, frozen S5=4062698 (tools/yesno_colab.py test).
+# Before = the adopted reader (STATE); the 18 test stories were run at S5=0 in the same session for the before column.
+=== the 18 test stories (S5=0 -> S5=4062698): state 16/30 -> 16/30, follow 21/30 -> 22/30, read2 25/30 -> 24/30, comprehend 23/30 -> 23/30, episode 24/30 -> 24/30, story 28/30 -> 28/30 (137/180 both)
+==> test S5 4062698 RESULT bgpass file=boolq.txt n=3270 acc=61.93 epw=4.00   (before 46.73; says yes 97%, the answer is yes 62%: the prior, as docs/YESNO.md says)
+==> test S5 4062698 RESULT bgpass file=babi.txt n=4000 acc=66.25 epw=4.00   (before 57.00)
+    by task: 1:98 2:80 3:30 4:70 5:80 6:100 7:42 8:55 9:85 10:55 11:90 12:96 13:84 14:74 15:0 16:47 17:88 18:99 19:8 20:43
+    (before: 1:97 2:74 3:34 4:70 5:80 6:68 7:42 8:55 9:74 10:38 11:70 12:88 13:72 14:74 15:0 16:47 17:48 18:58 19:8 20:43)
+==> test S5 4062698 RESULT bgask file=babi_words_test.txt n=4000 acc=91.40 f1=91.40 epw=4.00   (docs/SPEAK.md: all twenty tasks answered in words, test split, 200 each; new)
+    by task: 1:100 2:90 3:92 4:100 5:76 6:100 7:100 8:100 9:85 10:100 11:100 12:100 13:100 14:96 15:100 16:98 17:88 18:99 19:100 20:4
+==> test S5 4062698 RESULT bgpass file=mc160.test.txt n=240 acc=59.17 epw=4.00   (before 58.65)
+==> test S5 4062698 RESULT bgpass file=mc500.test.txt n=600 acc=52.28 epw=4.00   (before 52.28)
+==> test S5 4062698 RESULT bgpass file=test_middle.txt n=1436 acc=40.40 epw=4.00   (before 40.83)

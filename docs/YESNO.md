@@ -145,6 +145,24 @@ beyond it; the real judgement is in bAbI (choice and in words), MC500 and RACE-M
 test (choice and in words, all twenty), the 18 test stories, MCTest and RACE-M tests, the general tests; then the
 survey rerun. Adoption is the owner's call.
 
+## Test result (2026-10-19, Colab, once, `S5=4062698` on `brain-school-cx4`; `results/yesno_test.txt`)
+
+| | adopted (STATE) | this step | change |
+|---|---|---|---|
+| BoolQ validation (3,270) | 46.73 | 61.93 | +15.2, **the prior**: says yes 97%, the answer is yes 62% |
+| bAbI test, 20 tasks, choice | 57.00 | **66.25** | +9.3: yes/no 68 → 100, negation 74 → 85, he/she 70 → 90, they 72 → 84, positions 48 → 88, sizes 58 → 99 |
+| bAbI test in words, 20 tasks (new, docs/SPEAK.md) | | **91.40** | ten tasks at 100; counting, lists, paths, deduction 100; motives 4 (the world's knowledge) |
+| the 18 test stories | 137/180 | 137/180 | follow +1, read2 −1 |
+| MC160 / MC500 / RACE-Middle | 58.65 / 52.28 / 40.83 | 59.17 / 52.28 / 40.40 | +0.5 / 0 / −0.4 |
+| MMLU / CSQA / ARC-E / ARC-C / OBQA | 27.26 / 30.75 / 45.63 / 23.66 / 23.80 | (below) | |
+
+The honest reading. BoolQ's number is the prior: the artefact that made Mimir say "no" 70% of the time is gone, and
+with it the score rises to what "yes" alone would give; the passage still yields no real evidence against a
+statement (docs/YESNO.md, the threshold scan), and that is the inference step's work. The real judgement is in bAbI:
+the yes/no tasks, pronouns, positions and sizes move because the state slot, the pronoun rule, the relations and
+their chains decide them, and the twenty tasks answered in words at 91.4 is Mimir's first answering result at all.
+Nothing fell by the rule. Adoption is the owner's call.
+
 ## Dev run 5 (2026-10-17, full brain, `S5=32234`: Y2 Y4 Y6 Y7 Y8 Y9 Y10 Y11 Y12 Y13 Y14)
 
 BoolQ train 61.4; **bAbI train (choice) 67.9 → 83.6**; bAbI train in words 95.6 (docs/SPEAK.md); dev stories 67/70;
