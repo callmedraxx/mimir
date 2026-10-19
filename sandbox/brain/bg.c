@@ -822,6 +822,35 @@ static void ep_doubts(void) {
     for (int x = 0; x < 4; x++) ep_doubt_n[x] = d[x];
     if (getenv("R2DBG")) fprintf(stderr, "  R2 doubts: two-values %d, two-holders %d, empty-frames %d, pronouns-left %d\n", d[0], d[1], d[2], d[3]);
 }
+/* docs/REPLAY.md R3, first form (counted only): the text is re-read a sentence at a time; before each sentence the current value of every
+   state slot is the prediction; after it, a slot whose value changed with no event in that sentence to explain it (a motion for a
+   place, a take / give / drop / put for a holder) is a surprise. ep_surprise_n is the story's count. */
+static int ep_surprise_n;
+typedef struct ReaderSnap ReaderSnap; struct ReaderSnap { Reader2 R; uint8_t *sex; uint32_t *sexat, *name, nsex, nname; };
+static void rsnap_save(const Reader2 *R, ReaderSnap *S); static void rsnap_restore(Reader2 *R, ReaderSnap *S);
+static void ep_surprises(Know *k, const char *text, size_t L) {
+    uint32_t nep_keep = nep, seq_keep = ep_seq; static KF *keep; static uint8_t *keep_sup; static uint32_t *keep_ord, capk;
+    if (capk < nep) { capk = nep; keep = realloc(keep, capk * sizeof *keep); keep_sup = realloc(keep_sup, capk); keep_ord = realloc(keep_ord, capk * 4); }
+    memcpy(keep, ep, nep * sizeof *keep); memcpy(keep_sup, ep_sup, nep); memcpy(keep_ord, ep_ord, nep * 4);
+    uint32_t nep0 = nep; for (uint32_t e = 0; e < nep0; e++) if (ep[e].ptr[0] != ~0ull && (ep[e].ptr[0] & ((1ull << FID_SHIFT) - 1)) >= (uint64_t)(text - epbuf)) { nep0 = e; break; }   /* the facts before this text */
+    enum { MAXS = 256 }; uint32_t ssub[MAXS], sval[MAXS]; int skind[MAXS], ns = 0, surprises = 0;
+    nep = nep0; ep_seq = seq_keep; uint64_t clk_keep = CLK; uint32_t ntok_keep = k->t.ntok; ReaderSnap RS; rsnap_save(&k->R, &RS); memset(&k->R.refs, 0, sizeof k->R.refs); k->R.refs.plthing = NONE; cx_quiet = 1; EPREAD = 1;
+    size_t a = 0;
+    while (a < L) { size_t b = a; while (b < L && text[b] != '.' && text[b] != '!' && text[b] != '?') b++; if (b < L) b++; while (b < L && text[b] == ' ') b++;
+        uint32_t before = nep; read_block(k, text + a, b - a, EPFID, (size_t)(text - epbuf) + a); ep_states();
+        /* events in this sentence: the surface facts just read */
+        int moved = 0, handed = 0; for (uint32_t e = before; e < nep; e++) { if (ep_der[e]) continue; moved |= gin(G_motion, ep[e].verb) || ep[e].verb == G_be; handed |= is_take(&ep[e]) || gin(G_give, ep[e].verb) || gin(G_drop, ep[e].verb) || gin(G_put, ep[e].verb) || ep[e].verb == G_leave || ep[e].verb == G_have; }
+        /* the current states now against the prediction (the states before this sentence) */
+        for (uint32_t e = 0; e < nep; e++) { if (ep_sup[e] || (ep[e].flags & F_NEG)) continue; uint32_t sj, v; int kd = state_key(&ep[e], &sj, &v); if (!kd || v == NONE || kd == 3) continue;
+            int found = -1; for (int i = 0; i < ns; i++) if (skind[i] == kd && ssub[i] == sj) found = i;
+            if (found >= 0 && sval[found] != v && !((kd == 1 && moved) || (kd == 2 && handed))) { surprises++; if (getenv("R3DBG")) fprintf(stderr, "  R3 surprise: %s's %s was %s, now %s, nothing in: %.*s\n", LX.s[sj], kd == 1 ? "place" : "holder", LX.s[sval[found]], LX.s[v], (int)(b - a), text + a); }
+            if (found >= 0) sval[found] = v; else if (ns < MAXS) { skind[ns] = kd; ssub[ns] = sj; sval[ns++] = v; } }
+        a = b; }
+    EPREAD = 0; cx_quiet = 0; rsnap_restore(&k->R, &RS); CLK = clk_keep; k->t.ntok = ntok_keep;
+    nep = nep_keep; ep_seq = seq_keep; memcpy(ep, keep, nep * sizeof *keep); memcpy(ep_sup, keep_sup, nep); memcpy(ep_ord, keep_ord, nep * 4);
+    ntracked = 0; for (uint32_t i = 0; i < nep; i++) { const KF *f = &ep[i]; int pa = kf_arg(f, A_PAT, NONE); if (pa < 0 || ntracked >= 64 || is_tracked(f->head[pa])) continue; if (is_take(f) || gin(G_give, f->verb) || gin(G_drop, f->verb) || (gin(G_put, f->verb) && kf_arg(f, A_PP, G_in) >= 0)) tracked[ntracked++] = f->head[pa]; }   /* the tracked things as the whole text left them */
+    ep_surprise_n = surprises; if (getenv("R3DBG")) fprintf(stderr, "  R3: %d surprises\n", surprises);
+}
 static void ep_read(Know *k, const char *text) {
     size_t L = strlen(text); if (neb + L + 2 > capeb) { capeb = (neb + L + 2) * 2; epbuf = realloc(epbuf, capeb); }
     memcpy(epbuf + neb, text, L); epbuf[neb + L] = '\n'; size_t off = neb; neb += L + 1; epbuf[neb] = 0;
@@ -835,6 +864,7 @@ static void ep_read(Know *k, const char *text) {
     if (s5(32768)) ep_time_order();                      /* Y15: "yesterday … this morning …": the order of saying is the order of the times said */
     ep_states();
     if (s6(2)) ep_doubts();                               /* docs/REPLAY.md R2: reasons to doubt what was read */
+    if (s6(4)) ep_surprises(k, epbuf + off, L);           /* docs/REPLAY.md R3: the states before each sentence against the states after it */
     if (getenv("EPDBG")) for (uint32_t e = 0; e < nep; e++) { fprintf(stderr, "  ep%u ord=%u%s%s %s%s", e, ep_ord[e], ep_sup[e] ? " SUP" : "", ep_der[e] ? " der" : "", ep[e].flags & F_NEG ? "NOT " : "", ep[e].verb != NONE ? LX.s[ep[e].verb] : "-");
         for (int a = 0; a < ep[e].narg; a++) { fprintf(stderr, " %s%s%s=%s", ep[e].role[a] == A_AGENT ? "who" : ep[e].role[a] == A_PAT ? "what" : ep[e].role[a] == A_ATTR ? "is" : "pp", ep[e].prep[a] != NONE ? ":" : "", ep[e].prep[a] != NONE ? LX.s[ep[e].prep[a]] : "", LX.s[ep[e].head[a]]); if (ep[e].mod[a] != NONE) fprintf(stderr, "(%s)", LX.s[ep[e].mod[a]]); } fprintf(stderr, "\n"); }   /* dev trace */
     for (uint32_t i = 0; i < ncxjr; i++) if (!cxjr[i].which) { uint32_t g = cxjr[i].g; float n = cx_dot(CXU(g), CXU(g)); cxinv[g] = n > 0 ? 1 / sqrtf(n) : 0; }
@@ -969,7 +999,6 @@ static int timelike(const char *w) {                     /* a number word, a mon
     for (int i = 0; X[i]; i++) if (!strcmp(w, X[i])) return 1; for (int i = 0; N[i]; i++) { size_t L = strlen(N[i]); if (!strncmp(w, N[i], L) && (w[L] == 0 || w[L] == '-')) return 1; } return 0; }
 /* reading a question must leave the reader as the story left it: names, sexes, the sentence count and the people the pronouns pointed
    to are the story's, not the question's (otherwise each question read shifts the next question's statements) */
-typedef struct { Reader2 R; uint8_t *sex; uint32_t *sexat, *name, nsex, nname; } ReaderSnap;
 static void rsnap_save(const Reader2 *R, ReaderSnap *S) {
     S->R = *R; S->nsex = R->nsex; S->nname = R->nname;
     S->sex = R->nsex ? malloc(R->nsex) : 0; if (S->sex) memcpy(S->sex, R->sex, R->nsex);
@@ -1104,7 +1133,7 @@ static int run_passages(int nfile, char **files) {
                 int okq = 0; double f1 = 0;                               /* several right answers "a || b": exact match on any; word F1 the best (SQuAD's measures) */
                 for (char *g = fld[3]; g; ) { char *sep = strstr(g, " || "); if (sep) *sep = 0; okq |= !strcasecmp(ans, g); double f = word_f1(ans, g); if (f > f1) f1 = f; if (sep) { *sep = ' '; g = sep + 4; } else break; }
                 ok += okq; f1sum += f1; nasked++;
-                if (getenv("SHOW")) printf("  %s\t%s\tsaid=%s\tright=%s\t%s%s\n", fld[1], fld[2], ans, fld[3], okq ? "OK" : "WRONG", s6(2) ? (ep_doubt_n[0] + ep_doubt_n[1] + ep_doubt_n[2] + ep_doubt_n[3] ? "\tDOUBT" : "\tclear") : "");
+                if (getenv("SHOW")) printf("  %s\t%s\tsaid=%s\tright=%s\t%s%s%s\n", fld[1], fld[2], ans, fld[3], okq ? "OK" : "WRONG", s6(2) ? (ep_doubt_n[0] + ep_doubt_n[1] + ep_doubt_n[2] + ep_doubt_n[3] ? "\tDOUBT" : "\tclear") : "", s6(4) ? (ep_surprise_n ? "\tSURPRISE" : "\tsmooth") : "");
                 n++; continue; }
             if (line[0] != 'Q') continue;
             char *fld[MAXO + 4]; int nf = 0; for (char *p = strtok(line, "\t"); p && nf < MAXO + 4; p = strtok(0, "\t")) fld[nf++] = p;

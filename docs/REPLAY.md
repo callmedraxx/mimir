@@ -77,6 +77,21 @@ abstained. When Mimir answers it is right 94.9% of the time; it abstains on 4.8%
 argument facts (task 5: 44), yes/no on places and negation (6, 9: 60), a carried thing (2: 32) and positions (17: 21).
 Those are where R2's answer-level doubt should fire first.
 
+**R3's first form (tiny brain, `S6=4`, counted only):** the text re-read a sentence at a time, the state slots before each
+sentence as the prediction, a slot changed with no motion / take / give / drop / put in that sentence as a surprise.
+bAbI all twenty in words: surprises in the passages of 139 questions (127 answered right, 12 wrong); the other 3,861
+questions "smooth" (3,433 right, 428 wrong). So a wrong answer is no likelier where the states jumped than where they
+did not: the errors are self-consistent misreadings (a pronoun sent to the wrong person makes a consistent, false
+story), and "the slot keeps its value" is too weak a prediction to catch them. The brain's replay predicts the next
+sentence's *content* (who acts, what they do), not only that nothing changed; that is the prediction R3 must make,
+and it needs the sequence habit docs/SPEAK.md W5 describes. (The diagnostic itself still perturbs later answers a
+little, 387 → 440 wrong, through state the re-read leaves behind; it is off by default and is not used.)
+
+**Where this leaves replay.** R1 (re-read with what is known) and R2 (store-level consistency) give nothing on these
+texts, R3 in its first form does not find the mistakes. What the owner's replay has and these do not is a *model of
+what should come next*: the game replayed forward. For Mimir that is the next-sentence expectation built from what
+such stories usually do next, which is the cortex's sequence habit (W5), learned Hebbian from the shelf. R3 waits for it.
+
 ## Scorecard
 
 * **Measure first, no change.** On the dev stories and bAbI train (choice and in words): how many facts a second pass
