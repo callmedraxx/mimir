@@ -48,14 +48,15 @@ else:
     sh("python3 tools/stories.py /content/st"); sh("python3 tools/general_tests.py >/dev/null 2>&1; ls data/dev_sets")
     OUT = "/content/yesno_dev.txt"; general_done = set()
     for m in sys.argv[2:]:
-        env = {"S5": m, "EPDUMP": "1", "DUMP": "/content/yesno_dev_%s.dump" % m}   # the parts of every option, episode apart (tools/yesno_notes.py)
+        s5, s7 = (m.split(":") + ["0"])[:2]                                   # "8257002:4" = S5 mask : S7 mask (docs/INFER.md)
+        env = {"S5": s5, "S7": s7, "EPDUMP": "1", "DUMP": "/content/yesno_dev_%s.dump" % m.replace(":", "_")}   # the parts of every option, episode apart (tools/yesno_notes.py)
         for f in ["data/understand/survey/cosmos_train.txt", "data/understand/survey/storycloze_val.txt", "data/understand/survey/dream_train.txt",
                   "data/understand/survey/boolq_train.txt", "data/understand/survey/babi_train.txt", "data/understand/survey/babi_words_train.txt", "data/understand/survey/babi_words20_train.txt", "/content/st/smart_tests.txt /content/st/dev_stories.txt /content/st/clock.txt /content/st/bakery.txt",
                   "data/understand/mctest/mc160.dev.txt data/understand/mctest/mc500.dev.txt data/understand/race/dev_middle.txt"]:
             r = sh("SHOW=1 ./bg passages %s %s 2>/dev/null" % (BRAIN, f), OUT, env)
             for l in r.stdout.split("\n"):
                 if l.startswith("RESULT"): print("==> S5", m, l, flush=True); open(OUT, "a").write("==> S5 %s %s\n" % (m, l))
-        g = int(m) & (4 | 64 | 128 | 1024)   # only Y3, Y7, Y8, Y11 read for everything: the general sets move with those bits alone
+        g = int(s5) & (4 | 64 | 128 | 1024)   # only Y3, Y7, Y8, Y11 read for everything: the general sets move with those bits alone
         if not g or g in general_done: continue
         general_done.add(g)
         r = sh("./bg arc %s data/dev_sets/easy_dev.tsv data/dev_sets/challenge_dev.tsv data/dev_sets/obqa_dev.tsv data/dev_sets/mmlu_hs_dev.tsv data/dev_sets/csqa_traindev.tsv 2>/dev/null | grep RESULT" % BRAIN, OUT, env)

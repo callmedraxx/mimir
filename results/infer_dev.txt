@@ -1,0 +1,7 @@
+# docs/INFER.md dev runs, Colab, brain-school-cx4 with its shelf (tools/yesno_colab.py dev "<S5>:<S7>"). The YESNO candidate with Y19
+# (S5=8257002, S7=0) is the baseline; S7: 1 I1 copy discount (out), 2 I2, 4 I3 what happens next, 8 I4, 16 I5.
+=== baseline (2026-10-19 20:30 UTC, S5=8257002 S7=0; the rest of the run repeats dev run 8 and was stopped)
+==> S5 8257002 RESULT bgpass file=cosmos_train.txt n=1000 acc=20.45 epw=4.00
+==> S5 8257002 RESULT bgpass file=storycloze_val.txt n=1871 acc=54.78 epw=4.00
+==> S5 8257002 RESULT bgpass file=dream_train.txt n=1000 acc=43.25 epw=4.00
+==> S5 8257002 babi_train 95.57 boolq_train 61.30 (= dev run 8)
