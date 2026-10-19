@@ -1124,6 +1124,26 @@ static double copy_share(Know *A, const char *opt) {
     Frame of[8]; uint32_t owl[64]; int now_ = 0; read_statement(A, opt, of, 8, owl, &now_, 64); A->t.ntok = 0;
     int n = 0, in = 0; for (int i = 0; i < now_; i++) { uint32_t g = lx_id(A->t.voc[owl[i]].word, 0); if (g == NONE) continue; n++; in += g < nepword && epword[g]; }
     return n ? (double)in / n : 0; }
+/* docs/INFER.md I3: what happens next. The story's last deed (the latest surface fact with a doer) is the cue; the shelf's facts that share
+   its words (the cue lists, as for an option) are what usually follows or goes with such a deed in the books; each ending is scored
+   by the closest of those facts (kfact_sim, the cortex's links inside it), and an ending that only restates the story (its words all in
+   the passage) is discounted, since a continuation says something new. The score enters the fact part, weighted EPW. */
+static void next_fact(Know *A, const char *q, char **opts, int no, BParts *P) {
+    const KF *deed = 0; for (uint32_t e = 0; e < nep; e++) { if (ep_der[e] || (ep[e].flags & F_NEG) || ep[e].verb == NONE || ep[e].verb == G_be) continue; if (!deed || ep_ord[e] >= ep_ord[deed - ep]) deed = &ep[e]; }
+    if (!deed || !nkf) return;
+    uint32_t dw[8]; int nd = kf_words(deed, dw); if (nd < 1) return;
+    enum { NC = 400 }; static uint32_t cand[NC]; int nc = 0;
+    for (int i = 0; i < nd; i++) { uint32_t g = dw[i]; if (g == NONE || g >= ncuew || g == G_be) continue; uint32_t a = cue_off[g], b = cue_off[g + 1]; if (b - a > 4000) b = a + 4000;
+        for (uint32_t x = a; x < b && nc < NC; x++) { const KF *f = &kf[cue[x]]; int shares = 0; uint32_t w[8]; int n = kf_words(f, w); for (int j = 0; j < n; j++) for (int k = 0; k < nd; k++) shares += w[j] == dw[k];
+            if (shares >= 2 || f->verb == deed->verb) cand[nc++] = cue[x]; } }
+    if (!nc) return;
+    static double NXW = -1; if (NXW < 0) NXW = getenv("NXW") ? atof(getenv("NXW")) : 1.0;
+    for (int o = 0; o < no; o++) { Frame hf[16]; uint32_t sw[128]; int nsw; int nh = read_statement(A, opts[o], hf, 16, sw, &nsw, 128); A->t.ntok = 0; if (nh <= 0) continue;
+        double best = 0; for (int c = 0; c < nc; c++) { const KF *f = &kf[cand[c]]; for (int i = 0; i < nh; i++) { double v = kfact_sim(A, &hf[i], f) * conf(f); if (v > best) best = v; } }
+        double copy = copy_share(A, opts[o]); if (copy >= 0.8) best *= 0.5;      /* an ending that restates the story is not what happened next */
+        P[o].fact += EPW * NXW * best;
+        if (getenv("NXDBG")) fprintf(stderr, "  NEXT deed=%s cands=%d opt%d best=%.3f copy=%.2f %s\n", LX.s[deed->verb], nc, o, best, copy, opts[o]); }
+}
 static int run_passages(int nfile, char **files) {
     Know A; answer_ctx(&A); Know k; memset(&k, 0, sizeof k); text_init(&k.t); r2_init(&k.R, &k.t, &k.wm);
     cx_epst = 0x2545F4914F6CDD1Dull; if (getenv("SUPW")) SUPW = atof(getenv("SUPW")); state_init();
@@ -1160,6 +1180,7 @@ static int run_passages(int nfile, char **files) {
                     if (nhit == 1) { for (int o = 0; o < no; o++) P[o].fact = P[o].joint = P[o].open = 0; P[hit].fact = EPW; } }
                 A.t.ntok = 0; }
             yn_state = 0; if (s5(3) && no == 2 && (yesno_q(q) || (s5(32) && !wh_q(q))) && yn_opt(fld[3]) && yn_opt(fld[4])) yesno_judge(P, yn_opt(fld[3]) == 1 ? 0 : 1);   /* docs/YESNO.md */
+            if (s7(4) && nep && no >= 2 && (strcasestr(q, "happened next") || strcasestr(q, "happens next") || strcasestr(q, "happen next"))) next_fact(&A, q, fld + 3, no, P);   /* docs/INFER.md I3 */
             if (s7(1) && nep && infer_q(q)) {                          /* docs/INFER.md I1: for a question that asks for an inference, an option that is a near copy of the passage is a quote, not an answer */
                 static double CPW = -1; if (CPW < 0) CPW = getenv("CPW") ? atof(getenv("CPW")) : 0.5;
                 for (int o = 0; o < no; o++) { double c = copy_share(&A, fld[3 + o]); if (c >= 0.8) { P[o].fact *= CPW; P[o].joint *= CPW; P[o].open *= CPW; } } }

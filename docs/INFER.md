@@ -61,6 +61,15 @@ the answer, and a word list cannot tell an inference question from a lookup. The
 (I3's "what happens next" has one: the option restates the story instead of continuing it), not the question's words.
 The full brain's baseline (first Colab run): CosmosQA train 20.45, Story Cloze val 54.78 (the rest below).
 
+## I3 built (2026-10-19, `S7=4`)
+
+The story's last deed (the latest surface fact with a doer) keys the shelf's cue lists; the facts that share two of its
+words or its verb are "what goes with such a deed in the books"; each ending's statement is scored by the closest of
+them (kfact_sim, the cortex's links inside it), an ending whose words are all in the story is halved, and the score
+enters the fact part weighted EPW × `NXW` (1.0). Tiny brain (64k shelf facts, no cortex links): Story Cloze val
+52.9 → 55.5, MC160 dev unchanged. The full brain's shelf is five hundred times larger and its cortex links words,
+so the first Colab dev run of the step measures I3 properly.
+
 ## Rules
 
 * **Dev**: CosmosQA train (the first 1,000), Story Cloze 2016 validation (1,871), DREAM train (the first 1,000),
