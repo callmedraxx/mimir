@@ -190,6 +190,10 @@ Lessons that keep coming back:
 
 ## Log
 
+* 2026-10-19: resumed. The owner asked how the involuntary replay they feel after a game (seeing the play again, seeing
+  the better move) could make Mimir self-correcting: docs/REPLAY.md, the brain's offline replay as three parts (re-read
+  with what is known now; consistency rules that send the reader back to the sentence; predict the next sentence and
+  learn from the miss, a reward the text itself gives). Scheduled after the YESNO freeze. Dev run 7 restarted in Colab.
 * 2026-10-17 12:00: paused by the owner ("stop for now"). State: YESNO dev candidate S5=4062698 (docs/YESNO.md Y2-Y18 less
   Y1/Y3/Y5/Y5b, plus docs/SPEAK.md's answering path); dev run 7 cut short (rerun it, then freeze and test once). Full-brain
   dev so far: bAbI train choice 67.9 → 83.6, bAbI in words 95.6 (seven tasks) / 87.8 (twenty), BoolQ 61.3 (the prior; no real
