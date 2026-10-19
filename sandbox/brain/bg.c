@@ -806,6 +806,22 @@ static void ep_time_order(void) {
     for (uint32_t e = 0; e < nep; e++) ep_ord[e] = (uint32_t)(rank[e] ? rank[e] : 4) * 100000u + ep_ord[e];
     ep_seq += 800000u;                                   /* later facts stay later than every timed one */
 }
+/* docs/REPLAY.md R2: consistency rules, each a reason to doubt a reading. For now they are counted and shown (R2DBG); later each sends
+   the reader back to its sentence. (a) one state slot with two current values; (b) a thing held by two people now; (c) a fact with a verb
+   and no argument; (d) an argument that is still a pronoun (he, she, it, they, him, her, them). */
+static int ep_doubt_n[4];
+static void ep_doubts(void) {
+    int d[4] = { 0, 0, 0, 0 };
+    for (uint32_t i = 0; i < nep; i++) { const KF *f = &ep[i];
+        if (f->verb != NONE && f->narg == 0) d[2]++;
+        for (int a = 0; a < f->narg; a++) { const char *w = LX.s[f->head[a]]; if (!strcmp(w, "he") || !strcmp(w, "she") || !strcmp(w, "it") || !strcmp(w, "they") || !strcmp(w, "him") || !strcmp(w, "her") || !strcmp(w, "them")) d[3]++; }
+        if (ep_sup[i] || (f->flags & F_NEG)) continue; uint32_t si, vi; int ki = state_key(f, &si, &vi); if (!ki || vi == NONE) continue;
+        for (uint32_t j = i + 1; j < nep; j++) { if (ep_sup[j] || (ep[j].flags & F_NEG)) continue; uint32_t sj, vj; if (state_key(&ep[j], &sj, &vj) != ki || sj != si || vj == NONE || vj == vi) continue;
+            int npp = 0; for (int a_ = 0; a_ < f->narg; a_++) npp += f->role[a_] == A_PP; if (npp >= 2) continue;   /* "either … or": not a conflict */
+            if (ki == 2) d[1]++; else d[0]++; } }
+    for (int x = 0; x < 4; x++) ep_doubt_n[x] = d[x];
+    if (getenv("R2DBG")) fprintf(stderr, "  R2 doubts: two-values %d, two-holders %d, empty-frames %d, pronouns-left %d\n", d[0], d[1], d[2], d[3]);
+}
 static void ep_read(Know *k, const char *text) {
     size_t L = strlen(text); if (neb + L + 2 > capeb) { capeb = (neb + L + 2) * 2; epbuf = realloc(epbuf, capeb); }
     memcpy(epbuf + neb, text, L); epbuf[neb + L] = '\n'; size_t off = neb; neb += L + 1; epbuf[neb] = 0;
@@ -818,6 +834,7 @@ static void ep_read(Know *k, const char *text) {
             fprintf(stderr, "  R1: pass1 %u facts, pass2 %u, %u not in pass1\n", n1, n2, changed); } }
     if (s5(32768)) ep_time_order();                      /* Y15: "yesterday … this morning …": the order of saying is the order of the times said */
     ep_states();
+    if (s6(2)) ep_doubts();                               /* docs/REPLAY.md R2: reasons to doubt what was read */
     if (getenv("EPDBG")) for (uint32_t e = 0; e < nep; e++) { fprintf(stderr, "  ep%u ord=%u%s%s %s%s", e, ep_ord[e], ep_sup[e] ? " SUP" : "", ep_der[e] ? " der" : "", ep[e].flags & F_NEG ? "NOT " : "", ep[e].verb != NONE ? LX.s[ep[e].verb] : "-");
         for (int a = 0; a < ep[e].narg; a++) { fprintf(stderr, " %s%s%s=%s", ep[e].role[a] == A_AGENT ? "who" : ep[e].role[a] == A_PAT ? "what" : ep[e].role[a] == A_ATTR ? "is" : "pp", ep[e].prep[a] != NONE ? ":" : "", ep[e].prep[a] != NONE ? LX.s[ep[e].prep[a]] : "", LX.s[ep[e].head[a]]); if (ep[e].mod[a] != NONE) fprintf(stderr, "(%s)", LX.s[ep[e].mod[a]]); } fprintf(stderr, "\n"); }   /* dev trace */
     for (uint32_t i = 0; i < ncxjr; i++) if (!cxjr[i].which) { uint32_t g = cxjr[i].g; float n = cx_dot(CXU(g), CXU(g)); cxinv[g] = n > 0 ? 1 / sqrtf(n) : 0; }
@@ -1067,7 +1084,7 @@ static int run_passages(int nfile, char **files) {
                 int okq = 0; double f1 = 0;                               /* several right answers "a || b": exact match on any; word F1 the best (SQuAD's measures) */
                 for (char *g = fld[3]; g; ) { char *sep = strstr(g, " || "); if (sep) *sep = 0; okq |= !strcasecmp(ans, g); double f = word_f1(ans, g); if (f > f1) f1 = f; if (sep) { *sep = ' '; g = sep + 4; } else break; }
                 ok += okq; f1sum += f1; nasked++;
-                if (getenv("SHOW")) printf("  %s\t%s\tsaid=%s\tright=%s\t%s\n", fld[1], fld[2], ans, fld[3], okq ? "OK" : "WRONG");
+                if (getenv("SHOW")) printf("  %s\t%s\tsaid=%s\tright=%s\t%s%s\n", fld[1], fld[2], ans, fld[3], okq ? "OK" : "WRONG", s6(2) ? (ep_doubt_n[0] + ep_doubt_n[1] + ep_doubt_n[2] + ep_doubt_n[3] ? "\tDOUBT" : "\tclear") : "");
                 n++; continue; }
             if (line[0] != 'Q') continue;
             char *fld[MAXO + 4]; int nf = 0; for (char *p = strtok(line, "\t"); p && nf < MAXO + 4; p = strtok(0, "\t")) fld[nf++] = p;
@@ -1085,7 +1102,7 @@ static int run_passages(int nfile, char **files) {
                 for (int o = 0; o < no; o++) fprintf(dump, "\t%.5f %.5f %.5f %.5f %.5f %d", P[o].fact, P[o].joint, P[o].open, P[o].mean, P[o].fit, P[o].active);
                 if (getenv("EPDUMP")) for (int o = 0; o < no; o++) fprintf(dump, "\t%.5f %.5f %.5f", P[o].efact, P[o].ejoint, P[o].eopen);   /* docs/YESNO.md Y0: the episode's own parts */
                 fprintf(dump, "\n"); }
-            if (getenv("SHOW")) { int pick = 0; for (int o = 1; o < no; o++) if (sc[o] > sc[pick] + 1e-9) pick = o; printf("  %s\t%s\tpick=%s\tright=%s\t%s%s\n", fld[1], q, fld[3 + pick], want >= 0 && want < no ? fld[3 + want] : ans, right[pick] ? "OK" : "WRONG", yn_state == 1 ? "\ttrue" : yn_state == 2 ? "\tfalse" : yn_state == 3 ? "\tunknown" : ""); }
+            if (getenv("SHOW")) { int pick = 0; for (int o = 1; o < no; o++) if (sc[o] > sc[pick] + 1e-9) pick = o; printf("  %s\t%s\tpick=%s\tright=%s\t%s%s\n", fld[1], q, fld[3 + pick], want >= 0 && want < no ? fld[3 + want] : ans, right[pick] ? "OK" : "WRONG", yn_state == 1 ? "\ttrue" : yn_state == 2 ? "\tfalse" : yn_state == 3 ? "\tunknown" : ""); if (getenv("SHOW") && s6(2)) printf("  %s\t%s\n", fld[1], ep_doubt_n[0] + ep_doubt_n[1] + ep_doubt_n[2] + ep_doubt_n[3] ? "DOUBT" : "clear"); }
             n++; }
         if (open) ep_end();
         fclose(f); if (dump) fflush(dump);

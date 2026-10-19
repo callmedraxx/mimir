@@ -66,6 +66,14 @@ R1 by itself is not where the gain is: what the first pass learns, it mostly alr
 texts. The gain has to come from R2 (a reason to doubt, then the sentence re-read) and R3 (the text's own next sentence
 as the grade), which is where the owner's replay differs from a mere re-run: it looks for the mistake.
 
+**R2's first four rules (tiny brain, `S6=2`, counted only):** one slot with two current values, a thing held by two
+people, a fact with no argument, an argument still a pronoun. They fire on none of the 70 dev-story questions'
+passages and on none of bAbI's 4,000 in words: STATE's superseding, the pronoun rules and the frame reader already
+leave no such trace, and the 387 wrong answers in words all come from passages the rules call clean. So a doubt must
+be about the *answer*, not the store: how far the chosen fact beats the next, whether the slot's value was derived or
+said, whether the question's words were all found. The abstentions already there ("-" when no fact fits) are the
+first such doubt; their precision is measured next.
+
 ## Scorecard
 
 * **Measure first, no change.** On the dev stories and bAbI train (choice and in words): how many facts a second pass
