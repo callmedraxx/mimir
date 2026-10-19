@@ -72,7 +72,10 @@ passages and on none of bAbI's 4,000 in words: STATE's superseding, the pronoun 
 leave no such trace, and the 387 wrong answers in words all come from passages the rules call clean. So a doubt must
 be about the *answer*, not the store: how far the chosen fact beats the next, whether the slot's value was derived or
 said, whether the question's words were all found. The abstentions already there ("-" when no fact fits) are the
-first such doubt; their precision is measured next.
+first such doubt. Measured (tiny brain, bAbI all twenty in words, 4,000 questions): 3,613 right, 195 wrong, 192
+abstained. When Mimir answers it is right 94.9% of the time; it abstains on 4.8%; the wrong answers sit in three-
+argument facts (task 5: 44), yes/no on places and negation (6, 9: 60), a carried thing (2: 32) and positions (17: 21).
+Those are where R2's answer-level doubt should fire first.
 
 ## Scorecard
 
