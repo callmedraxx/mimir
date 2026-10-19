@@ -46,6 +46,12 @@ For "why" questions in prose the same: the sentence before the deed, or a "becau
 **I5. A "no" from the other words (bit 16, for docs/YESNO.md).** With I2's links, a passage fact that the cortex
 links to the statement's *opposite* (cancel ~ not happen, unable ~ cannot) counts against: the "no" side BoolQ lacks.
 
+## Dev files (2026-10-19)
+
+`cosmos_train.txt` (1,000 questions, 799 passages), `storycloze_val.txt` (1,871), `dream_train.txt` (1,000 questions,
+639 dialogues), all in `data/understand/survey/`; format checked on the tiny brain on the first 40 of each. The full
+brain's dev baseline for the frozen YESNO candidate is the first Colab run of this step.
+
 ## Rules
 
 * **Dev**: CosmosQA train (the first 1,000), Story Cloze 2016 validation (1,871), DREAM train (the first 1,000),
