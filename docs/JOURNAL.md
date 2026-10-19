@@ -190,6 +190,12 @@ Lessons that keep coming back:
 
 ## Log
 
+* 2026-10-19 (later): YESNO frozen at S5=4062698 and tested once (docs/YESNO.md, results/yesno_test.txt): BoolQ 46.7 →
+  61.9 (the prior), bAbI test 57.0 → 66.3, bAbI in words all twenty 91.4, stories 137/180 both, MCTest / RACE within half a
+  point, general tests pending at the time of writing; the owner's adoption call next. Then Y19 (docs/SPEAK.md): answer in
+  words first and pick the single-word option that says it, when a rule decided it: bAbI train choice 83.2 → 92.8 on the tiny
+  brain; the reader is snapshotted around a question read. REPLAY R1 and R2 measured (docs/REPLAY.md): no gain from a plain
+  second pass or store-level consistency rules; the doubt must be about the answer; R3 is the next build.
 * 2026-10-19: resumed. The owner asked how the involuntary replay they feel after a game (seeing the play again, seeing
   the better move) could make Mimir self-correcting: docs/REPLAY.md, the brain's offline replay as three parts (re-read
   with what is known now; consistency rules that send the reader back to the sentence; predict the next sentence and

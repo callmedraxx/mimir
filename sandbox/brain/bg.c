@@ -1115,7 +1115,10 @@ static int run_passages(int nfile, char **files) {
             int oneword = 1; for (int o = 0; o < no && oneword; o++) { const char *opt = fld[3 + o]; while (*opt == ' ') opt++; oneword = !strchr(opt, ' '); }   /* options that are single words: a name, a place, yes / no */
             if (s5(4194304) && nep && oneword) {                       /* Y19 (docs/SPEAK.md): say the answer first, then pick the option that says the same */
                 char said[256]; yn_slot = 0; if (ask_answer(&A, q, said, sizeof said) && strcmp(said, "-") && ask_conf >= 2) { A.t.ntok = 0; int hit = -1, nhit = 0;
-                    for (int o = 0; o < no; o++) { const char *opt = fld[3 + o]; while (*opt == ' ') opt++; if (!strcasecmp(opt, said)) { hit = o; nhit++; } }
+                    char saidn[256]; snprintf(saidn, sizeof saidn, "%s", said);                          /* "apple milk" against "apple,milk"; "south east" against "s,e" */
+                    for (int o = 0; o < no; o++) { const char *opt = fld[3 + o]; while (*opt == ' ') opt++; char on[256]; size_t L = 0;
+                        for (const char *p = opt; *p && L + 8 < sizeof on; p++) { if (*p == ',') on[L++] = ' '; else if ((*p == 'n' || *p == 's' || *p == 'e' || *p == 'w') && (p == opt || p[-1] == ',') && (!p[1] || p[1] == ',')) L += (size_t)snprintf(on + L, sizeof on - L, "%s", *p == 'n' ? "north" : *p == 's' ? "south" : *p == 'e' ? "east" : "west"); else on[L++] = *p; } on[L] = 0;
+                        if (!strcasecmp(opt, saidn) || !strcasecmp(on, saidn)) { hit = o; nhit++; } }
                     if (nhit == 1) { for (int o = 0; o < no; o++) P[o].fact = P[o].joint = P[o].open = 0; P[hit].fact = EPW; } }
                 A.t.ntok = 0; }
             yn_state = 0; if (s5(3) && no == 2 && (yesno_q(q) || (s5(32) && !wh_q(q))) && yn_opt(fld[3]) && yn_opt(fld[4])) yesno_judge(P, yn_opt(fld[3]) == 1 ? 0 : 1);   /* docs/YESNO.md */
