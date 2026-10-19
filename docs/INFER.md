@@ -68,7 +68,11 @@ words or its verb are "what goes with such a deed in the books"; each ending's s
 them (kfact_sim, the cortex's links inside it), an ending whose words are all in the story is halved, and the score
 enters the fact part weighted EPW × `NXW` (1.0). Tiny brain (64k shelf facts, no cortex links): Story Cloze val
 52.9 → 55.5, MC160 dev unchanged. The full brain's shelf is five hundred times larger and its cortex links words,
-so the first Colab dev run of the step measures I3 properly.
+so the first Colab dev run of the step measures I3 properly. **Measured (dev run 1): Story Cloze val 54.78 → 54.14.** The
+tiny brain's gain did not carry: on the big shelf the facts that share the deed's words are many and near, and the
+closest of them still favours the ending that repeats the story. Out as built. I3b (`S7=32` with 4): not the deed-like
+facts but each one's *successor* in reading order, what the books say next after such a deed; this is the sequence
+habit in its first form.
 
 ## Rules
 

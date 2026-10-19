@@ -1137,6 +1137,8 @@ static void next_fact(Know *A, const char *q, char **opts, int no, BParts *P) {
         for (uint32_t x = a; x < b && nc < NC; x++) { const KF *f = &kf[cue[x]]; int shares = 0; uint32_t w[8]; int n = kf_words(f, w); for (int j = 0; j < n; j++) for (int k = 0; k < nd; k++) shares += w[j] == dw[k];
             if (shares >= 2 || f->verb == deed->verb) cand[nc++] = cue[x]; } }
     if (!nc) return;
+    if (s7(32)) {                                            /* I3b: not the deed-like facts themselves but what the books say next: each one's successor in reading order (same text) */
+        int m = 0; for (int c = 0; c < nc; c++) { uint32_t i = cand[c]; if (i + 1 < nkf && (kf[i + 1].ptr[0] >> FID_SHIFT) == (kf[i].ptr[0] >> FID_SHIFT) && kf[i + 1].ptr[0] != ~0ull) cand[m++] = i + 1; } nc = m; if (!nc) return; }
     static double NXW = -1; if (NXW < 0) NXW = getenv("NXW") ? atof(getenv("NXW")) : 1.0;
     for (int o = 0; o < no; o++) { Frame hf[16]; uint32_t sw[128]; int nsw; int nh = read_statement(A, opts[o], hf, 16, sw, &nsw, 128); A->t.ntok = 0; if (nh <= 0) continue;
         double best = 0; for (int c = 0; c < nc; c++) { const KF *f = &kf[cand[c]]; for (int i = 0; i < nh; i++) { double v = kfact_sim(A, &hf[i], f) * conf(f); if (v > best) best = v; } }

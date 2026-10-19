@@ -5,3 +5,4 @@
 ==> S5 8257002 RESULT bgpass file=storycloze_val.txt n=1871 acc=54.78 epw=4.00
 ==> S5 8257002 RESULT bgpass file=dream_train.txt n=1000 acc=43.25 epw=4.00
 ==> S5 8257002 babi_train 95.57 boolq_train 61.30 (= dev run 8)
+=== dev run 1 (2026-10-19 21:31 UTC, S5=8257002 S7=4 I3): cosmos_train 20.45 (unchanged, I3 fires on "what happened next" only), storycloze_val 54.14 (baseline 54.78: out)
