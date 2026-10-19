@@ -72,7 +72,18 @@ so the first Colab dev run of the step measures I3 properly. **Measured (dev run
 tiny brain's gain did not carry: on the big shelf the facts that share the deed's words are many and near, and the
 closest of them still favours the ending that repeats the story. Out as built. I3b (`S7=32` with 4): not the deed-like
 facts but each one's *successor* in reading order, what the books say next after such a deed; this is the sequence
-habit in its first form.
+habit in its first form. **Measured (dev run 2): Story Cloze val 54.46 against 54.78.** Out too.
+
+**What the two misses say.** The shelf is school books, baby to high school: what follows "ate the whole pie" in
+them is a sentence about digestion or arithmetic, not "she felt sick". Story Cloze is everyday life (the ROCStories
+were written as five-sentence commonsense stories), and the brain-like source of what usually happens next in
+everyday life is having read, or lived, everyday life. The tiny brain's +3 came from its 64k facts, which are
+largely the dev stories' own kind of text. So I3 is not wrong in form; it is starved of the right memories. That
+is a question of the brain's reading diet (which books the shelf holds), which is the owner's to decide: a shelf
+of plain narratives (children's stories, everyday accounts) read in beside the school books would feed I3, R3's
+replay and W5's habit alike. Until then I3 stays off and the step's effort goes to I2 (the cortex's links weigh
+more where the answer is in other words) and I4 (the reason is the state said before the deed), both of which use
+what the shelf already holds.
 
 ## Rules
 

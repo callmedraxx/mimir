@@ -190,6 +190,11 @@ Lessons that keep coming back:
 
 ## Log
 
+* 2026-10-19 (night): INFER (docs/INFER.md) opened: dev files fetched, baseline on the full brain CosmosQA train 20.45 /
+  Story Cloze val 54.78 / DREAM train 43.25. I1 (copy discount by question words) out on the tiny brain; I3 and I3b
+  ("what the books say next", by deed-like facts and by their successors) out on the full brain: the school shelf does not
+  hold everyday consequences. Open question for the owner: the brain's reading diet (plain narratives beside the school
+  books) would feed I3, REPLAY's R3 and SPEAK's W5 alike.
 * 2026-10-19 (later): YESNO frozen at S5=4062698 and tested once (docs/YESNO.md, results/yesno_test.txt): BoolQ 46.7 →
   61.9 (the prior), bAbI test 57.0 → 66.3, bAbI in words all twenty 91.4, stories 137/180 both, MCTest / RACE within half a
   point, general tests 27.45 / 30.92 / 45.56 / 23.62 / 23.80 (none down more than 0.1); the owner's adoption call next. Then Y19 (docs/SPEAK.md): answer in
