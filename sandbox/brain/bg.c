@@ -935,7 +935,7 @@ static double word_f1(const char *said, const char *gold) {
     int used[32] = { 0 }, hit = 0; for (int i = 0; i < na; i++) for (int j = 0; j < nb; j++) if (!used[j] && !strcmp(a[i], b[j])) { used[j] = 1; hit++; break; }
     if (!hit) return 0; double pr = (double)hit / na, rc = (double)hit / nb; return 2 * pr * rc / (pr + rc);
 }
-static int numlike(const char *w);
+static int numlike(const char *w); static int ask_conf;   /* how the answer was reached: 2 a rule decided (state slot, relation, kind, count, path, before), 1 a strong fact, 0 weak or none */
 /* docs/SPEAK.md W2: the filler said as the text said it. The fact points into the episode's text; in its sentence the word whose
    lemma is the filler's (or begins with it: panthers / panther) is found, and the capitalised or modifying words just before it
    are kept ("Carolina Panthers", "Levi Stadium"); a number word's digits are found by its value. */
@@ -967,9 +967,28 @@ static int timelike(const char *w) {                     /* a number word, a mon
     static const char *X[] = { "january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday", "morning", "afternoon", "evening", "night", "noon", "midnight", "yesterday", "today", "tomorrow", "week", "month", "year", "century", "summer", "winter", "spring", "autumn", "fall", 0 };
     static const char *N[] = { "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety", "hundred", "thousand", 0 };
     for (int i = 0; X[i]; i++) if (!strcmp(w, X[i])) return 1; for (int i = 0; N[i]; i++) { size_t L = strlen(N[i]); if (!strncmp(w, N[i], L) && (w[L] == 0 || w[L] == '-')) return 1; } return 0; }
-static int ask_answer(Know *A, const char *q, char *out, size_t cap) {
+/* reading a question must leave the reader as the story left it: names, sexes, the sentence count and the people the pronouns pointed
+   to are the story's, not the question's (otherwise each question read shifts the next question's statements) */
+typedef struct { Reader2 R; uint8_t *sex; uint32_t *sexat, *name, nsex, nname; } ReaderSnap;
+static void rsnap_save(const Reader2 *R, ReaderSnap *S) {
+    S->R = *R; S->nsex = R->nsex; S->nname = R->nname;
+    S->sex = R->nsex ? malloc(R->nsex) : 0; if (S->sex) memcpy(S->sex, R->sex, R->nsex);
+    S->sexat = R->nsex ? malloc(R->nsex * 4) : 0; if (S->sexat) memcpy(S->sexat, R->sexat, R->nsex * 4);
+    S->name = R->nname ? malloc(R->nname * 4) : 0; if (S->name) memcpy(S->name, R->name, R->nname * 4);
+}
+static void rsnap_restore(Reader2 *R, ReaderSnap *S) {
+    uint8_t *sex = R->sex; uint32_t *sexat = R->sexat, *name = R->name, nsex = R->nsex, nname = R->nname;   /* keep the (possibly grown) tables, put the old contents back */
+    *R = S->R; R->sex = sex; R->sexat = sexat; R->name = name; R->nsex = nsex; R->nname = nname;
+    if (S->sex) { memcpy(R->sex, S->sex, S->nsex); if (nsex > S->nsex) memset(R->sex + S->nsex, 0, nsex - S->nsex); free(S->sex); }
+    if (S->sexat) { memcpy(R->sexat, S->sexat, S->nsex * 4); if (nsex > S->nsex) memset(R->sexat + S->nsex, 0, (nsex - S->nsex) * 4); free(S->sexat); }
+    if (S->name) { memcpy(R->name, S->name, S->nname * 4); if (nname > S->nname) memset(R->name + S->nname, 0, (nname - S->nname) * 4); free(S->name); }
+}
+static int ask_answer_(Know *A, const char *q, char *out, size_t cap);
+static int ask_answer(Know *A, const char *q, char *out, size_t cap) { ReaderSnap S; rsnap_save(&A->R, &S); int r = ask_answer_(A, q, out, cap); rsnap_restore(&A->R, &S); return r; }
+static int ask_answer_(Know *A, const char *q, char *out, size_t cap) {
+    ask_conf = 0;
     if (yesno_q(q)) { BParts P[2]; yn_slot = 0; bg_option(A, q, "yes", &P[0]); A->t.ntok = 0; bg_option(A, q, "no", &P[1]); A->t.ntok = 0;
-        yn_state = 0; if (yn_slot == 2) { snprintf(out, cap, "maybe"); return 1; } if (s5(3)) yesno_judge(P, 0); double sc[2]; scores(q, P, 2, sc); snprintf(out, cap, "%s", sc[0] >= sc[1] ? "yes" : "no"); return 1; }
+        yn_state = 0; ask_conf = yn_slot ? 2 : 0; if (yn_slot == 2) { snprintf(out, cap, "maybe"); return 1; } if (s5(3)) yesno_judge(P, 0); double sc[2]; scores(q, P, 2, sc); snprintf(out, cap, "%s", sc[0] >= sc[1] ? "yes" : "no"); return 1; }
     TextContext *t = &A->t; uint32_t n0 = t->ntok; Refs keep = A->R.refs; text_take(t, NULL, q, strlen(q)); A->R.question = 1;
     Frame hf[8]; int wh = -1; int nh = read_span(&A->R, t->tok, n0, t->ntok, hf, 8, &wh); t->ntok = n0; t->src_len = 0; A->R.refs = keep; A->R.question = 0;
     if (s5(2097152)) for (int i = 0; i < nh; i++) {        /* "What was the final score of the game?": the score is the subject, the hole is what it was */
@@ -996,12 +1015,12 @@ static int ask_answer(Know *A, const char *q, char *out, size_t cap) {
             uint32_t X = lx_id(w, 0); uint32_t at = 0, pv = NONE, po = 0;
             for (uint32_t e = 0; e < nep; e++) { uint32_t s2, v2; if ((ep[e].flags & F_NEG) || state_key(&ep[e], &s2, &v2) != 1 || s2 != qs) continue; if (v2 == X && ep_ord[e] > at) at = ep_ord[e]; }
             if (at) for (uint32_t e = 0; e < nep; e++) { uint32_t s2, v2; if ((ep[e].flags & F_NEG) || state_key(&ep[e], &s2, &v2) != 1 || s2 != qs || v2 == X) continue; if (ep_ord[e] < at && ep_ord[e] > po) { po = ep_ord[e]; pv = v2; } }
-            if (pv != NONE) { snprintf(out, cap, "%s", LX.s[pv]); return 1; } } }
+            if (pv != NONE) { ask_conf = 2; snprintf(out, cap, "%s", LX.s[pv]); return 1; } } }
     if (qkind == 2) {   /* W1c: what someone holds now: "What is Mary carrying?" the things, "How many objects is Mary carrying?" their count */
         uint32_t holder = qv; uint32_t things[32]; int nt = 0; static const char *NUM[] = { "none", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten" };
         if (holder != NONE) for (uint32_t e = 0; e < nep; e++) { uint32_t s2, v2; if (ep_sup[e] || (ep[e].flags & F_NEG) || state_key(&ep[e], &s2, &v2) != 2 || v2 != holder) continue; int dup = 0; for (int i = 0; i < nt; i++) dup |= things[i] == s2; if (!dup && nt < 32) things[nt++] = s2; }
-        if (is_word_at(q, "how many")) { snprintf(out, cap, "%s", NUM[nt > 10 ? 10 : nt]); return 1; }
-        if (holder != NONE && role == A_PAT) { if (!nt) { snprintf(out, cap, "nothing"); return 1; } size_t L = 0; for (int i = 0; i < nt && L + 2 < cap; i++) L += (size_t)snprintf(out + L, cap - L, "%s%s", i ? " " : "", LX.s[things[i]]); return 1; } }
+        if (is_word_at(q, "how many")) { ask_conf = 2; snprintf(out, cap, "%s", NUM[nt > 10 ? 10 : nt]); return 1; }
+        if (holder != NONE && role == A_PAT) { ask_conf = 2; if (!nt) { snprintf(out, cap, "nothing"); return 1; } size_t L = 0; for (int i = 0; i < nt && L + 2 < cap; i++) L += (size_t)snprintf(out + L, cap - L, "%s%s", i ? " " : "", LX.s[things[i]]); return 1; } }
     uint32_t wtype = hf[fi].a[slot].mod < OPEN ? hf[fi].a[slot].mod : NONE; const char *wtw = wtype != NONE ? A->t.voc[wtype].word : "";
     int want_adj = !strcmp(wtw, "color") || !strcmp(wtw, "colour") || !strcmp(wtw, "size") || !strcmp(wtw, "shape");   /* "what colour is Greg": an adjective, not his kind */
     int want_time = !strcmp(wtw, "day") || !strcmp(wtw, "date") || !strcmp(wtw, "year") || !strcmp(wtw, "month") || !strcmp(wtw, "time") || is_word_at(q, "when");   /* "what day", "what year": a number, a month, a day */
@@ -1027,7 +1046,7 @@ static int ask_answer(Know *A, const char *q, char *out, size_t cap) {
                         if (nxt == NONE) continue; int seen = 0; for (int k = 0; k < nq_; k++) seen |= at[k] == nxt; if (seen) continue;
                         at[nq_] = nxt; from[nq_] = head; via[nq_] = mv; nq_++;
                         if (nxt == Y) { int path[8], np = 0, k = nq_ - 1; while (from[k] >= 0 && np < 8) { path[np++] = via[k]; k = from[k]; }
-                            size_t L = 0; for (int i = np - 1; i >= 0 && L + 8 < cap; i--) L += (size_t)snprintf(out + L, cap - L, "%s%s", i == np - 1 ? "" : " ", D[path[i]]); return 1; } } }
+                            size_t L = 0; for (int i = np - 1; i >= 0 && L + 8 < cap; i--) L += (size_t)snprintf(out + L, cap - L, "%s%s", i == np - 1 ? "" : " ", D[path[i]]); ask_conf = 2; return 1; } } }
                 head++; } } }
     /* W1e: "What is the kitchen south of?" when the text says "the office is north of the kitchen": the relation read the other way */
     if ((!bf || best < 0.3) && role == A_AGENT && qk.narg) {                   /* "What is east of the hallway?": the thing whose west is the hallway */
@@ -1035,12 +1054,12 @@ static int ask_answer(Know *A, const char *q, char *out, size_t cap) {
             const char *pw = LX.s[qk.prep[a_]]; const char *inv = 0; for (int i = 0; INV2[i][0]; i++) { if (!strcmp(pw, INV2[i][0])) inv = INV2[i][1]; if (!strcmp(pw, INV2[i][1])) inv = INV2[i][0]; }
             if (!inv) continue; uint32_t ip = lx_id(inv, 0), Y = qk.head[a_];
             for (uint32_t e = 0; e < nep; e++) { const KF *f = &ep[e]; if ((f->flags & F_NEG) || f->narg < 2 || f->head[0] != Y) continue;
-                for (int j = 1; j < f->narg; j++) if (f->role[j] == A_PP && f->prep[j] == ip) { snprintf(out, cap, "%s", LX.s[f->head[j]]); return 1; } } } }
+                for (int j = 1; j < f->narg; j++) if (f->role[j] == A_PP && f->prep[j] == ip) { ask_conf = 2; snprintf(out, cap, "%s", LX.s[f->head[j]]); return 1; } } } }
     if ((!bf || best < 0.3) && role == A_PP && prep != NONE && qk.narg) { static const char *INV[][2] = { { "north", "south" }, { "east", "west" }, { "above", "below" }, { "left", "right" }, { "inside", "outside" }, { 0, 0 } };
         const char *pw = LX.s[prep]; const char *inv = 0; for (int i = 0; INV[i][0]; i++) { if (!strcmp(pw, INV[i][0])) inv = INV[i][1]; if (!strcmp(pw, INV[i][1])) inv = INV[i][0]; }
         if (inv) { uint32_t ip = lx_id(inv, 0); uint32_t X = qk.head[0];
             for (uint32_t e = 0; e < nep; e++) { const KF *f = &ep[e]; if ((f->flags & F_NEG) || f->narg < 2) continue;
-                for (int j = 1; j < f->narg; j++) if (f->role[j] == A_PP && f->prep[j] == ip && f->head[j] == X) { snprintf(out, cap, "%s", LX.s[f->head[0]]); return 1; } } } }
+                for (int j = 1; j < f->narg; j++) if (f->role[j] == A_PP && f->prep[j] == ip && f->head[j] == X) { ask_conf = 2; snprintf(out, cap, "%s", LX.s[f->head[0]]); return 1; } } } }
     /* W1d: nothing said of the subject itself: what is said of its kind ("Gertrude is a mouse. Mice are afraid of wolves": deduction), or of
        the other members of its kind ("Lily is a swan. Lily is green. Greg is a swan. What colour is Greg?": induction, the commonest value) */
     if ((!bf || best < 0.3) && qk.narg) { uint32_t X = qk.head[0]; uint32_t kinds[8]; int nk = 0;
@@ -1056,8 +1075,9 @@ static int ask_answer(Know *A, const char *q, char *out, size_t cap) {
                 double s = kfact_sim(A, &hf[fi], &g) * (about_kind ? 1.0 : 0.8); if (s < 0.3) continue;
                 int j = -1; for (int a_ = 0; a_ < f->narg && j < 0; a_++) if (f->role[a_] == role && (role != A_PP || prep == NONE || f->prep[a_] == prep) && FILLER_OK(f, a_)) j = a_;
                 if (j < 0) continue; uint32_t v = f->head[j]; int found = 0; for (int i = 0; i < nv; i++) if (vals[i] == v) { cnt[i] += about_kind ? 3 : 1; found = 1; } if (!found && nv < 32) { vals[nv] = v; cnt[nv++] = about_kind ? 3 : 1; } } }
-        if (nv) { int bi = 0; for (int i = 1; i < nv; i++) if (cnt[i] > cnt[bi]) bi = i; if (getenv("ASKDBG")) fprintf(stderr, "  ASK kind: %d kinds, %d values, best %s\n", nk, nv, LX.s[vals[bi]]); snprintf(out, cap, "%s", LX.s[vals[bi]]); return 1; } }
+        if (nv) { int bi = 0; for (int i = 1; i < nv; i++) if (cnt[i] > cnt[bi]) bi = i; if (getenv("ASKDBG")) fprintf(stderr, "  ASK kind: %d kinds, %d values, best %s\n", nk, nv, LX.s[vals[bi]]); ask_conf = 2; snprintf(out, cap, "%s", LX.s[vals[bi]]); return 1; } }
     if (!bf || best < 0.3) { snprintf(out, cap, "-"); return 0; }
+    ask_conf = (qkind && ep_der[bf - ep]) || best >= 0.75 ? 2 : best >= 0.5 ? 1 : 0;   /* a state question answered by the current state, or a fact close to the question */
     int j0 = -1; for (int j = 0; j < bf->narg && j0 < 0; j++) if (bf->role[j] == role && (role != A_PP || prep == NONE || bf->prep[j] == prep) && FILLER_OK(bf, j)) j0 = j;
     for (int j = 0; j < bf->narg && j0 < 0; j++) if (bf->role[j] == role && FILLER_OK(bf, j)) j0 = j;
     if (j0 < 0) { snprintf(out, cap, "-"); return 0; }
@@ -1092,6 +1112,12 @@ static int run_passages(int nfile, char **files) {
             int no = nf - 4; const char *ans = fld[nf - 1]; const char *q = fld[2]; int want = ans[0] - 'A'; BParts P[MAXO]; double sc[MAXO];
             int right[MAXO]; for (int o = 0; o < no; o++) right[o] = strchr(ans, 'A' + o) != 0;
             yn_slot = 0; for (int o = 0; o < no; o++) { bg_option(&A, q, fld[3 + o], &P[o]); A.t.ntok = 0; }
+            int oneword = 1; for (int o = 0; o < no && oneword; o++) { const char *opt = fld[3 + o]; while (*opt == ' ') opt++; oneword = !strchr(opt, ' '); }   /* options that are single words: a name, a place, yes / no */
+            if (s5(4194304) && nep && oneword) {                       /* Y19 (docs/SPEAK.md): say the answer first, then pick the option that says the same */
+                char said[256]; yn_slot = 0; if (ask_answer(&A, q, said, sizeof said) && strcmp(said, "-") && ask_conf >= 2) { A.t.ntok = 0; int hit = -1, nhit = 0;
+                    for (int o = 0; o < no; o++) { const char *opt = fld[3 + o]; while (*opt == ' ') opt++; if (!strcasecmp(opt, said)) { hit = o; nhit++; } }
+                    if (nhit == 1) { for (int o = 0; o < no; o++) P[o].fact = P[o].joint = P[o].open = 0; P[hit].fact = EPW; } }
+                A.t.ntok = 0; }
             yn_state = 0; if (s5(3) && no == 2 && (yesno_q(q) || (s5(32) && !wh_q(q))) && yn_opt(fld[3]) && yn_opt(fld[4])) yesno_judge(P, yn_opt(fld[3]) == 1 ? 0 : 1);   /* docs/YESNO.md */
             { int ex = 0; for (int o = 0; o < no; o++) ex += P[o].active && P[o].fact >= FX * EPW * 0.5;     /* F5: one option said almost whole by the passage: the fact decides */
                 if (ex == 1) for (int o = 0; o < no; o++) { P[o].open *= FO; P[o].joint *= FO; } }

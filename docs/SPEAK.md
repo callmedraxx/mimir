@@ -129,6 +129,15 @@ All twenty tasks, test split, 200 each: **91.4** exact match. By task: 1:100 2:9
 in words with rules written for bAbI; these are the general reader's rules, and task 20's 4 is the honest number for
 "where will a tired person go" without the world's knowledge.
 
+## Say it, then choose it (Y19, bit 4194304; 2026-10-19, tiny brain)
+
+For a question whose options are single words (a name, a place, yes / no), Mimir first answers in words and, when a rule
+decided the answer (the state slot, a relation chain, a kind, a count, a path, "before"; or a fact close to the
+question), picks the option that says the same. bAbI train choice 83.2 → 92.8 ("before" questions 36 → 97), BoolQ,
+RACE-M dev, the dev stories and bAbI in words unchanged, MC500 dev one question down (59.4 → 58.9). Reading a question
+now leaves the reader as the story left it (names, sexes, the sentence count, the pronouns' people are snapshotted
+and restored), which the earlier question reads did not.
+
 ## SQuAD, first look (2026-10-17, tiny brain, the first 40 dev questions as a format check only)
 
 The harness runs (`tools/squad_words.py`, A lines with several right answers, exact match and word F1). Said right: "Cam
