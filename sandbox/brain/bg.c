@@ -313,7 +313,9 @@ static void cx_fact(const KF *f) {                      /* the reader's side: a 
     __atomic_store_n(&cxqh, h + 1 + n, __ATOMIC_RELEASE);
 }
 static uint64_t cx_epst; static float *cx_epneu;
+static int cx_quiet;                                      /* docs/REPLAY.md R1: the second pass re-reads without the cortex learning again */
 static void cx_fact_now(const KF *f) {                  /* the episode's side: learn from the fact now, in this thread */
+    if (cx_quiet) return;
     uint32_t w[8]; int n = kf_words(f, w); if (n < 2) return;
     for (int i = 0; i < n; i++) while ((w[i] >> CXB) >= (uint32_t)cxnb) { if (cxnb >= CXMAXB) return; cx_block(); }
     if (!cx_epneu) cx_epneu = malloc(CXD * 4);
@@ -807,7 +809,13 @@ static void ep_time_order(void) {
 static void ep_read(Know *k, const char *text) {
     size_t L = strlen(text); if (neb + L + 2 > capeb) { capeb = (neb + L + 2) * 2; epbuf = realloc(epbuf, capeb); }
     memcpy(epbuf + neb, text, L); epbuf[neb + L] = '\n'; size_t off = neb; neb += L + 1; epbuf[neb] = 0;
-    memset(&k->R.refs, 0, sizeof k->R.refs); k->R.refs.plthing = NONE; EPREAD = 1; read_block(k, epbuf + off, L + 1, EPFID, off); EPREAD = 0;
+    memset(&k->R.refs, 0, sizeof k->R.refs); k->R.refs.plthing = NONE; EPREAD = 1; uint32_t nep0 = nep, seq0 = ep_seq; read_block(k, epbuf + off, L + 1, EPFID, off); EPREAD = 0;
+    if (s6(1)) {                                          /* docs/REPLAY.md R1: read it again knowing what the first pass learned (who is of which sex, the names, the kinds); the second pass's facts stand */
+        static KF *p1; static uint32_t cap1; uint32_t n1 = nep - nep0; if (cap1 < n1) { cap1 = n1; p1 = realloc(p1, cap1 * sizeof *p1); } memcpy(p1, ep + nep0, n1 * sizeof *p1);
+        nep = nep0; ep_seq = seq0; memset(&k->R.refs, 0, sizeof k->R.refs); k->R.refs.plthing = NONE; EPREAD = 1; cx_quiet = 1; read_block(k, epbuf + off, L + 1, EPFID, off); cx_quiet = 0; EPREAD = 0;
+        if (getenv("R1DBG")) { uint32_t n2 = nep - nep0, changed = 0; for (uint32_t i = 0; i < n2; i++) { int found = 0; for (uint32_t j = 0; j < n1 && !found; j++) found = kf_same(&ep[nep0 + i], &p1[j]); if (!found) { changed++;
+                fprintf(stderr, "  R1 new: %s%s", ep[nep0 + i].flags & F_NEG ? "NOT " : "", ep[nep0 + i].verb != NONE ? LX.s[ep[nep0 + i].verb] : "-"); for (int a = 0; a < ep[nep0 + i].narg; a++) fprintf(stderr, " %s=%s", ep[nep0 + i].role[a] == A_AGENT ? "who" : ep[nep0 + i].role[a] == A_PAT ? "what" : ep[nep0 + i].role[a] == A_ATTR ? "is" : "pp", LX.s[ep[nep0 + i].head[a]]); fprintf(stderr, "\n"); } }
+            fprintf(stderr, "  R1: pass1 %u facts, pass2 %u, %u not in pass1\n", n1, n2, changed); } }
     if (s5(32768)) ep_time_order();                      /* Y15: "yesterday … this morning …": the order of saying is the order of the times said */
     ep_states();
     if (getenv("EPDBG")) for (uint32_t e = 0; e < nep; e++) { fprintf(stderr, "  ep%u ord=%u%s%s %s%s", e, ep_ord[e], ep_sup[e] ? " SUP" : "", ep_der[e] ? " der" : "", ep[e].flags & F_NEG ? "NOT " : "", ep[e].verb != NONE ? LX.s[ep[e].verb] : "-");

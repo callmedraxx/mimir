@@ -55,6 +55,17 @@ Not in this: no backpropagation, no model behind it, nothing that is not the tex
 trick for getting more out of one experience, and the whole of it is "read it again, knowing more, and notice where
 you were wrong".
 
+## First measurement (2026-10-19, tiny brain, switch `S6=1`: R1 as a plain second pass)
+
+The second pass alone changes nothing on the dev stories (0 facts differ from the first pass on every story), and the
+scores stay: dev stories 6 wrong of 70 both, bAbI train choice 83.17 both, bAbI in words 90.33 both, MC500 dev 59.38
+both, MC160 dev 52.78 → 53.19 (one question). The one thing it exposed: a second read that lets the cortex learn again
+costs 4 points on MC500 dev and 4 story questions (the passage's words doubled), so the replay must be silent in the
+cortex (`cx_quiet`), as the brain's replay changes the cortex by its own rule and not as a second day's reading. So
+R1 by itself is not where the gain is: what the first pass learns, it mostly already learned forward on these short
+texts. The gain has to come from R2 (a reason to doubt, then the sentence re-read) and R3 (the text's own next sentence
+as the grade), which is where the owner's replay differs from a mere re-run: it looks for the mistake.
+
 ## Scorecard
 
 * **Measure first, no change.** On the dev stories and bAbI train (choice and in words): how many facts a second pass

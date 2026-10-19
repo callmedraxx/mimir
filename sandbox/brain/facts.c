@@ -101,6 +101,8 @@ enum { F_NEG = 1, F_EITHER = 2, F_FUT = 4, F_Q = 8, F_PASS = 16, F_PAST = 32, F_
 /* docs/YESNO.md: the switch S5 (1 Y1 the passage judges a yes/no question, 2 Y2 true / false / unknown, 4 Y3 "not" turns around from 0.35,
    8 Y4 a bare yes has no words, 16 Y5, 32 Y6, 64 Y7 "as" + noun phrase a preposition, 128 Y8 an opening participle describes the noun, 256 Y9 the question's subject as a noun phrase, 512 Y5b, 1024 Y11 hyphenated words) */
 static int S5 = -1; static int s5(int bit) { if (S5 < 0) { const char *e = getenv("S5"); S5 = e ? atoi(e) : 0; } return S5 & bit; }
+/* docs/REPLAY.md: the switch S6 (1 R1 a second pass with what the first pass learned, 2 R2 consistency rules, 4 R3 predict the next sentence) */
+static int S6 = -1; static int s6(int bit) { if (S6 < 0) { const char *e = getenv("S6"); S6 = e ? atoi(e) : 0; } return S6 & bit; }
 #define F_TENSE (F_PAST | F_PRES)
 typedef struct { uint32_t verb, part; uint8_t flags, tc, narg; Arg a[MAXARG]; uint32_t when; int ev; } Frame;
 
