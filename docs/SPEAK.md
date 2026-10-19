@@ -136,7 +136,10 @@ decided the answer (the state slot, a relation chain, a kind, a count, a path, "
 question), picks the option that says the same. bAbI train choice 83.2 → 92.8 ("before" questions 36 → 97), BoolQ,
 RACE-M dev, the dev stories and bAbI in words unchanged, MC500 dev one question down (59.4 → 58.9). Reading a question
 now leaves the reader as the story left it (names, sexes, the sentence count, the pronouns' people are snapshotted
-and restored), which the earlier question reads did not.
+and restored), which the earlier question reads did not. Full brain (dev run 8, `results/yesno_dev.txt`): bAbI train
+choice 83.6 → **95.6**, everything else identical to the frozen candidate (BoolQ 61.3, words 95.6 / 91.5, dev stories
+67/70, MC160 51.9, MC500 57.75, RACE-M 41.0, general dev the same). Y19 came after the YESNO freeze, so it is not in the
+candidate under test; it goes into the next step's test.
 
 ## SQuAD, first look (2026-10-17, tiny brain, the first 40 dev questions as a format check only)
 
