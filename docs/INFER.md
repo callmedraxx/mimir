@@ -52,6 +52,15 @@ links to the statement's *opposite* (cancel ~ not happen, unable ~ cannot) count
 639 dialogues), all in `data/understand/survey/`; format checked on the tiny brain on the first 40 of each. The full
 brain's dev baseline for the frozen YESNO candidate is the first Colab run of this step.
 
+## I1 measured (2026-10-19, tiny brain, `S7=1`, `CPW` 0.5)
+
+A blanket discount on near-copy options for questions with "why", "what does", "feel", "mean", "likely": CosmosQA
+train 22.6 → 23.6, Story Cloze val 52.9 → 52.9, DREAM train 41.2 → 38.9, MC160 dev 52.8 → 46.9, MC500 dev 58.9 → 51.9,
+RACE-M dev 37.8 → 36.9. Out as it stands: those question words open ordinary questions too, whose quoted sentence is
+the answer, and a word list cannot tell an inference question from a lookup. The discount can only follow a reason
+(I3's "what happens next" has one: the option restates the story instead of continuing it), not the question's words.
+The full brain's baseline (first Colab run): CosmosQA train 20.45, Story Cloze val 54.78 (the rest below).
+
 ## Rules
 
 * **Dev**: CosmosQA train (the first 1,000), Story Cloze 2016 validation (1,871), DREAM train (the first 1,000),

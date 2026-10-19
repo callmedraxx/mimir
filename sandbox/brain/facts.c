@@ -103,6 +103,8 @@ enum { F_NEG = 1, F_EITHER = 2, F_FUT = 4, F_Q = 8, F_PASS = 16, F_PAST = 32, F_
 static int S5 = -1; static int s5(int bit) { if (S5 < 0) { const char *e = getenv("S5"); S5 = e ? atoi(e) : 0; } return S5 & bit; }
 /* docs/REPLAY.md: the switch S6 (1 R1 a second pass with what the first pass learned, 2 R2 consistency rules, 4 R3 predict the next sentence) */
 static int S6 = -1; static int s6(int bit) { if (S6 < 0) { const char *e = getenv("S6"); S6 = e ? atoi(e) : 0; } return S6 & bit; }
+/* docs/INFER.md: the switch S7 (1 I1 the passage-copy discount, 2 I2 the cortex's links weigh more, 4 I3 what happens next, 8 I4 the reason, 16 I5 a no from other words) */
+static int S7 = -1; static int s7(int bit) { if (S7 < 0) { const char *e = getenv("S7"); S7 = e ? atoi(e) : 0; } return S7 & bit; }
 #define F_TENSE (F_PAST | F_PRES)
 typedef struct { uint32_t verb, part; uint8_t flags, tc, narg; Arg a[MAXARG]; uint32_t when; int ev; } Frame;
 

@@ -1115,6 +1115,15 @@ static int ask_answer_(Know *A, const char *q, char *out, size_t cap) {
     if (getenv("ASKDBG")) fprintf(stderr, "  ASK %s -> frame %d slot %d role %d best %.3f fact %s\n", q, fi, slot, role, best, bf->verb != NONE ? LX.s[bf->verb] : "-");
     snprintf(out, cap, "%s", LX.s[bf->head[j0]]); return 1;
 }
+/* docs/INFER.md: a question that asks for what the passage implies rather than says */
+static int infer_q(const char *q) {
+    static const char *W[] = { "why", "what will", "what would", "what happened next", "what happens next", "what does", "what did the", "mean", "feel", "likely", "probably", "may be", "might", "what is the reason", "what can we", "we can infer", "infer", "suggest", 0 };
+    for (int i = 0; W[i]; i++) if (strcasestr(q, W[i])) return 1; return 0; }
+/* the share of an option's content words the episode holds (its words in the passage): near 1 means the option quotes the passage */
+static double copy_share(Know *A, const char *opt) {
+    Frame of[8]; uint32_t owl[64]; int now_ = 0; read_statement(A, opt, of, 8, owl, &now_, 64); A->t.ntok = 0;
+    int n = 0, in = 0; for (int i = 0; i < now_; i++) { uint32_t g = lx_id(A->t.voc[owl[i]].word, 0); if (g == NONE) continue; n++; in += g < nepword && epword[g]; }
+    return n ? (double)in / n : 0; }
 static int run_passages(int nfile, char **files) {
     Know A; answer_ctx(&A); Know k; memset(&k, 0, sizeof k); text_init(&k.t); r2_init(&k.R, &k.t, &k.wm);
     cx_epst = 0x2545F4914F6CDD1Dull; if (getenv("SUPW")) SUPW = atof(getenv("SUPW")); state_init();
@@ -1151,6 +1160,9 @@ static int run_passages(int nfile, char **files) {
                     if (nhit == 1) { for (int o = 0; o < no; o++) P[o].fact = P[o].joint = P[o].open = 0; P[hit].fact = EPW; } }
                 A.t.ntok = 0; }
             yn_state = 0; if (s5(3) && no == 2 && (yesno_q(q) || (s5(32) && !wh_q(q))) && yn_opt(fld[3]) && yn_opt(fld[4])) yesno_judge(P, yn_opt(fld[3]) == 1 ? 0 : 1);   /* docs/YESNO.md */
+            if (s7(1) && nep && infer_q(q)) {                          /* docs/INFER.md I1: for a question that asks for an inference, an option that is a near copy of the passage is a quote, not an answer */
+                static double CPW = -1; if (CPW < 0) CPW = getenv("CPW") ? atof(getenv("CPW")) : 0.5;
+                for (int o = 0; o < no; o++) { double c = copy_share(&A, fld[3 + o]); if (c >= 0.8) { P[o].fact *= CPW; P[o].joint *= CPW; P[o].open *= CPW; } } }
             { int ex = 0; for (int o = 0; o < no; o++) ex += P[o].active && P[o].fact >= FX * EPW * 0.5;     /* F5: one option said almost whole by the passage: the fact decides */
                 if (ex == 1) for (int o = 0; o < no; o++) { P[o].open *= FO; P[o].joint *= FO; } }
             scores(q, P, no, sc);
